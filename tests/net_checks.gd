@@ -120,11 +120,18 @@ func prompt_cases():
  await server.start()
  await frames(5)
  client.scripted = false
+ var waiting_events = []
+ var choosing_events = []
+ link_cleanup.event.connect(func(data):
+  if data.kind in ["waiting", "waiting_done"]: waiting_events.append(data))
+ client.event.connect(func(data):
+  if data.kind in ["waiting", "waiting_done"]: choosing_events.append(data))
  var p = server.engine.state.players[0]
  var remote = server.engine.dec(p)
  var results = []
  collect_option(remote, p, results)
  await frames(3)
+ verify(waiting_events.size() == 1 and waiting_events[0].kind == "waiting" and waiting_events[0].seat == 0, "Other seat receives waiting event")
  var request = server.pending.values()[0]
  var error_count = []
  client.error.connect(func(r): error_count.append(r))
@@ -134,6 +141,7 @@ func prompt_cases():
  client.answer(request.data.id, 1)
  await frames(4)
  verify(results == [1] and server.pending.is_empty(), "choose_option round trip")
+ verify(waiting_events.size() == 2 and waiting_events[-1].kind == "waiting_done", "Answer clears waiting event")
  client.scripted = true
  collect_cards(remote, p, results)
  await frames(5)
@@ -153,6 +161,9 @@ func prompt_cases():
  fake_time += 46
  await frames(4)
  verify(results.size() == 9 and results[8] == await BotDecider.new(server.engine, 1).confirm(p, "Use TOCTOU?"), "45 second timeout chooses Phreak bot answer")
+ verify(waiting_events[-1].kind == "waiting_done", "Timeout clears waiting event")
+ verify(choosing_events.is_empty(), "Choosing seat receives no waiting events")
+ verify(waiting_events.all(func(data): return data.keys().all(func(key): return key in ["t", "kind", "seat", "text"])), "Waiting events contain only public seat and text, no prompt fields")
  for c in [client, link_cleanup]: c.transport.close(); c.queue_free()
  server.queue_free()
  await frames(2)
@@ -281,7 +292,30 @@ func transport_checks():
  pair[0].send({"t": "ignored"})
  pair[1].pump()
  verify(closures.size() == 1 and messages.size() == 1, "Close disconnects pair and drops further sends")
+func bot_names():
+ var db = root.get_node("CardDB")
+ var hero = db.pool_ids("2025").filter(func(id): return db.has_subtype(id, "Hero"))[0]
+ var config = [{"name": db.cards[hero].name, "hero": hero}, {"name": "Bot", "bot": true}, {"name": "", "bot": true}, {"bot": true}]
+ var a = room(config, 42)
+ var b = room(config, 42)
+ verify(a.seats == b.seats, "Bot identities use game seed")
+ var names = []
+ var ids = []
+ for seat in a.seats:
+  verify(seat.name.to_lower() not in names and seat.hero not in ids, "Unique names and avatars exclude human identity")
+  names.append(seat.name.to_lower())
+  ids.append(seat.hero)
+  if seat.bot: verify(db.has_subtype(seat.hero, "Hero") and not db.cards[seat.hero].get("starter", false), "Bot has nonstarter Hero identity")
+ await a.start()
+ a._checkpoint()
+ var restored = GameServer.new()
+ root.add_child(restored)
+ verify(restored.restore(a.last_snapshot) and restored.seats == a.seats, "Restore retains Hero identities")
+ a.queue_free()
+ b.queue_free()
+ restored.queue_free()
 func run():
+ await bot_names()
  transport_checks()
  await games()
  await illegal()

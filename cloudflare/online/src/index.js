@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen} from './lib/protocol.js';
+import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion} from './lib/protocol.js';
 const HOUR=3600000, IDLE=600000, DAY=24*HOUR;
 const json=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 const error=e=>json({error:e.status?e.message:'internal',...e.extra},e.status||500);
@@ -25,6 +25,7 @@ export default {async fetch(req,env) {
       if(r.kind==='list') response=json({rooms:await l.list()});
       if(r.kind==='create'||r.kind==='join') {
         const data= r.kind==='create'?creation(await body(req)):identity(await body(req));
+        checkVersion(data.version,env.GAME_VERSION);
         if(!await l.allow(req.headers.get('CF-Connecting-IP')||'unknown',r.kind)) fail('rate_limit',429);
         if(r.kind==='create') {
           const c=await l.reserve();

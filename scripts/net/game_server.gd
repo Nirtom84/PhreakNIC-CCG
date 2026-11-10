@@ -24,7 +24,8 @@ func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, se
 	assert(config.size() >= 2 and config.size() <= 4)
 	seats = []
 	for info in config:
-		seats.append({"name": str(info.get("name", "Seat %d" % seats.size())), "hero": str(info.get("hero", "")), "bot": bool(info.get("bot", false)), "difficulty": int(info.get("difficulty", 1))})
+		seats.append({"name": str(info.get("name", "Bot" if info.get("bot", false) else "Seat %d" % seats.size())), "hero": str(info.get("hero", "")), "bot": bool(info.get("bot", false)), "difficulty": int(info.get("difficulty", 1))})
+	_pick_bot_names(card_pool, seed_value)
 	var levels = []
 	for i in seats.size():
 		var info = seats[i]
@@ -36,6 +37,35 @@ func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, se
 	var choices = []
 	for i in seats.size(): choices.append(BotDecider.new(engine, seats[i].difficulty) if seats[i].bot else RemoteDecider.new(self, i))
 	engine.setup(levels, seed_value, choices, card_pool, starting_life)
+func _pick_bot_names(card_pool: String, seed_value: int):
+	var db = get_node("/root/CardDB")
+	var used_names = []
+	var used_ids = []
+	for info in seats:
+		if not info.bot or info.name not in ["", "Bot"]:
+			used_names.append(info.name.to_lower())
+			used_ids.append(info.hero)
+	var heroes = []
+	var names = []
+	for id in db.pool_ids(card_pool):
+		var card = db.cards[id]
+		var title = str(card.name).to_lower()
+		if not card.get("starter", false) and db.has_subtype(id, "Hero") and title not in used_names and id not in used_ids and title not in names:
+			heroes.append(id)
+			names.append(title)
+	var rng = RandomNumberGenerator.new()
+	rng.seed = seed_value
+	for info in seats:
+		if info.bot and info.name in ["", "Bot"] and not heroes.is_empty():
+			var id = heroes.pop_at(rng.randi_range(0, heroes.size() - 1))
+			info.name = str(db.cards[id].name)
+			info.hero = id
+func _waiting(seat: int, done: bool = false):
+	for other in connections:
+		if other != seat:
+			var data = {"t": "event", "kind": "waiting_done" if done else "waiting", "seat": seat}
+			if not done: data.text = seats[seat].name + " is choosing…"
+			_send(other, data)
 func _install_engine():
 	engine = GameEngine.new()
 	add_child(engine)
@@ -107,6 +137,7 @@ func _receive(transport, message: Dictionary):
 		_view(seat)
 		for id in pending:
 			if pending[id].seat == seat: _send(seat, pending[id].data)
+			else: _send(seat, {"t": "event", "kind": "waiting", "seat": pending[id].seat, "text": seats[pending[id].seat].name + " is choosing…"})
 		if engine.state.finished: _send(seat, {"t": "game_over", "winner": engine.state.winner.seat if engine.state.winner != null else -1})
 		return
 	if not authenticated.has(transport): _error(transport, "hello required"); return
@@ -162,10 +193,12 @@ func ask(seat: int, data: Dictionary, args: Array):
 	pending[id] = {"seat": seat, "data": data, "args": args, "at": now(), "decision": decision}
 	dirty = true
 	_send(seat, data)
+	_waiting(seat)
 	return await decision.done
 func _complete(id: String, value):
 	var request = pending[id]
 	pending.erase(id)
+	_waiting(request.seat, true)
 	_send(request.seat, {"t": "prompt_done", "id": id})
 	request.decision.done.emit(value)
 func _fallback(id: String):

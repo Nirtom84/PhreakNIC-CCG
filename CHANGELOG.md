@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.10 — Online polish
+**Online play gets the neon HUD treatment.**
+- **Online home and room lobby:** panels, avatars, clearer seat status, larger touch controls and an easier-to-read room code. Copying an invite shows a confirmation.
+- **Open games:** see the host, seats, bot difficulties, card set and starting life before joining, with a friendly message when no games are open.
+- **Ready to start:** the lobby explains when human seats still need filling and shows progress while the game server starts.
+- **Bot identities:** online bots get unique Hero names and avatars from the selected card set, kept when the server restores a game.
+- **Versions:** creating or joining a room checks the server's current game version and links to the update when needed.
+- **Waiting for friends:** a small banner shows who is choosing, without revealing their cards or choices.
+
 ## v0.09 — Online play
 **Play against other people online.** The game now has an official server at online-01.phreaknic-ccg.net.
 - **Play online** on the main menu:

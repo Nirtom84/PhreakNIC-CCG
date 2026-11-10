@@ -59,6 +59,10 @@ export function creation(v) {
 }
 export const wrap = (seat,msg) => ({t:'from',seat,msg});
 export function summary(r) {
-  return {code:r.code,host:r.seats[0].name,seats:r.seats.map(({name,bot,difficulty})=>({name,bot,difficulty})),open_seats:r.seats.filter(s=>!s.bot&&!s.token).length,card_pool:r.card_pool,starting_life:r.starting_life,version:r.version,created:r.created};
+  return {code:r.code,host:r.seats[0].name,seats:r.seats.map(({name,hero,bot,difficulty})=>({name,hero,bot,difficulty})),open_seats:r.seats.filter(s=>!s.bot&&!s.token).length,card_pool:r.card_pool,starting_life:r.starting_life,version:r.version,created:r.created};
 }
 export const isOpen = r => r.public && !r.started && !r.over && summary(r).open_seats>0;
+
+export function checkVersion(client, required) {
+  if (required && client !== required) fail('version',409,{need:required});
+}

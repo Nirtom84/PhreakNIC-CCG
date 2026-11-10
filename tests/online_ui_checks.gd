@@ -6,10 +6,11 @@ var answer_dialogs = true
 class FakeAPI extends Node:
  var calls = []
  var mismatch = false
+ var rooms = []
  func request(method, path, body = {}):
   calls.append({"method": method, "path": path, "body": body})
   if mismatch: return {"status": 409, "data": {"error": "version", "need": "9.99"}}
-  if method == HTTPClient.METHOD_GET: return {"status": 200, "data": {"rooms": []}}
+  if method == HTTPClient.METHOD_GET: return {"status": 200, "data": {"rooms": rooms}}
   return {"status": 201, "data": {"code": "ABCD", "seat": 0, "token": "fake"}}
 class FakeRoom extends Node:
  var server: GameServer
@@ -21,7 +22,7 @@ class FakeRoom extends Node:
  func _ready():
   server = GameServer.new()
   add_child(server)
-  server.setup([{"name": "Host", "bot": false}, {"name": "Guest", "bot": false}], "2026", 20, 42)
+  server.setup([{"name": "Host", "bot": false}, {"name": "Guest", "bot": false}, {"name": "Bot", "bot": true}], "2026", 20, 42)
  func connect_seat():
   var pair = LoopbackTransport.pair()
   socket = pair[1]
@@ -91,6 +92,21 @@ func respond(table):
     var done = box.get_child(4)
     if grid.get_child_count() > 0: grid.get_child(0).pressed.emit()
     if done.visible: done.pressed.emit()
+func has_label(node, text):
+ if node is Label and node.text == text: return true
+ for child in node.get_children():
+  if has_label(child, text): return true
+ return false
+func has_portrait(node, hero):
+ if node is TextureRect and node.texture is AtlasTexture and node.texture.atlas.resource_path == "res://assets/cards/" + hero + ".jpg": return true
+ for child in node.get_children():
+  if has_portrait(child, hero): return true
+ return false
+func fits(online, viewport):
+ var rect = Rect2(Vector2.ZERO, Vector2(viewport))
+ verify(rect.encloses(online.content.get_global_rect()), "Full online page fits " + str(viewport))
+ for child in online.content.get_children():
+  verify(rect.encloses(child.get_global_rect()), "Page section fits " + str(viewport))
 func run():
  if FileAccess.file_exists("user://savegame.json"): DirAccess.remove_absolute(ProjectSettings.globalize_path("user://savegame.json"))
  root.get_node("Sfx").visual_effects = false
@@ -110,20 +126,61 @@ func run():
  root.add_child(online)
  current_scene = online
  await frames()
- for viewport in [Vector2i(1920,1080), Vector2i(2400,1080), Vector2i(1920,1440)]:
-  root.content_scale_size = viewport
-  root.size = viewport
-  await frames()
-  verify(online.content.get_combined_minimum_size().x <= viewport.x - 60, "online browser fits " + str(viewport))
+ for populated in [false, true]:
+  api.rooms = [{"code": "ABCD", "host": "Host", "seats": [{"name": "Host", "bot": false, "difficulty": 0}, {"name": "", "bot": false, "difficulty": 0}, {"name": "Bot", "bot": true, "difficulty": 2}], "card_pool": "2026", "starting_life": 20, "open_seats": 1}] if populated else []
+  if populated:
+   for i in 7: api.rooms.append(api.rooms[0].duplicate(true))
+  online.seat_count.select(2)
+  online.seat_count.item_selected.emit(2)
+  await online.refresh_rooms()
+  for viewport in [Vector2i(1920,1080), Vector2i(2400,1080), Vector2i(1920,1440)]:
+   root.content_scale_size = viewport
+   root.size = viewport
+   await frames()
+   fits(online, viewport)
+ online.seat_count.select(0)
+ online.seat_count.item_selected.emit(0)
  await online.create_game()
  await frames()
  verify(button(online, "Start") != null, "create enters host lobby")
  verify(api.calls[-1].body.seats.size() == 2, "create includes seat configuration")
+ button(online, "Copy invite link").pressed.emit()
+ verify(online.toast.visible and online.toast.text == "Copied!", "Copy shows toast")
+ var lobby_room = online.session.room.duplicate(true)
+ lobby_room.seats[1].name = ""
+ online.lobby(lobby_room)
+ verify(button(online, "Start").disabled, "Start disabled while a human seat is open")
+ verify(has_label(online, "Fill every open human seat before starting."), "Disabled Start explains open seats")
+ for viewport in [Vector2i(1920,1080), Vector2i(2400,1080), Vector2i(1920,1440)]:
+  root.content_scale_size = viewport
+  root.size = viewport
+  await frames()
+  fits(online, viewport)
+ lobby_room = online.session.room.duplicate(true)
+ lobby_room.started = true
+ online.lobby(lobby_room)
+ await frames()
+ verify(online.starting_indicator.text.contains("Starting the game server… (this can take ~10 s)"), "Startup progress indicator")
+ online.session.credential.seat = 1
+ lobby_room.started = false
+ online.lobby(lobby_room)
+ verify(has_label(online, "Waiting for Host to start…"), "Guest sees host waiting message")
+ online.session.credential.seat = 0
+ online.lobby(online.session.room)
  button(online, "Start").pressed.emit()
  await frames(12)
  var table = current_scene
  verify(table != online and table.online_session != null, "start enters existing online table")
  respond(table)
+ verify(table.seat_names[2] == room.server.seats[2].name and table.seat_names[2] != "Bot", "Online bot Hero name reaches table")
+ verify(has_label(table.body, table.seat_names[2]), "Online bot Hero name is rendered")
+ verify(has_portrait(table.body, room.server.seats[2].hero), "Online bot Hero portrait is rendered")
+ room.server.ask(1, {"kind": "choose_option", "text": "Private choice", "options": ["Secret"]}, [])
+ await frames()
+ verify(is_instance_valid(table.waiting_banner) and has_label(table.waiting_banner, "Waiting for Guest to choose…"), "Waiting banner appears for other seat")
+ room.server._complete(room.server.pending.keys()[0], 0)
+ await frames()
+ verify(not is_instance_valid(table.waiting_banner), "Waiting banner disappears")
  verify(not room.sent.any(func(m): return m.t == "hello"), "room socket never sends hello")
  var session = table.online_session
  var seat = session.client.seat
@@ -216,6 +273,8 @@ func run():
  root.add_child(mismatch_ui)
  api.mismatch = true
  await mismatch_ui.join("ABCD")
+ verify(mismatch_ui.message.text == "This game runs version 9.99. Please update", "Join version mismatch message")
+ await mismatch_ui.create_game()
  verify(mismatch_ui.message.text == "This game runs version 9.99. Please update", "version mismatch plain message")
  verify(button(mismatch_ui, "Get the latest release") != null, "version release link")
  mismatch_ui.queue_free()

@@ -7,10 +7,20 @@ This Worker serves `https://online-01.phreaknic-ccg.net`; the website Worker is 
 All browser requests must originate from `https://phreaknic-ccg.net`, `https://www.phreaknic-ccg.net`, `https://nirtom84.github.io`, or HTTP localhost/127.0.0.1 (any port). Native requests without Origin work. JSON HTTP responses disable caching. OPTIONS supports GET/POST and Content-Type.
 
 - `GET /health`: `ok` (Worker health, not container readiness).
-- `GET /rooms`: `{rooms:[{code,host,seats:[{name,bot,difficulty}],open_seats,card_pool,starting_life,version,created}]}`. Only public, unstarted, unfilled rooms appear; timestamps are Unix milliseconds.
+- `GET /rooms`: `{rooms:[{code,host,seats:[{name,hero,bot,difficulty}],open_seats,card_pool,starting_life,version,created}]}`. Only public, unstarted, unfilled rooms appear; timestamps are Unix milliseconds.
 - `POST /rooms`: `{name,hero,public,seats:[{bot,difficulty},...],card_pool,starting_life,version}` → HTTP 201 `{code,seat:0,token}`. Supply 2–4 seats including the creator at index 0; that seat is always human. Remaining human seats initially have empty names and no tokens. Bot names default to `Bot`, heroes to empty strings for the game server's default selection. Difficulty is an integer 0–2. Names are trimmed printable Unicode, 1–16 code points; hero identifiers are trimmed printable strings of 1–64 code points; versions are printable ASCII, 1–32 characters. Card pool is `2025` or `2026`; life is 0, 20, 30 or 40. Public must be a boolean.
-- `POST /rooms/CODE/join`: `{name,hero,version}` → `{seat,token}`. Claims the first empty human seat. Started/full rooms return 409. Version mismatch returns HTTP 409 `{error:"version",need:"0.09"}`.
+- `POST /rooms/CODE/join`: `{name,hero,version}` → `{seat,token}`. Claims the first empty human seat. Started/full rooms return 409. Version mismatch returns HTTP 409 `{error:"version",need:GAME_VERSION}` when the deployment version is set; the room also requires its locked version.
 - `GET /ws/room/CODE?token=SECRET`: WebSocket upgrade. Codes are uppercase, four unambiguous symbols. Store the 128-bit hex token privately for reconnection; never put token-bearing URLs in logs or analytics. Multiple sockets may reconnect to one seat; disconnect reaches Godot when its last socket closes.
+
+Both create and join check the client's version against `GAME_VERSION` when it
+is nonempty, returning HTTP 409 `{error:"version",need:GAME_VERSION}` before room
+allocation or seat claims. The empty placeholder in wrangler.jsonc disables this
+release gate; the existing per-room version check still applies to joins.
+
+Online bots with empty/default names receive unique seeded non-starter Hero names
+and avatars from the selected card pool on the game server, excluding human
+identities. Welcome and snapshots preserve them. Other players receive public
+`waiting`/`waiting_done` events while a seat chooses; prompt cards/options stay private.
 
 HTTP errors use `{error:reason}`. Creation is limited to 60 attempts per IP per hour and joins to 300 (generous, because everyone on a convention's Wi-Fi shares one public IP); rate rejection is 429. HTTP bodies and client WebSocket messages are capped at 64 KiB. Excess client messages above 30/second are dropped; oversized or binary frames close the socket.
 
@@ -45,7 +55,8 @@ tools/deploy_online.sh --dev
 node --test cloudflare/online/test/
 ```
 
-The deploy helper copies `build/server/phreaknic-server.x86_64` into the ignored container path. Production sources `~/.config/phreaknic/cf-env.sh` only when CLOUDFLARE_API_TOKEN is unset, then invokes `npx --yes wrangler@4 deploy`. It never prints credentials. Dev uses the `dev` environment, repeats the noninherited bindings/container config, and has no routes. Point clients to the localhost address Wrangler prints; browser clients must originate from an allowed HTTP loopback origin. Native Godot clients can use local `ws://`.
+The deploy helper reads `config/version` from project.godot and passes
+`--var GAME_VERSION:<version>` in both deploy and `--dev` modes. It copies `build/server/phreaknic-server.x86_64` into the ignored container path. Production sources `~/.config/phreaknic/cf-env.sh` only when CLOUDFLARE_API_TOKEN is unset, then invokes `npx --yes wrangler@4 deploy`. It never prints credentials. Dev uses the `dev` environment, repeats the noninherited bindings/container config, and has no routes. Point clients to the localhost address Wrangler prints; browser clients must originate from an allowed HTTP loopback origin. Native Godot clients can use local `ws://`.
 
 `wrangler.jsonc` follows the locally cached Wrangler 4.160.0 JSON schema: `scheduling_policy:"durable_object"`, named `images.base.dockerfile` and `build_context`, SQLite declarative `exports`, and a named container explicitly attached with `exports.Room.container`. No migrations are combined with exports. This adds explicit container names/attachment to the supplied minimal example; its listed container keys are supported unchanged. Schema validation does not prove runtime Container API behavior.
 
@@ -53,4 +64,4 @@ The deploy helper copies `build/server/phreaknic-server.x86_64` into the ignored
 
 Workers Paid and Containers access are required. Each active room uses lite (256 MiB, 1/16 vCPU, 2 GB disk per the cached schema); RAM/CPU/disk runtime, Worker/DO requests, storage and nonhibernating WebSocket duration contribute to costs. The plan's rough $5/month and room-hour estimates are planning assumptions, not a verified current quote. Confirm actual pricing and configure usage alerts in Cloudflare before operating at scale. Empty rooms can bill for up to ten minutes before sleep; rate limits are per address and do not impose a global spend cap. Four-symbol codes have finite capacity; creation retries up to 100 random reservations. The SQLite reservation covers private, full and started rooms too.
 
-Pure tests need no npm install. In this sandbox the requested directory command reports one passing file-level test; running `node --test --experimental-test-isolation=none cloudflare/online/test/protocol.test.js` exposes all eight individual passing tests. `test/package.json` supplies the directory entry point for Node 22. A live smoke test must still verify Wrangler provisioning/custom domain, container runtime API, image architecture and shared libraries, embedded PCK, health/link handshake, real Godot snapshot restore and version errors, monitor exits, retries, alarms, multi-client reconnects, CORS upgrades, and local Docker dev. No cloud deployment or Docker build is performed by the test suite. Avoid request URL logging because the WebSocket URL carries a seat secret.
+Pure tests need no npm install. In this sandbox the requested directory command reports one passing file-level test; running `node --test --experimental-test-isolation=none cloudflare/online/test/protocol.test.js` exposes all nine individual passing tests. `test/package.json` supplies the directory entry point for Node 22. A live smoke test must still verify Wrangler provisioning/custom domain, container runtime API, image architecture and shared libraries, embedded PCK, health/link handshake, real Godot snapshot restore and version errors, monitor exits, retries, alarms, multi-client reconnects, CORS upgrades, and local Docker dev. No cloud deployment or Docker build is performed by the test suite. Avoid request URL logging because the WebSocket URL carries a seat secret.

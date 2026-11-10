@@ -136,7 +136,11 @@ prints win rates by difficulty (Elite should beat Script Kiddie clearly), card c
 `scripts/net/game_server.gd` owns the authoritative engine for a room of 2–4 seats.
 Call `setup(seats, card_pool, starting_life, seed)`, attach transports, and await
 `start()`. Seat dictionaries contain `name`, `hero`, `bot`, and numeric `difficulty`
-(0 Script Kiddie, 1 Phreak, 2 Elite). Only the server uses the seeded game RNG.
+(0 Script Kiddie, 1 Phreak, 2 Elite). During setup, empty/default bot identities receive unique non-starter Hero names
+and IDs from the selected pool, excluding human names (case-insensitive) and Hero
+IDs. A separate RNG seeded with the game seed selects cosmetics without changing
+gameplay RNG. Welcome and snapshots retain these identities.
+Only the server uses the seeded game RNG.
 `tokens[seat]` is a cryptographically random credential for direct/loopback use;
 the trusted room link installs the seat tokens supplied by its Room. Tokens are
 never included in player messages. Production rooms are Cloudflare Durable
@@ -189,6 +193,12 @@ and `sources` (`card` record or null, `capacity`, `full`, `name`), and returns
 nonnegative point counts in source order, totaling mandatory prevention.
 Simultaneous triggers and attached Action ordering use `choose_option` through
 the existing engine, rather than introducing a second ordering API.
+
+When a human prompt opens, every other connected seat receives an event
+`waiting` with only `seat` and public `text` ("<name> is choosing…"). Completion
+or timeout sends `waiting_done` with only `seat`. Reconnect replays outstanding
+waiting indicators after welcome; no prompt IDs, options or cards are included.
+The online table displays a non-blocking waiting banner; offline play is unchanged.
 
 Events: `damage_dealt` has `source`, `target`, `amount`; `turn_started`,
 `turn_ended`, and `eliminated` have `seat`; `played`, `bought`, `reserved`, and
@@ -337,7 +347,7 @@ parses `/join/CODE` and `?join=CODE`, translates REST failures and stores the pr
 or logs. The website redirects invite paths to the root query so export assets
 resolve normally. Native clients use the code field.
 
-`scripts/ui/online.gd` presents a scrollable UIStyle browser, creation form and live
+`scripts/ui/online.gd` presents a viewport-fitted UIStyle browser with internally scrolling panels, a creation form and live
 room lobby, using the menu's identity and configuration. REST is injectable via
 `api.request(method, path, body)`; public rooms refresh every five seconds while
 browsing. Room messages supply seats and host controls. Starting waits for the
@@ -371,3 +381,18 @@ and the offline save. Run every Godot command with temporary `XDG_DATA_HOME`.
 `permissions/internet`, enabled in project.godot. This grants network access to APKs
 without modifying export_presets.cfg; other export platforms receive no overrides.
 The debug APK's manifest is checked with Android SDK `aapt dump permissions`.
+
+### Online polish UI
+
+Online home uses a fixed viewport layout over the network background: a status
+strip and title, create/join panels on the left and an internally scrolling open
+room list on the right. The lobby has a room/invite panel with seat avatars and
+badges, plus host settings and readiness feedback. Controls are at least 56 px
+high. Internal panel scrolling supports 1920×1080, 2400×1080 and 1920×1440 without
+scrolling the page. Copying an invite shows a brief toast; startup has an animated
+indicator. The injectable REST/session interfaces remain available to UI tests.
+
+The Worker checks create/join client versions against optional `GAME_VERSION`
+before room allocation or seat claims (409 `error:version`, `need:GAME_VERSION`).
+Unset/empty keeps the previous behavior, including the room's locked join version.
+`tools/deploy_online.sh` supplies project.godot's config/version in deploy and dev.

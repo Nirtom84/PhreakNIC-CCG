@@ -18,6 +18,11 @@ var launched = false
 var default_count = 2
 var default_difficulty = 0
 var initial_code = ""
+var updated: Label
+var updated_at = 0.0
+var toast: Label
+var starting_indicator: Label
+const SETS = ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27"]
 func _ready():
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  UIStyle.apply(self)
@@ -29,34 +34,45 @@ func _ready():
  add_child(margin)
  margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  for side in ["left", "right", "top", "bottom"]: margin.add_theme_constant_override("margin_" + side, 30)
- var scroll = ScrollContainer.new()
- margin.add_child(scroll)
- TouchInput.register_scroll(scroll)
  content = VBoxContainer.new()
- content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- scroll.add_child(content)
- message = UIStyle.label(content, "", 24)
+ content.add_theme_constant_override("separation", 16)
+ margin.add_child(content)
+ var banner = UIStyle.panel()
+ content.add_child(banner)
+ message = UIStyle.label(banner, "Connect with friends · Public games and private invites", 20)
+ message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ toast = UIStyle.label(self, "Copied!", 24)
+ toast.position = Vector2(50, 32)
+ toast.z_index = 50
+ toast.add_theme_color_override("font_color", UIStyle.GREEN)
+ toast.hide()
  browser()
 func clear_content():
  for child in content.get_children():
-  if child != message:
+  if child != message.get_parent():
    content.remove_child(child)
    child.queue_free()
 func browser():
  in_lobby = false
  clear_content()
- UIStyle.label(content, "ONLINE", 40)
- UIStyle.button(content, "Back to menu", back)
- if not OnlineAPI.remembered().is_empty(): UIStyle.button(content, "Resume online game", func(): enter(OnlineAPI.remembered()))
+ var header = HBoxContainer.new()
+ content.add_child(header)
+ UIStyle.label(header, "// PLAY ONLINE", 40).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ action(header, "Back to menu", back)
+ if not OnlineAPI.remembered().is_empty(): UIStyle.primary(action(content, "Resume online game", func(): enter(OnlineAPI.remembered())))
  var columns = HBoxContainer.new()
- columns.add_theme_constant_override("separation", 28)
+ columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+ columns.add_theme_constant_override("separation", 24)
  content.add_child(columns)
- var create = VBoxContainer.new()
- create.custom_minimum_size.x = 620
- columns.add_child(create)
- UIStyle.label(create, "Create game", 28)
+ var left = VBoxContainer.new()
+ left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ left.size_flags_stretch_ratio = 1.1
+ left.add_theme_constant_override("separation", 18)
+ columns.add_child(left)
+ var create = section(left, "// CREATE GAME", true)
  public_choice = CheckButton.new()
- public_choice.text = "Public (listed in Open games)"
+ public_choice.text = "Public game · switch off for invite only"
+ public_choice.custom_minimum_size.y = 56
  public_choice.button_pressed = true
  create.add_child(public_choice)
  seat_count = option(create, ["2 seats", "3 seats", "4 seats"], default_count - 2)
@@ -65,43 +81,75 @@ func browser():
   var row = HBoxContainer.new()
   create.add_child(row)
   UIStyle.label(row, "Seat %d" % (i + 2), 20)
-  var choice = option(row, ["Open (human)"] + Array(BotDifficulty.DISPLAY_NAMES).map(func(n): return "Bot · " + n), default_difficulty + 1)
+  var choice = option(row, ["Open seat"] + Array(BotDifficulty.DISPLAY_NAMES).map(func(n): return "Bot · " + n), default_difficulty + 1)
   seat_types.append(choice)
   row.visible = i < default_count - 1
  seat_count.item_selected.connect(func(n):
   for i in 3: seat_types[i].get_parent().visible = i <= n)
+ UIStyle.label(create, "Card set", 18)
  pool = option(create, ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27"], 0 if Sfx.card_pool == "2025" else 1)
+ UIStyle.label(create, "Starting life", 18)
  life = option(create, ["Standard", "20", "30", "40"], [0,20,30,40].find(Sfx.starting_life))
- UIStyle.button(create, "Create game", create_game)
- UIStyle.label(create, "Join by code", 28)
+ UIStyle.primary(action(create, "Create game", create_game))
+ var join_box = section(left, "// JOIN BY CODE")
+ var join_row = HBoxContainer.new()
+ join_box.add_child(join_row)
  code_input = LineEdit.new()
  code_input.max_length = 4
- code_input.placeholder_text = "Game code"
+ code_input.placeholder_text = "CODE"
+ code_input.custom_minimum_size = Vector2(260, 64)
+ code_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ var code_font = FontVariation.new()
+ code_font.base_font = load("res://assets/fonts/JetBrainsMonoNerdFontMono-Regular.ttf")
+ code_font.spacing_glyph = 12
+ code_input.add_theme_font_override("font", code_font)
+ code_input.add_theme_font_size_override("font_size", 32)
  code_input.text = initial_code
- create.add_child(code_input)
+ join_row.add_child(code_input)
  code_input.text_changed.connect(func(value):
   var clean = ""
   for c in value.to_upper():
    if c in OnlineAPI.ALPHABET: clean += c
   code_input.text = clean
   code_input.caret_column = clean.length())
- UIStyle.button(create, "Join", func(): join(code_input.text))
- var open = VBoxContainer.new()
- open.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- columns.add_child(open)
- UIStyle.label(open, "Open games", 28)
+ action(join_row, "Join", func(): join(code_input.text))
+ var open = section(columns, "// OPEN GAMES", true)
  rooms_box = VBoxContainer.new()
+ rooms_box.add_theme_constant_override("separation", 16)
  open.add_child(rooms_box)
+ updated = UIStyle.label(open, "Updating…", 16)
+ updated.add_theme_color_override("font_color", UIStyle.MUTED)
  refresh_rooms()
  if not initial_code.is_empty():
   var code = initial_code
   initial_code = ""
   join(code)
+func action(parent, text: String, callback: Callable) -> Button:
+ var button = UIStyle.button(parent, text, callback)
+ button.custom_minimum_size.y = 56
+ return button
+func section(parent, title: String, scrolling: bool = false) -> VBoxContainer:
+ var panel = UIStyle.panel(title)
+ panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ if scrolling: panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+ parent.add_child(panel)
+ var box = VBoxContainer.new()
+ box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ box.add_theme_constant_override("separation", 10)
+ if scrolling:
+  var scroll = ScrollContainer.new()
+  scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+  panel.add_child(scroll)
+  TouchInput.register_scroll(scroll)
+  scroll.add_child(box)
+ else: panel.add_child(box)
+ return box
 func option(parent, labels: Array, selected: int = 0) -> OptionButton:
  var choice = OptionButton.new()
  for label in labels: choice.add_item(str(label))
  choice.select(maxi(0, selected))
  choice.custom_minimum_size.y = 56
+ choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  parent.add_child(choice)
  return choice
 func identity() -> Dictionary:
@@ -137,7 +185,7 @@ func handle_result(result: Dictionary, code: String):
   enter(data)
  else:
   message.text = OnlineAPI.error_text(result.status, result.data)
-  if result.data.get("error") == "version": UIStyle.button(content, "Get the latest release", func(): OS.shell_open("https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest"))
+  if result.data.get("error") == "version": action(content, "Get the latest release", func(): OS.shell_open("https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest"))
 func refresh_rooms():
  if listing or in_lobby: return
  listing = true
@@ -150,13 +198,21 @@ func refresh_rooms():
  if result.status != 200:
   message.text = OnlineAPI.error_text(result.status, result.data)
   return
+ updated_at = Time.get_ticks_msec() / 1000.0
+ if result.data.get("rooms", []).is_empty():
+  UIStyle.label(rooms_box, "No open games right now. Create one!", 22).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  for room in result.data.get("rooms", []):
-  var box = VBoxContainer.new()
-  rooms_box.add_child(box)
+  var box = section(rooms_box, "// " + str(room.code))
+  var row = HBoxContainer.new()
+  box.add_child(row)
+  row.add_child(UIStyle.avatar(str(room.seats[0].get("hero", ""))))
+  UIStyle.label(row, str(room.host), 26).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  action(row, "Join", join.bind(room.code))
   var seats = []
-  for seat in room.seats: seats.append("Bot · " + BotDifficulty.DISPLAY_NAMES[int(seat.difficulty)] if seat.bot else (seat.name if not seat.name.is_empty() else "Open human"))
-  UIStyle.label(box, "%s · %s\n%s\n%s · %s life · %d open" % [room.host, room.code, ", ".join(seats), "Base Set · PhreakNIC 26" if room.card_pool == "2025" else "Base Set + Expansion 1 · PhreakNIC 27", "Standard" if room.starting_life == 0 else str(room.starting_life), room.open_seats], 20).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-  UIStyle.button(box, "Join", join.bind(room.code))
+  for seat in room.seats:
+   seats.append("◈ " + BotDifficulty.DISPLAY_NAMES[int(seat.difficulty)] if seat.bot else ("● " + seat.name if not seat.name.is_empty() else "○ Open seat"))
+  UIStyle.label(box, " · ".join(seats), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  UIStyle.label(box, SETS[0 if room.card_pool == "2025" else 1] + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 func enter(data: Dictionary):
  message.text = "Connecting…"
  in_lobby = true
@@ -172,37 +228,68 @@ func enter(data: Dictionary):
  session.start(data)
 func lobby(room: Dictionary):
  clear_content()
- UIStyle.label(content, room.code, 64)
+ starting_indicator = null
+ var columns = HBoxContainer.new()
+ columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
+ columns.add_theme_constant_override("separation", 24)
+ content.add_child(columns)
+ var main = section(columns, "// ROOM", true)
+ var code = UIStyle.label(main, room.code, 64)
+ code.add_theme_color_override("font_color", UIStyle.CYAN)
  var link = "https://phreaknic-ccg.net/join/" + room.code
- UIStyle.label(content, link, 24)
- UIStyle.button(content, "Copy invite link", func():
+ var invite = HBoxContainer.new()
+ main.add_child(invite)
+ UIStyle.label(invite, link, 20).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ action(invite, "Copy invite link", func():
   DisplayServer.clipboard_set(link)
-  if OS.has_feature("web"): JavaScriptBridge.eval("navigator.clipboard && navigator.clipboard.writeText(" + JSON.stringify(link) + ")"))
+  if OS.has_feature("web"): JavaScriptBridge.eval("navigator.clipboard && navigator.clipboard.writeText(" + JSON.stringify(link) + ")")
+  toast.show()
+  get_tree().create_timer(2).timeout.connect(func(): if is_instance_valid(toast): toast.hide()))
+ UIStyle.label(main, "Share this code with friends", 20)
  var host = int(room.host_seat) == int(session.credential.seat)
  for i in room.seats.size():
   var seat = room.seats[i]
+  var card = section(main, "")
   var row = HBoxContainer.new()
-  content.add_child(row)
+  card.add_child(row)
   row.add_child(UIStyle.avatar(str(seat.get("hero", ""))))
-  UIStyle.label(row, ("● " if seat.get("connected", false) else "○ ") + (seat.name if not seat.name.is_empty() else "Open (human)") + (" · " + BotDifficulty.DISPLAY_NAMES[int(seat.difficulty)] if seat.bot else "") + (" · you" if i == int(session.credential.seat) else ""), 24)
-  if host and i > 0 and not room.started: UIStyle.button(row, "Remove seat", func(): session.lobby("remove_seat", {"seat": i}))
+  var dot = UIStyle.label(row, "●", 22)
+  dot.add_theme_color_override("font_color", UIStyle.GREEN if seat.get("connected", false) or seat.bot else UIStyle.MUTED)
+  dot.tooltip_text = "Connected" if seat.get("connected", false) or seat.bot else "Offline"
+  var title = "Bot · " + BotDifficulty.DISPLAY_NAMES[int(seat.difficulty)] if seat.bot else (seat.name if not seat.name.is_empty() else "Open seat — waiting…")
+  var name_label = UIStyle.label(row, title, 22)
+  name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  if i == int(session.credential.seat): UIStyle.label(row, "[you]", 18)
+  if i == int(room.host_seat): UIStyle.label(row, "HOST", 18).add_theme_color_override("font_color", UIStyle.AMBER)
+  if host and i != int(room.host_seat) and not room.started:
+   action(row, "Remove seat", func(): session.lobby("remove_seat", {"seat": i})).disabled = room.seats.size() <= 2
+ var settings = section(columns, "// HOST SETTINGS" if host else "// READY ROOM", true)
+ settings.get_parent().custom_minimum_size.x = 520
  if room.started:
-  UIStyle.label(content, "Starting the game server…", 28)
+  starting_indicator = UIStyle.label(settings, "", 26)
+  starting_indicator.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  elif host:
-  var bot = option(content, Array(BotDifficulty.DISPLAY_NAMES), 1)
-  UIStyle.button(content, "Add bot", func(): session.lobby("add_bot", {"difficulty": bot.selected})).disabled = room.seats.size() >= 4
+  var bot = option(settings, Array(BotDifficulty.DISPLAY_NAMES), 1)
+  action(settings, "Add bot", func(): session.lobby("add_bot", {"difficulty": bot.selected})).disabled = room.seats.size() >= 4
   var publicity = CheckButton.new()
   publicity.text = "Public game"
+  publicity.custom_minimum_size.y = 56
   publicity.button_pressed = room.public
-  content.add_child(publicity)
+  settings.add_child(publicity)
   publicity.toggled.connect(func(value): session.lobby("settings", {"public": value}))
-  var sets = option(content, ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27"], 0 if room.card_pool == "2025" else 1)
+  var sets = option(settings, SETS, 0 if room.card_pool == "2025" else 1)
   sets.item_selected.connect(func(n): session.lobby("settings", {"card_pool": "2025" if n == 0 else "2026"}))
-  var lives = option(content, ["Standard", "20", "30", "40"], [0,20,30,40].find(int(room.starting_life)))
+  UIStyle.label(settings, "Starting life", 18)
+  var lives = option(settings, ["Standard", "20", "30", "40"], [0,20,30,40].find(int(room.starting_life)))
   lives.item_selected.connect(func(n): session.lobby("settings", {"starting_life": [0,20,30,40][n]}))
-  UIStyle.button(content, "Start", func(): session.lobby("start")).disabled = room.seats.any(func(s): return not s.bot and s.name.is_empty())
- else: UIStyle.label(content, "Waiting for the host…", 28)
- UIStyle.button(content, "Leave", leave_lobby)
+  var start = action(settings, "Start", func(): session.lobby("start"))
+  UIStyle.primary(start)
+  start.disabled = room.seats.any(func(seat): return not seat.bot and seat.name.is_empty())
+  UIStyle.label(settings, "Fill every open human seat before starting." if start.disabled else "Everyone is ready!", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ else:
+  UIStyle.label(settings, "Waiting for " + str(room.seats[int(room.host_seat)].name) + " to start…", 26).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ action(settings, "Leave", leave_lobby)
 func leave_lobby():
  if not session.room.get("started", false):
   if int(session.credential.seat) != int(session.room.get("host_seat", 0)): session.lobby("leave")
@@ -220,7 +307,10 @@ func launch_table():
  queue_free()
 func back(): get_tree().change_scene_to_file("res://scenes/menu.tscn")
 func _process(delta):
+ if is_instance_valid(starting_indicator):
+  starting_indicator.text = ["◐", "◓", "◑", "◒"][int(Time.get_ticks_msec() / 250) % 4] + " Starting the game server… (this can take ~10 s)"
  if in_lobby: return
+ if is_instance_valid(updated) and updated_at > 0: updated.text = "updated %ds ago" % int(Time.get_ticks_msec() / 1000.0 - updated_at)
  refresh_elapsed += delta
  if refresh_elapsed >= 5:
   refresh_elapsed = 0

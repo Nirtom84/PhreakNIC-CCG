@@ -1269,6 +1269,11 @@ func setup_online():
    online_prompt_id = ""
    if pending: answered.emit(null))
  client.event.connect(online_event)
+ client.message_received.connect(func(data):
+  if data.get("t") == "welcome":
+   waiting_seats.clear()
+   update_waiting_banner())
+ for data in client.waiting.values(): online_event(data)
  online_session.finished.connect(func(winner):
   game_over(engine.state.players[winner] if winner >= 0 and winner < engine.state.players.size() else null))
  online_session.status_changed.connect(func(text):
@@ -1319,9 +1324,30 @@ func online_prompt(id: String, data: Dictionary):
  if online_prompt_id == id and value != null:
   online_prompt_id = ""
   online_session.client.answer(id, value)
+var waiting_banner: Control
+var waiting_seats: Dictionary = {}
+func update_waiting_banner():
+ if is_instance_valid(waiting_banner):
+  remove_child(waiting_banner)
+  waiting_banner.queue_free()
+ waiting_banner = null
+ if waiting_seats.is_empty(): return
+ waiting_banner = UIStyle.panel()
+ waiting_banner.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ waiting_banner.z_index = 29
+ add_child(waiting_banner)
+ waiting_banner.position = Vector2(30, 112)
+ var text = UIStyle.label(waiting_banner, "Waiting for " + ", ".join(waiting_seats.values()) + " to choose…", 20)
+ text.mouse_filter = Control.MOUSE_FILTER_IGNORE
 func online_event(data: Dictionary):
  if engine.state == null: return
  match data.kind:
+  "waiting":
+   waiting_seats[int(data.seat)] = seat_name(int(data.seat))
+   update_waiting_banner()
+  "waiting_done":
+   waiting_seats.erase(int(data.seat))
+   update_waiting_banner()
   "turn_started":
    Sfx.play("turn_start")
    if data.seat == human_seat: clear_spotlights(1.5)

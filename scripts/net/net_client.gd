@@ -15,6 +15,7 @@ var engine: GameEngine
 var scripted = false
 var can_act = false
 var prompts: Dictionary = {}
+var waiting: Dictionary = {}
 var log_history: Array[String] = []
 var actions_this_turn = 0
 var last_turn = -1
@@ -42,6 +43,7 @@ func _receive(raw: Dictionary):
 	message_received.emit(message)
 	match message.get("t"):
 		"welcome":
+			waiting.clear()
 			for id in prompts.keys():
 				prompts.erase(id)
 				prompt_done.emit(id)
@@ -64,7 +66,10 @@ func _receive(raw: Dictionary):
 			log_history.append(str(message.text))
 			if log_history.size() > 400: log_history.pop_front()
 			log.emit(message.text)
-		"event": event.emit(message)
+		"event":
+			if message.kind == "waiting": waiting[int(message.seat)] = message
+			elif message.kind == "waiting_done": waiting.erase(int(message.seat))
+			event.emit(message)
 		"game_over": game_over.emit()
 		"error": error.emit(message.reason)
 static func prompt_card(data):
