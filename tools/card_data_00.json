@@ -1,0 +1,782 @@
+[
+  {
+    "file": "5ud0.png",
+    "name": "5ud0",
+    "cost": 3,
+    "type": "Action - FOTTR Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nIf a card named \"crook3dfingers\" or \"bitwize\" is played this turn, deal 1 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "AI Bens AI Camry.png",
+    "name": "AI Ben's AI Camry",
+    "cost": 4,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "As often as you like on your turn, you may pay 2 {H} to make each other player discard a card.",
+    "unclear": ""
+  },
+  {
+    "file": "AI Slop.png",
+    "name": "AI Slop",
+    "cost": 4,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "Each other player must choose and discard a permanent card they have in play, if able. Draw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Altk3y.png",
+    "name": "Altk3y",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nYou may place a permanent in play with \"phone\" in its name into your discard pile.",
+    "unclear": ""
+  },
+  {
+    "file": "Bedtime Story.png",
+    "name": "Bedtime Story",
+    "cost": 2,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw 2 cards, then discard a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Ben The Meek.png",
+    "name": "benthemeek",
+    "cost": 7,
+    "type": "Action - Legendary Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Choose one:\n+3 {H}\nGain 3 life\nDeal 3 {D}",
+    "unclear": ""
+  },
+  {
+    "file": "Ben the Phreak.png",
+    "name": "benthephreak",
+    "cost": 6,
+    "type": "Action - Legendary Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Acquire any card from the center row.",
+    "unclear": ""
+  },
+  {
+    "file": "Bitwize.png",
+    "name": "bitwize",
+    "cost": 3,
+    "type": "Action - FOTTR Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nIf a card named \"crook3dfingers\" or \"5ud0\" is played this turn, deal 1 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "Bony.png",
+    "name": "BONY",
+    "cost": 2,
+    "type": "Action - Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Gain 2 life.\nYou may buy a card with \"F.O.T.T.R. Greatest Hits\" in its name from for free this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Botnet1.png",
+    "name": "Botnet",
+    "cost": 2,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, gain +1 {H} for each card named \"Botnet\" you control.",
+    "unclear": ""
+  },
+  {
+    "file": "Botnet2.png",
+    "name": "Botnet",
+    "cost": 2,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, gain +1 {H} for each card named \"Botnet\" you control.",
+    "unclear": ""
+  },
+  {
+    "file": "Botnet3.png",
+    "name": "Botnet",
+    "cost": 2,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, gain +1 {H} for each card named \"Botnet\" you control.",
+    "unclear": ""
+  },
+  {
+    "file": "Botnet4.png",
+    "name": "Botnet",
+    "cost": 2,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, gain +1 {H} for each card named \"Botnet\" you control.",
+    "unclear": ""
+  },
+  {
+    "file": "Botnet.png",
+    "name": "Botnet",
+    "cost": 2,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, gain +1 {H} for each card named \"Botnet\" you control.",
+    "unclear": ""
+  },
+  {
+    "file": "Botnet Takeover.png",
+    "name": "Botnet Takeover",
+    "cost": 4,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "If there are any permanents named \"Botnet\" in play, put them into your discard pile. Otherwise, deal 2 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "Bribery.png",
+    "name": "Bribery",
+    "cost": 6,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "As often as you like on your turn, you may pay 2 {H} to deal 1 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "Brimstone, Fabulous.png",
+    "name": "Brimstone, Fabulous",
+    "cost": 6,
+    "type": "Action - Legendary Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw 3 Cards.",
+    "unclear": ""
+  },
+  {
+    "file": "Brimstone.png",
+    "name": "Brimstone",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nDraw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "c14ud3.png",
+    "name": "c14ud3",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}",
+    "unclear": ""
+  },
+  {
+    "file": "Candy Factory.png",
+    "name": "Candy Factory",
+    "cost": 4,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "This comes into play with 4 ICE counters.\nWhen you would take damage, remove that many counters from this instead.\nWhen you remove the last counter, discard this card.\nAs often as you like on your turn, you may discard a hero card to add 1 ICE counter to this.",
+    "unclear": ""
+  },
+  {
+    "file": "Capture the Flag.png",
+    "name": "F.O.T.T.R. Capture the Flag",
+    "cost": 6,
+    "type": "Action - Event",
+    "hack": 3,
+    "damage": 0,
+    "text": "+3 {H}",
+    "unclear": ""
+  },
+  {
+    "file": "Carpeted Pool.png",
+    "name": "Clarion Inn Carpeted Pool",
+    "cost": 5,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "This comes into play with 3 ICE counters.\nWhen you would take damage, remove that many counters from this instead.\nWhen you remove the last counter, discard this card, and deal 1 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "Clarion Inn Air Conditioning.png",
+    "name": "Clarion Inn Air Conditioning",
+    "cost": 1,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "At the beginning of each player's turn, that player loses 1 life.\nWhen you play this, draw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Clarion Inn Breakfast.png",
+    "name": "Clarion Inn Breakfast",
+    "cost": 2,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Gain 1 life.\nDraw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Clarion Inn Chandeliers.png",
+    "name": "Clarion Inn Chandeliers",
+    "cost": 1,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "You may remove this card from the game to put a different card that has been removed from the game into your hand.",
+    "unclear": ""
+  },
+  {
+    "file": "Clarion Inn Closet.png",
+    "name": "Clarion Inn Storage Closet",
+    "cost": 2,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "This comes into play with 2 ICE counter.\nWhen you would take damage, remove that many counters from this instead.\nWhen you remove the last counter, discard this card.\nAt the start of your turn, add 2 ICE counters to this.",
+    "unclear": ""
+  },
+  {
+    "file": "Clarion Inn Morning Coffee.png",
+    "name": "Clarion Inn Morning Coffee",
+    "cost": 4,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "All players discard all permanents they have in play.\nDraw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Clarion Inn Staff.png",
+    "name": "Clarion Inn Staff",
+    "cost": 2,
+    "type": "Action - Hero",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nYou may buy a card with \"Clarion\" in its name for free this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Corperate Retreat.png",
+    "name": "Corporate Retreat",
+    "cost": 4,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "If you have more life than another player, deal 2 {D}. Otherwise, gain 3 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Corporate SWAG Table.png",
+    "name": "Corporate SWAG Table",
+    "cost": 3,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "This comes into play with 3 ICE counters. When you would take damage, remove that many counters instead.\nWhen you remove the last counter, discard this card.",
+    "unclear": ""
+  },
+  {
+    "file": "crook3dfingers.png",
+    "name": "crook3dfingers",
+    "cost": 3,
+    "type": "Action - FOTTR Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nIf a card named \"bitwize\" or \"5ud0\" is played this turn, deal 1 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "CTF Bangers.png",
+    "name": "CTF Bangers",
+    "cost": 3,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw a card.\nWhenever a permanent you control would deal damage, it deals 1 extra damage.",
+    "unclear": ""
+  },
+  {
+    "file": "cybermonkey.png",
+    "name": "cyberMonk3y",
+    "cost": 4,
+    "type": "Action - FOTTR Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nExploit cards cost 1 less this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Damage.png",
+    "name": "Attack",
+    "cost": 0,
+    "type": "Action",
+    "hack": 0,
+    "damage": 1,
+    "text": "Deal 1 {D}",
+    "unclear": ""
+  },
+  {
+    "file": "DeMartian.png",
+    "name": "DeMartian",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nCards named \"m8trix\" deal +2 {D} this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Dick Van Dyke Stamp.png",
+    "name": "Dick Van Dyke Stamp",
+    "cost": 7,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Whenever you play a card named \"Hacker\" deal 1 {D}.\nWhenever you play a card named \"Attack\"gain +1 {H}.",
+    "unclear": ""
+  },
+  {
+    "file": "Disassembled Sink.png",
+    "name": "Disassembled Sink",
+    "cost": 4,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, you may remove a card in your hand from the game. If you do, draw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Doom on a Trading Card.png",
+    "name": "Doom on a Trading Card",
+    "cost": 3,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 2,
+    "text": "Deal 2 {D}. Each other player discards a card for each Technology permanent they control.",
+    "unclear": ""
+  },
+  {
+    "file": "Drunk Riddler.png",
+    "name": "Drunk Riddler",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nYou may remove this from the game. If you do, deal 3 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "Egg in Your Soup.png",
+    "name": "Egg in Your Soup",
+    "cost": 2,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Gain 1 life. Draw a card.\nIf you have a card named \"The Sandwich Factory\" in play, add 2 ICE Counters to it.",
+    "unclear": ""
+  },
+  {
+    "file": "Elevator Noises.png",
+    "name": "Elevator Noises",
+    "cost": 2,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 1,
+    "text": "Deal 1 {D}.\nDraw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Elonka.png",
+    "name": "Elonka",
+    "cost": 4,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nYou may remove a card in your hand or discard pile from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "Employee Review.png",
+    "name": "Employee Review",
+    "cost": 3,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw 2 cards, then remove a card in your hand from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "Empty Lockpicking Table.png",
+    "name": "Empty Lockpicking Table",
+    "cost": 1,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw 2 cards, then discard 2 cards.\nYou may remove this from the game to deal 1 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "errorgone.png",
+    "name": "Errorgone",
+    "cost": 3,
+    "type": "Action - FOTTR Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nDraw a card, then discard a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Etch-a-Sketch Skillz.png",
+    "name": "Etch-a-Sketch Skillz",
+    "cost": 4,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "Copy the effect of an action card in another player's discard pile.",
+    "unclear": ""
+  },
+  {
+    "file": "Even More Logo.png",
+    "name": "Even More Logo",
+    "cost": 4,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 2,
+    "text": "Deal 2 {D}. Draw a card. This card cannot be played on the same turn as cards with \"_NSAKEY\" in their name.",
+    "unclear": ""
+  },
+  {
+    "file": "evildagmar.png",
+    "name": "evildagmar",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 0,
+    "damage": 2,
+    "text": "Deal 2 {D}.\nYou may remove a card in your hand or discard pile from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "Fivrr Friendship.png",
+    "name": "Fiverr Friendship",
+    "cost": 4,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "As often as you like on your turn, you may pay 2 {H} to gain 1 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Flesh Oprah.png",
+    "name": "Flesh Oprah",
+    "cost": 6,
+    "type": "Action - Hero",
+    "hack": 3,
+    "damage": 0,
+    "text": "+3 {H}. You may remove this card from the game to buy a card named \"O.P.R.A.H.\" for free this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Fore04.png",
+    "name": "Fore04",
+    "cost": 3,
+    "type": "Action - FOTTR Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you buy this card, you may put it on top of your deck rather than in your discard pile.",
+    "unclear": ""
+  },
+  {
+    "file": "FOTTR Greatest Hits.png",
+    "name": "F.O.T.T.R. Greatest Hits",
+    "cost": 5,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, on your turn, you may remove a card in your hand from the game. If you do, deal 2 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "FOTTR Greatest Hits Vol 2.png",
+    "name": "F.O.T.T.R. Greatest Hits Volume 2",
+    "cost": 5,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "If another player ends their turn without playing a card with Rick Astley in the art, they lose 2 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Foundation of Time Temporal Reconstruction.png",
+    "name": "Foundation of Time/Temporal Reconstruction",
+    "cost": 7,
+    "type": "Permanent - Legendary Organization",
+    "hack": 0,
+    "damage": 0,
+    "text": "Whenever you play a Hero, gain +1 {H}.\nWhenever you play an Exploit, deal 1 {D}.\nWhenever you play an Event, gain 1 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Fred Rogers.png",
+    "name": "fred rogers",
+    "cost": 1,
+    "type": "Action - Hero",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nYou may remove a card in your hand or discard pile from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "G4nd4lf.png",
+    "name": "G4nd4lf",
+    "cost": 4,
+    "type": "Action - FOTTR Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you buy this card, you may put another card from your discard pile on top of your deck.",
+    "unclear": ""
+  },
+  {
+    "file": "Hacking.png",
+    "name": "Hacker",
+    "cost": 0,
+    "type": "Action",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}",
+    "unclear": ""
+  },
+  {
+    "file": "Hardware Hacking Village.png",
+    "name": "Hardware Hacking Village",
+    "cost": 5,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "Technology cards cost 1 less.\nThis comes into play with 3 ICE counters.\nWhen you would take damage, remove that many counters instead. When you remove the last counter, discard this card.",
+    "unclear": ""
+  },
+  {
+    "file": "hardwarez.png",
+    "name": "hardwarez",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nDiscard any number of cards from your hand. Gain 1 {H} for each card discarded this way.",
+    "unclear": ""
+  },
+  {
+    "file": "heartsh8ped.png",
+    "name": "heartsh8ped",
+    "cost": 1,
+    "type": "Action - Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Choose One:\n+1 {H}, or deal 1 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "hfuller.png",
+    "name": "hfuller",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you buy this card, each player reveals their hand. You gain 1 life for each card named \"Attack\" revealed.",
+    "unclear": ""
+  },
+  {
+    "file": "Hotel Roof Chair Toss.png",
+    "name": "Hotel Roof Chair Toss",
+    "cost": 2,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 1,
+    "text": "Deal 1 {D}.\nDeal an additional 1 {D} for each Location card you control in play.",
+    "unclear": ""
+  },
+  {
+    "file": "itsamenathan.png",
+    "name": "itsamenathan",
+    "cost": 4,
+    "type": "Action - Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Acquire a card which costs 4 or less from the center row.",
+    "unclear": ""
+  },
+  {
+    "file": "I've got the Logs.png",
+    "name": "I've got the Logs",
+    "cost": 4,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "Name a card. Each opponent reveals their hand. If any player reveals the named card, deal {D} equal to that card's cost, and remove this from the game.\nOtherwise, draw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Jenny.png",
+    "name": "Jenny",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Pay 8, 6, 7, 5, 3, 0, or 9. Deal that much {D}. Then remove Jenny from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "John Titor.png",
+    "name": "John Titor",
+    "cost": 5,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you play this card, you may shuffle it into your deck rather than discarding it.",
+    "unclear": ""
+  },
+  {
+    "file": "JousterL.png",
+    "name": "JousterL",
+    "cost": 3,
+    "type": "Action - pTFS Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you buy this card, you may put a card from your discard pile on top of your deck.",
+    "unclear": ""
+  },
+  {
+    "file": "Kevin Mitnick Cardboard Cutout.png",
+    "name": "Kevin Mitnick Cardboard Cutout",
+    "cost": 5,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nDraw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Kevin's Desk.png",
+    "name": "Kevin's Desk",
+    "cost": 7,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "At the beginning of your turn, choose a permanent in play. Gain control of it.",
+    "unclear": ""
+  },
+  {
+    "file": "LAN Party.png",
+    "name": "CRT LAN Party",
+    "cost": 1,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Each opponent puts the top card of their deck into their discard pile.\nDeal 3 {D} to all opponents who discarded the lowest cost card.",
+    "unclear": ""
+  },
+  {
+    "file": "Lightning Talks.png",
+    "name": "Lightning Talks",
+    "cost": 3,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw 2 Cards",
+    "unclear": ""
+  },
+  {
+    "file": "Lowes Shopping Cart.png",
+    "name": "Lowes Shopping Cart",
+    "cost": 4,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "As often as you like on your turn, you may pay {H} to put a counter on this.\nWhen this has 25 or more counters on it, you win the game.",
+    "unclear": ""
+  },
+  {
+    "file": "m8trix310.png",
+    "name": "m8trix",
+    "cost": 4,
+    "type": "Action - Hero",
+    "hack": 0,
+    "damage": 2,
+    "text": "Deal 2 {D}.\nCards named \"DeMartian\" produce +2 {H} this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Makeshift Lectern.png",
+    "name": "Makeshift Lectern",
+    "cost": 3,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "On your turn, hero cards cost 1 less.",
+    "unclear": ""
+  },
+  {
+    "file": "Merry Christmas.png",
+    "name": "Merry Christmas",
+    "cost": 4,
+    "type": "Action - Legendary Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Choose one: +2 {H}, or deal 2 {D}.\nYou may put this into another player's discard pile. If you do, you may choose both instead.",
+    "unclear": ""
+  },
+  {
+    "file": "Military-Grade Card Encapsulation.png",
+    "name": "Military-Grade Card Encapsulation",
+    "cost": 6,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "You take no damage.\nAt the beginning of your turn, if this card is in play, discard it.",
+    "unclear": ""
+  },
+  {
+    "file": "mog.png",
+    "name": "mog",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you buy this card, you may remove a card in your hand or discard pile from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "Mog's Ice Cream.png",
+    "name": "Mog's Lemon Custard Ice Cream",
+    "cost": 2,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 1,
+    "text": "Deal 1 {D}\nIf you've played a card called \"Rookie Numbers\" this turn, draw 3 cards.",
+    "unclear": ""
+  }
+]

@@ -1,0 +1,732 @@
+[
+  {
+    "file": "Mogs Pancake Breakfast.png",
+    "name": "Mog's Pancake Breakfast",
+    "cost": 3,
+    "type": "Action - Event",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nYou may pay up to 3 {H} to gain that much life.",
+    "unclear": ""
+  },
+  {
+    "file": "Nashville 2600.png",
+    "name": "Nashville 2600",
+    "cost": 6,
+    "type": "Permanent - Organization",
+    "hack": 0,
+    "damage": 0,
+    "text": "When this comes into play, discard all other permanents.\nPlayers cannot play permanents.\nAny player may pay 6 {H} on their turn to remove this from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "_NASKEY.png",
+    "name": "_NASKEY",
+    "cost": 2,
+    "type": "Action - Hero",
+    "hack": 0,
+    "damage": 1,
+    "text": "Deal 1 {D}. Draw a card.\nIf The Juice is in play, deal another 1 {D}, and draw another card.",
+    "unclear": ""
+  },
+  {
+    "file": "Never Gonna Give You Up.png",
+    "name": "Never Gonna Give You Up",
+    "cost": 4,
+    "type": "Action - Exploit",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nIf you play a card named \"Never Gonna Let You Down\" this turn, each other player must discard a permanent they have in play.",
+    "unclear": ""
+  },
+  {
+    "file": "Never Gonna Let You Down.png",
+    "name": "Never Gonna Let You Down",
+    "cost": 4,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "+2 {D}\nIf you play a card named \"Never Gonna Give You Up\" this turn, each other player must discard a card.",
+    "unclear": ""
+  },
+  {
+    "file": "nirtom.png",
+    "name": "Nirtom",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nEach player gains 1 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Nirtom Unleashed.png",
+    "name": "Nirtom Unleashed",
+    "cost": 6,
+    "type": "Action - Legendary Hero",
+    "hack": 5,
+    "damage": 2,
+    "text": "+5 {H}, Deal 2 {D}.\nYou may not play this on the same turn as any other Action card, besides cards named \"Reps4Thor.\"",
+    "unclear": ""
+  },
+  {
+    "file": "Non-Infringing Game Show.png",
+    "name": "Non-Infringing Game Show",
+    "cost": 3,
+    "type": "Action - Event",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nYou may spend up to 3 {H} to deal that much {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "NotLarry Cardboard Cutout.png",
+    "name": "NotLarry Cardboard Cutout",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nRemove a card in the center row from the game. Replace it with a card from the center deck.",
+    "unclear": ""
+  },
+  {
+    "file": "notlarry.png",
+    "name": "notlarry",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nYou may remove this card from the game. If you do, gain +1 {H}.",
+    "unclear": ""
+  },
+  {
+    "file": "_NSAKey, Juiced.png",
+    "name": "_NSAKEY, Juiced",
+    "cost": 7,
+    "type": "Action - Legendary Hero",
+    "hack": 0,
+    "damage": 4,
+    "text": "Deal 4 {D}.\nDraw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Number One PhreakNIC Rule.png",
+    "name": "Number One PhreakNIC Rule",
+    "cost": 3,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw two cards\nEach player gains 2 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Nuvious.png",
+    "name": "Nuvious",
+    "cost": 4,
+    "type": "Action - Legendary pTFS Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you buy this card, you may choose and discard a permanent card in play.",
+    "unclear": ""
+  },
+  {
+    "file": "O.P.R.A.H..png",
+    "name": "O.P.R.A.H.",
+    "cost": 8,
+    "type": "Action - Legendary Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Remove any number of cards in your hand from the game. Draw that many cards from the center deck.",
+    "unclear": ""
+  },
+  {
+    "file": "Oprah Wonka.png",
+    "name": "Oprah Wonka",
+    "cost": 7,
+    "type": "Action - Legendary Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Search your deck and discard pile for five cards. The player to your left separates them into two piles. Choose a pile. Put the chosen pile into your hand. Remove the other pile from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "OSINT for Dummies.png",
+    "name": "OSINT for Dummies",
+    "cost": 5,
+    "type": "Action - Event",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nDraw two cards.",
+    "unclear": ""
+  },
+  {
+    "file": "Payphone Dave.png",
+    "name": "Payphone Dave",
+    "cost": 4,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nYou may buy a card named \"Pay Phone,\" \"Reverse Shell,\" or \"Shell Speak\" for free this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Payphone Karaoke.png",
+    "name": "Payphone Karaoke",
+    "cost": 3,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Choose Two:\nGain 1 life,\nDraw a card,\n+1 {H}",
+    "unclear": ""
+  },
+  {
+    "file": "Payphone.png",
+    "name": "Payphone",
+    "cost": 5,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, choose one:\n+2 {H}, or deal 2 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "PhreakMyst.png",
+    "name": "PhreakMyst",
+    "cost": 4,
+    "type": "Action - Legendary Event",
+    "hack": 6,
+    "damage": 0,
+    "text": "+6 {H}\nYou may not buy cards this turn.\nYou may not play this if you have bought a card this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "PhreakNIC.png",
+    "name": "PhreakNIC",
+    "cost": 6,
+    "type": "Action - Legendary Event",
+    "hack": 1,
+    "damage": 1,
+    "text": "+1 {H}\nDeal 1 {D}. Gain 1 life.\nDraw a card.\nLegendary cards cost 2 less this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Phreaknic Website Refresh.png",
+    "name": "Phreaknic Website Refresh",
+    "cost": 2,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Put all cards in the center row at the bottom of the center deck, then deal out five new cards in the center row. Draw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Pooping in the Dark.png",
+    "name": "Pooping in the Dark",
+    "cost": 2,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Discard your hand, then draw that many cards.",
+    "unclear": ""
+  },
+  {
+    "file": "pouipoui, AV Guy.png",
+    "name": "pouipoui, AV Guy",
+    "cost": 6,
+    "type": "Action - Legendary Hero",
+    "hack": 0,
+    "damage": 0,
+    "text": "Deal {D} for each permanent in play.",
+    "unclear": ""
+  },
+  {
+    "file": "pouipoui.png",
+    "name": "pouipoui",
+    "cost": 4,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nPermanent cards cost 1 less this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Powered On Taser Maintenance.png",
+    "name": "Powered-On Taser Maintenance",
+    "cost": 5,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Whenever another player buys a card from the center row, they lose 1 life.",
+    "unclear": ""
+  },
+  {
+    "file": "proudF00F.png",
+    "name": "proudF00F",
+    "cost": 3,
+    "type": "Action - FOTTR Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you buy this card, each player reveals their hand and loses 1 life for each card named \"Hacker\" in their hand.",
+    "unclear": ""
+  },
+  {
+    "file": "pTFS.png",
+    "name": "pTFS",
+    "cost": 4,
+    "type": "Permanent - Organization",
+    "hack": 0,
+    "damage": 0,
+    "text": "When you buy a hero, you may place it on this card instead of in your discard pile. If this leaves play, put any cards on this card into your discard pile.\nAt the start of your turn, put all heros on this into your hand.\nYou may buy pTFS Heros for free.",
+    "unclear": ""
+  },
+  {
+    "file": "r0nk.png",
+    "name": "r0nk",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nEach player loses 1 life (including yourself)",
+    "unclear": ""
+  },
+  {
+    "file": "randy.png",
+    "name": "Randy",
+    "cost": 4,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nLocation cards cost 1 less this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Registration.png",
+    "name": "Registration",
+    "cost": 3,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Return up to one Hero from your discard pile to your hand\nDraw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Reps4Thor.png",
+    "name": "Reps4Thor",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nIf you play a card with \"Nirtom\" in its name this turn, deal 3 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "[Restaurant Name] Restaurant.png",
+    "name": "[Restaurant Name] Restaurant",
+    "cost": 4,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "When this comes into play, if there is another location in play, you may have this come into play as a copy of that location. If you do, ignore the text below.\nThis comes into play with 3 ICE counters.\nWhen you would take damage, remove that many counters from this instead.\nWhen you remove the last counter, discard this card.",
+    "unclear": ""
+  },
+  {
+    "file": "Reverse Shell.png",
+    "name": "You've Got Mail",
+    "cost": 6,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 3,
+    "text": "Deal 3 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "Rick Astley.png",
+    "name": "Rick Astley",
+    "cost": 3,
+    "type": "Action - Hero Legend",
+    "hack": 0,
+    "damage": 2,
+    "text": "Deal 2 {D}\nYou may put a card named \"Rickroll\" from your discard pile into another player's discard pile.",
+    "unclear": ""
+  },
+  {
+    "file": "Rickroll.png",
+    "name": "Rickroll",
+    "cost": 0,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "The next time you buy a card from the center row this turn, replace it with this card.\nIf this card is in the center row at the start of a player's turn, they must buy it.",
+    "unclear": ""
+  },
+  {
+    "file": "Rookie Numbers.png",
+    "name": "Rookie Numbers",
+    "cost": 4,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 2,
+    "text": "Deal 2 {D}.\nDraw a card.\nIf any player's discard pile contains a card with \"Mog\" in the name, that player loses 2 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Share a Link.png",
+    "name": "Share a Link",
+    "cost": 3,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 2,
+    "text": "Deal 2 {D}.\nYou may remove this from the game. If you do, gain +2 {H}.",
+    "unclear": ""
+  },
+  {
+    "file": "Shell Speech.png",
+    "name": "Shell Speech",
+    "cost": 5,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, you may draw a card.\nOn your turn, you may remove this from the game. If you do, deal 2 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "Should have Preregistered.png",
+    "name": "Should have Preregistered",
+    "cost": 6,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "Remove any number of cards in your hand from the game.\nDeal 1 {D} for each card removed this way.",
+    "unclear": ""
+  },
+  {
+    "file": "Speakers Needed.png",
+    "name": "Speakers Needed",
+    "cost": 2,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Shuffle your discard pile into your deck. Reveal cards from the top of your deck until you reveal a hero card. Put that card into your hand. Discard the rest.",
+    "unclear": ""
+  },
+  {
+    "file": "Sticky Fingers.png",
+    "name": "AI Fingers",
+    "cost": 5,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "Take control of a permanent in play. Remove this from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "Still Not Spock.png",
+    "name": "Still Not Spock",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nYou may remove this from the game. If you do, choose and discard a permanent in play.",
+    "unclear": ""
+  },
+  {
+    "file": "Super r0nk.png",
+    "name": "Super r0nk",
+    "cost": 5,
+    "type": "Action - Legendary Hero",
+    "hack": 2,
+    "damage": 2,
+    "text": "+2 {H}. Deal 2 {D}.\nWhenever you play another Hero this turn, add {H}.",
+    "unclear": ""
+  },
+  {
+    "file": "Tableskirts.png",
+    "name": "Tableskirts",
+    "cost": 1,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, +1 {H}\nAt the beginning of your turn, discard Tableskirts if you control another Permanent.",
+    "unclear": ""
+  },
+  {
+    "file": "Talks Fun Police.png",
+    "name": "Talks Fun Police",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nEach player (including you) discards a permanent which costs 4 or less.",
+    "unclear": ""
+  },
+  {
+    "file": "Tennessee Department of Health.png",
+    "name": "Tennessee Department of Health",
+    "cost": 4,
+    "type": "Permanent - Organization",
+    "hack": 0,
+    "damage": 0,
+    "text": "As often as you like on your turn, you may remove a counter from any location.",
+    "unclear": ""
+  },
+  {
+    "file": "The Big Dipper.png",
+    "name": "The Big Dipper",
+    "cost": 4,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, gain 1 life.",
+    "unclear": ""
+  },
+  {
+    "file": "The Book.png",
+    "name": "The Book",
+    "cost": 7,
+    "type": "Permanent - Legendary Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "At the start of your turn, attach an action from your hand to this, then play every attached action.\nIf this leaves play, put all attached actions into your discard pile.",
+    "unclear": ""
+  },
+  {
+    "file": "The Clarion Inn.png",
+    "name": "The Clarion Inn",
+    "cost": 6,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "This comes into play with 8 ICE counters. When you would take damage, remove that many counters instead.\nWhen this has no counters, lose 4 life and remove this card from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "The Fellowship of the Token Ring.png",
+    "name": "The Fellowship of the Token Ring",
+    "cost": 6,
+    "type": "Permanent - Legendary Organization",
+    "hack": 0,
+    "damage": 0,
+    "text": "Whenever you buy a Hero card, you may put it into your hand rather than your discard pile.\nYou may buy FOTTR Heroes for free.",
+    "unclear": ""
+  },
+  {
+    "file": "The Juice.png",
+    "name": "The Juice",
+    "cost": 4,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "At the beginning of your turn, add a counter to The Juice, then deal 1 {D} for every counter on The Juice.\nIf you add a fifth counter to The Juice, you lose the game.",
+    "unclear": ""
+  },
+  {
+    "file": "The Phreaknic Network.png",
+    "name": "Phreaknic Network",
+    "cost": 4,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "When you would take damage, discard this instead, and prevent all damage to you for the rest of the turn.\nAt the beginning of your turn, remove this from the game and deal 5 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "The Reason.png",
+    "name": "The Reason",
+    "cost": 5,
+    "type": "Action - Exploit",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nEach other player discards a card.",
+    "unclear": ""
+  },
+  {
+    "file": "The Sandwich Factory.png",
+    "name": "The Sandwich Factory",
+    "cost": 3,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "This comes into play with 2 ICE counters. When you would take damage, remove that many counters from this instead. When you remove the last counter, discard this card.\nAs often as you like, on your turn, you may pay 2 {H} to add 1 ICE counter to this.",
+    "unclear": ""
+  },
+  {
+    "file": "The Tone Whisperer.png",
+    "name": "The Tone Whisperer",
+    "cost": 2,
+    "type": "Action - Hero",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nIf a card named \"Payphone\" is in play, deal 3 {D}.",
+    "unclear": ""
+  },
+  {
+    "file": "Time Travel.png",
+    "name": "Time Travel",
+    "cost": 6,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "On your turn, you may remove this from the game. If you do, take an extra turn after this one.",
+    "unclear": ""
+  },
+  {
+    "file": "Tips and tricks for Windows OS and Office365.png",
+    "name": "Tips and tricks for Windows and Office365",
+    "cost": 4,
+    "type": "Action - Event",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nYou may reserve a card this turn even if you buy a card.",
+    "unclear": ""
+  },
+  {
+    "file": "tipsybacchus.png",
+    "name": "tipsybacchus",
+    "cost": 5,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nDiscard any number of cards from your hand. Draw that many cards.",
+    "unclear": ""
+  },
+  {
+    "file": "TOCTOU.png",
+    "name": "TOCTOU Photo-Finish",
+    "cost": 5,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw a card.\nIf you would lose the game while this card is in your hand, instead you may remove it from the game and set your life to 1. If you do, pause the current player's turn, and take an extra turn immediately. After the extra turn, return play to the paused turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Touch Grass.png",
+    "name": "Grass",
+    "cost": 6,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Players may not buy cards.\nAt the end of your next turn, remove this card from the game.",
+    "unclear": ""
+  },
+  {
+    "file": "Treasure Hunters.png",
+    "name": "Treasure Hunters",
+    "cost": 2,
+    "type": "Action - Hero",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nPay any amount of {H}, then reveal cards from the top of the center deck until you reveal a card which costs that amount. Acquire that card. Shuffle the center deck.",
+    "unclear": ""
+  },
+  {
+    "file": "Two Hump Camel.png",
+    "name": "Two Hump Camel",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\n+1 {D}",
+    "unclear": ""
+  },
+  {
+    "file": "Tyler Crumpton.png",
+    "name": "Tyler Crumpton",
+    "cost": 4,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nTechnology cards cost 1 less this turn.",
+    "unclear": ""
+  },
+  {
+    "file": "Unattended Phone.png",
+    "name": "Unattended Phone",
+    "cost": 2,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "Once per turn, gain +1 {H}.\nAt the beginning of your turn, roll 1d6. If you roll a 1, discard this card and lose 1 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Under New Management.png",
+    "name": "Under New Management",
+    "cost": 3,
+    "type": "Action - Exploit",
+    "hack": 0,
+    "damage": 2,
+    "text": "Deal 2 {D}\nYou may take a card with \"Clarion\" in its name from any discard pile and place it into your discard pile.",
+    "unclear": ""
+  },
+  {
+    "file": "Venaul.png",
+    "name": "Venaul",
+    "cost": 3,
+    "type": "Action - pTFS Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nWhen you buy this card, each player gains 5 life.",
+    "unclear": ""
+  },
+  {
+    "file": "Walmart Parking Lot.png",
+    "name": "Walmart Parking Lot",
+    "cost": 6,
+    "type": "Permanent - Location",
+    "hack": 0,
+    "damage": 0,
+    "text": "This comes into play with 4 ICE counters.\nWhen you would take damage, remove that many counters from this instead.\nIf you have played a card named \"heartsh8ped\" this turn, you may buy this card for free.",
+    "unclear": ""
+  },
+  {
+    "file": "What is Truth.png",
+    "name": "What is Truth?",
+    "cost": 2,
+    "type": "Action - Event",
+    "hack": 1,
+    "damage": 0,
+    "text": "+1 {H}\nThis card is considered to have all card names.",
+    "unclear": ""
+  },
+  {
+    "file": "Wheres Apache.png",
+    "name": "Where's Apache!?",
+    "cost": 4,
+    "type": "Action - Event",
+    "hack": 0,
+    "damage": 0,
+    "text": "Draw 3 cards, then discard 2 cards.",
+    "unclear": ""
+  },
+  {
+    "file": "White Python Boots.png",
+    "name": "White Python Boots",
+    "cost": 5,
+    "type": "Permanent - Technology",
+    "hack": 0,
+    "damage": 0,
+    "text": "As often as you like on your turn, you may pay 2 {H} to draw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "zalphaWolf.png",
+    "name": "zalphaWolf",
+    "cost": 3,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nYou may remove this card from the game. If you do, draw a card.",
+    "unclear": ""
+  },
+  {
+    "file": "Zenthere, Mind Goblin.png",
+    "name": "Zenthere, Mind Goblin",
+    "cost": 4,
+    "type": "Action - Hero",
+    "hack": 2,
+    "damage": 0,
+    "text": "+2 {H}\nIf you acquire zero cards this turn, deal 2 {D}.",
+    "unclear": ""
+  }
+]
