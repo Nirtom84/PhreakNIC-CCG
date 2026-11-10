@@ -154,6 +154,8 @@ func ui():
  current_scene = table
  await process_frame
  verify(table.can_save(), "Table safe")
+ for card in table.engine.active().hand.duplicate():
+  if table.engine.can_play(table.engine.active(), card): await table.engine.play_card(table.engine.active(), card)
  for viewport_size in [Vector2(1920, 1080), Vector2(2400, 1080), Vector2(1920, 1440)]:
   table.size = viewport_size
   await process_frame
@@ -162,6 +164,7 @@ func ui():
   await process_frame
   var panel = table.game_menu.get_child(0)
   verify(panel.get_global_rect().end.x <= viewport_size.x and panel.get_global_rect().end.y <= viewport_size.y, "Menu fits viewport " + str(viewport_size))
+  verify(panel.size.y < viewport_size.y * 0.8, "In-game menu sizes to content")
   verify(panel.position.y >= table.menu_button.global_position.y + table.menu_button.size.y, "Menu anchored below toolbar")
   table.close_menu()
   await process_frame
@@ -218,7 +221,8 @@ func ui():
  verify(table.game_menu == null, "Back closes menu")
  table.append_log("Save regression log")
  var before = serialized(table.engine.state)
- var log_text = table.log_view.text
+ var log_text = table.log_view.get_parsed_text()
+ verify(not log_text.is_empty(), "Real card play produces displayed log")
  var names = table.seat_names.duplicate()
  var heroes = table.seat_heroes.duplicate()
  await table.leave_game(false)
@@ -230,6 +234,12 @@ func ui():
  verify(confirmation is ConfirmationDialog and confirmation.dialog_text == "Start a new game? Your saved game will be replaced.", "New game asks before replacing save")
  if confirmation is ConfirmationDialog: confirmation.canceled.emit()
  verify(find_button(menu_scene, "Resume game") != null, "Main menu shows Resume after leave")
+ for dimensions in [Vector2i(1920, 1080), Vector2i(2400, 1080), Vector2i(1920, 1440)]:
+  root.size = dimensions
+  await process_frame
+  await process_frame
+  var bottom = find_button(menu_scene, "Quit")
+  verify(bottom.get_global_rect().end.y <= dimensions.y, "Main menu bottom fits " + str(dimensions))
  var saved = SaveGame.read()
  verify(not saved.is_empty(), "Save file validates")
  invalid_files(saved)
@@ -241,7 +251,7 @@ func ui():
  menu_scene.queue_free()
  await process_frame
  verify(serialized(resumed.engine.state) == before, "Resume does not set up or start a turn")
- verify(resumed.log_view.text == log_text and resumed.seat_names == names and resumed.seat_heroes == heroes, "Resume restores log, names and avatars")
+ verify(resumed.log_view.get_parsed_text() == log_text and resumed.seat_names == names and resumed.seat_heroes == heroes, "Resume restores log, names and avatars")
  resumed.engine.finish(resumed.engine.active())
  verify(not FileAccess.file_exists(SaveGame.PATH), "Game over removes save")
  resumed.queue_free()

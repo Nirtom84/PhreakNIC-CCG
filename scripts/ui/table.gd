@@ -18,9 +18,12 @@ var auto_drive: bool = true
 var fast: bool = false
 var seed_value: int = 0
 var pending: bool = false
+# Answer the Back button / Escape gives the open dialog: its Cancel-like option, or null when Back should do nothing.
+var back_answer = null
 var acting: bool = false
 var driving: bool = false
 var body: VBoxContainer
+var log_entries: Array = []
 var log_view: RichTextLabel
 var banner: Label
 var play_button: Button
@@ -120,7 +123,8 @@ func _ready():
   fast = resume_data.table.fast
   engine.deciders = choices
   for p in engine.state.players.slice(1): engine.deciders.append(BotDecider.new(engine, p.difficulty))
-  log_view.text = resume_data.table.log
+  log_entries = resume_data.table.get("log_entries", [resume_data.table.log]).slice(-400)
+  for entry in log_entries: log_view.append_text(entry)
   for p in engine.state.players:
    previous_life[p.seat] = p.life
    previous_hack[p.seat] = p.hacking
@@ -466,8 +470,15 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  hide_zoom()
  hover_serial += 1
  pending = true
+ back_answer = null
+ if multi and max_n == 0: back_answer = []
+ elif not multi:
+  for label in ["Cancel", "Close", "Keep playing", "Stay"]:
+   if label in options:
+    back_answer = options.find(label)
+    break
  redraw()
- var overlay = UIStyle.panel("// SECURE INPUT")
+ var overlay = UIStyle.panel()
  overlay.add_to_group("touch_modal")
  overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  add_child(overlay)
@@ -550,6 +561,7 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
   for i in buttons.size(): buttons[i].visible = value.to_lower() in str(options[i]).to_lower())
  done.pressed.connect(func(): answered.emit(selected.duplicate()))
  var result = await answered
+ back_answer = null
  remove_child(overlay)
  overlay.queue_free()
  pending = false
@@ -624,7 +636,13 @@ func append_log(message: String):
  for verbs in [["plays", "play"], ["buys", "buy"], ["takes", "take"], ["reserves", "reserve"], ["reveals", "reveal"]]:
   if Sfx.handle.is_empty() and message.begins_with("Seat 0 " + verbs[0] + " "):
    display = "You " + verbs[1] + " " + display.substr(("You " + verbs[0] + " ").length())
- log_view.append_text("[color=#%s]%s[/color]\n" % [colors[seat] if seat >= 0 else "a1b1bb", "[color=#536c78]> [/color]" + link_cards(display)])
+ var entry = "[color=#%s]%s[/color]\n" % [colors[seat] if seat >= 0 else "a1b1bb", "[color=#536c78]> [/color]" + link_cards(display)]
+ log_entries.append(entry)
+ if log_entries.size() > 400:
+  log_entries.pop_front()
+  log_view.clear()
+  for retained in log_entries: log_view.append_text(retained)
+ else: log_view.append_text(entry)
  for action in ["plays", "buys", "reserves"]:
   if " " + action + " " not in message: continue
   Sfx.play({"plays": "card_play", "buys": "buy", "reserves": "reserve"}[action])
@@ -767,7 +785,7 @@ func menu():
  panel.position = Vector2(maxf(16, right - 500), menu_button.global_position.y + menu_button.size.y + 8)
  panel.custom_minimum_size = Vector2(500, 0)
  var scroll = ScrollContainer.new()
- scroll.custom_minimum_size = Vector2(480, minf(850, size.y - panel.position.y - 40))
+ scroll.custom_minimum_size = Vector2(480, 0)
  panel.add_child(scroll)
  TouchInput.register_scroll(scroll)
  var box = VBoxContainer.new()
@@ -806,6 +824,10 @@ func menu():
  UIStyle.button(box, "Main menu", leave_game.bind(false)).custom_minimum_size.y = 56
  UIStyle.button(box, "Exit game", leave_game.bind(true)).custom_minimum_size.y = 56
  update_save_button()
+ var fit_menu = func():
+  scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y, get_viewport_rect().size.y - panel.position.y - 40)
+ box.minimum_size_changed.connect(fit_menu)
+ fit_menu.call()
 func close_menu():
  if is_instance_valid(game_menu):
   game_menu.queue_free()
@@ -825,7 +847,7 @@ func save_game() -> bool:
  if not can_save(): return false
  saving = true
  auto_end_elapsed = 0
- var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[0], "fast": fast, "log": log_view.text})
+ var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[0], "fast": fast, "log": "".join(log_entries), "log_entries": log_entries})
  saving = false
  return ok
 func auto_save():
@@ -922,7 +944,9 @@ func go_back():
  if is_instance_valid(inspect_overlay): close_inspect()
  elif is_instance_valid(rules_overlay): rules_overlay.queue_free(); rules_overlay = null
  elif is_instance_valid(game_menu): close_menu()
- elif not pending: menu()
+ elif pending:
+  if back_answer != null: answered.emit(back_answer)
+ else: menu()
 
 func _input(event):
  if event is InputEventScreenTouch or event is InputEventScreenDrag or (event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION):

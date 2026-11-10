@@ -3,6 +3,7 @@ extends Node
 var touch_mode: bool = OS.has_feature("mobile")
 var cards: Array[Control] = []
 var scrollers: Array[Control] = []
+var pressed_button: BaseButton
 var held: Control
 var origin: Vector2
 var last_position: Vector2
@@ -17,6 +18,9 @@ func register_card(control: Control, inspect: Callable):
  cards.append(control)
  control.tree_exiting.connect(func(): cards.erase(control))
 func register_scroll(control: Control):
+ # TouchInput owns finger scrolling, including drags starting on STOP buttons.
+ # Keep native touch tracking below its threshold; wheel and scrollbar input still work.
+ if control is ScrollContainer: control.scroll_deadzone = 1000000
  scrollers.append(control)
  control.tree_exiting.connect(func(): scrollers.erase(control))
 func contains(control: Control, point: Vector2) -> bool:
@@ -28,10 +32,10 @@ func contains(control: Control, point: Vector2) -> bool:
  return true
 # Reset BaseButton's internal press state before release, including toggle buttons.
 func reset_button():
- if is_instance_valid(held) and held is BaseButton:
-  var was_disabled = held.disabled
-  held.disabled = true
-  held.disabled = was_disabled
+ if is_instance_valid(pressed_button):
+  var was_disabled = pressed_button.disabled
+  pressed_button.disabled = true
+  pressed_button.disabled = was_disabled
 func _input(event):
  if event is InputEventScreenTouch or event is InputEventScreenDrag or ((event is InputEventMouse) and event.device == InputEvent.DEVICE_ID_EMULATION):
   touch_mode = true
@@ -42,9 +46,12 @@ func _input(event):
  if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION:
   if suppress_mouse_release and event is InputEventMouseButton and not event.pressed:
    suppress_mouse_release = false
-   get_viewport().set_input_as_handled()
+   reset_button()
+  if screen_gesture:
+   # Only block motion: GUI buttons still need the emulated press and release.
+   if cancelled and event is InputEventMouseMotion:
+    get_viewport().set_input_as_handled()
    return
-  if screen_gesture: return
  var down = (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed)
  var up = (event is InputEventScreenTouch and not event.pressed) or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed)
  if screen and event.index != 0: return
@@ -55,6 +62,8 @@ func _input(event):
   cancelled = false
   origin = event.position
   last_position = origin
+  # Hit-test all buttons, including controls without long-press registration.
+  pressed_button = button_at(get_tree().root, origin)
   held = null
   scrolling = null
   var modals = get_tree().get_nodes_in_group("touch_modal")
@@ -92,6 +101,14 @@ func _input(event):
   serial += 1
   if cancelled:
    reset_button()
-   # Native scrollers still need the finger release to end their touch tracking.
-   # Suppress the paired emulated mouse release instead (above).
+   # Reset the button before the paired emulated release reaches the GUI.
    if not screen: get_viewport().set_input_as_handled()
+
+func button_at(node: Node, point: Vector2) -> BaseButton:
+ var children = node.get_children()
+ children.reverse()
+ for child in children:
+  var found = button_at(child, point)
+  if found != null: return found
+ if node is BaseButton and contains(node, point): return node
+ return null

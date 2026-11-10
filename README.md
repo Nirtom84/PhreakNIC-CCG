@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.04**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.05**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -22,6 +22,9 @@ The game is in **alpha testing**. Grab the latest build from the [Releases page]
 Pick an opponent and start. Click a hand card to play it, click a center-row card to buy or reserve it,
 click your reserved card to buy it, use the buttons on your permanents for their abilities, then **End Turn**.
 Hover or right-click any card to zoom. On a touch screen: tap to play or buy, press and hold any card to read it, drag to scroll.
+Your turn ends by itself once you have nothing left to do (switch **Auto-end turn** off if you'd rather press End Turn).
+**Menu** (or Back / Escape) opens the in-game menu: options, rules, **Save game**, **Main menu** and **Exit**. The game also saves at the start of each of your turns and when you leave, and **Resume game** on the main menu picks it up again.
+On the main menu you can type a handle or **Pick a Hero** to play as one of the Hero cards, with their art as your avatar.
 
 ### Found a bug?
 Please [open an issue](https://github.com/Nirtom84/PhreakNIC-CCG/issues/new/choose) and pick **Bug report** or **Card or rules problem**. Include the version from the bottom-right corner of the main menu, your platform, and the Network Log lines or a screenshot if you can.
@@ -57,8 +60,9 @@ Retro sounds have menu volume/mute controls and a table mute button. Regenerate 
 
 ## Building Linux, Windows and Android versions
 ```bash
-tools/build_all.sh            # all three, into build/
+tools/build_all.sh            # all three, into build/, then packaged into build/release/
 tools/build_all.sh android    # or just one: linux | windows | android
+tools/build_all.sh release    # zip the builds under stable names in build/release/ for a GitHub Release
 ```
 - **Linux**: `build/linux/PhreakNIC-CCG-v<version>.x86_64` — a single file, run it directly.
 - **Windows**: `build/windows/PhreakNIC-CCG-v<version>.exe` — a single file, double-click it.
@@ -68,10 +72,12 @@ One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/s
 
 ## Tests
 ```bash
-godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games, 2-4 players
-godot4.7.1 --headless --path . -s tests/rules_checks.gd  # focused rules scenarios
+godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games, 2-4 players, plus the focused rules scenarios
 godot4.7.1 --headless --path . -s tests/ui_smoke.gd      # table UI drives full turns
 godot4.7.1 --headless --path . -s tests/ui_state_sync.gd # UI always matches engine state
+godot4.7.1 --headless --path . -s tests/touch_checks.gd  # taps, long-press, drag scrolling, Back button
+godot4.7.1 --headless --path . -s tests/v05_checks.gd    # auto-end turn, dialog sizing, wide screens, Hero avatars
+godot4.7.1 --headless --path . -s tests/save_checks.gd   # save/resume round trips and the in-game menu
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot
 ```
 

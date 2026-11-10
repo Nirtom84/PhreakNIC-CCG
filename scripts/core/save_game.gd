@@ -178,6 +178,10 @@ static func read() -> Dictionary:
   if not name is String: return {}
  for hero in table.seat_heroes:
   if not hero is String or (hero != "" and not Engine.get_main_loop().root.get_node("CardDB").cards.has(hero)): return {}
+ if table.has("log_entries"):
+  if not table.log_entries is Array: return {}
+  for entry in table.log_entries:
+   if not entry is String: return {}
  if not table.get("log") is String or not table.get("fast") is bool: return {}
  if table.get("player_count") != state.players.size(): return {}
  if not table.get("difficulties") is Array or table.difficulties.size() != state.players.size(): return {}

@@ -1,5 +1,32 @@
 # Changelog
 
+## v0.05 — Touch controls, save & resume, Hero avatars
+First version with downloads for **Windows, Linux and Android** on the release page.
+
+**Touch screens (Android)**
+- Tap to play, buy and press buttons. Press and hold any card (hand, Center Row, permanents, reserved, opponent cards, dialogs) to see it full size; tap anywhere to close it. A long press never plays or buys the card.
+- Tap a card name in the Network Log to see the card.
+- Drag a finger to scroll the log, the rules, the Hero list, card dialogs and the rows on the table. A drag never presses the button it started on.
+- Android Back button: closes the open card, menu or dialog (acting as Cancel), otherwise opens the in-game menu. It no longer quits the app.
+- The table now uses the full width of wide phone screens (20:9) and fits taller screens (4:3, 16:10) without cutting anything off.
+
+**In-game menu, save and resume**
+- The **Menu** button opens a drop-down menu instead of throwing the game away: sound, volume, visual effects, auto-end turn and bot speed can be changed mid-game, plus **Rules**, **Save game**, **Main menu** and **Exit game**.
+- Save a game against the bots at any point on your turn. The game also saves automatically at the start of each of your turns, when you leave, and when a phone puts the app in the background.
+- **Resume game** on the main menu continues exactly where you left off, network log included.
+
+**Quality of life**
+- **Auto-end turn**: when you have nothing left to do (nothing playable, affordable or reservable, and no abilities to use), your turn ends by itself after a moment. Switch it off on the main menu or in the in-game menu.
+- The Network Log is compact: one line per entry, no blank lines between them.
+- The buy/reserve popup is a small centered dialog that shows the card you clicked, instead of a nearly full-screen panel. All choice dialogs now size to their content.
+
+**Hero avatars**
+- On the main menu, type a handle or press **Pick a Hero** to play as one of the Hero cards. A Hero's card art becomes your avatar; typed names get the FOTTR logo.
+- Avatars show next to the turn banner, in the turn announcement, and in your and your opponent's panels. Bots show the art of the Hero they're named after and never take your Hero.
+
+**For testers**
+- README has download links and install steps for each platform, and GitHub Issues has **Bug report** and **Card or rules problem** forms.
+
 ## v0.04 — Visual overhaul and player handles
 **New look**
 - Neon hacker-con style throughout: animated katakana "matrix rain" and circuit-grid background, vignette and light CRT scanlines (can be turned off with the new **Visual effects** switch on the main menu).

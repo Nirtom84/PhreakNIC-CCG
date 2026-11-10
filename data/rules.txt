@@ -32,14 +32,13 @@
 - [b]ICE counters[/b]: when you would take damage, each point removes one counter from your location instead. Damage beyond the counters left goes through to your life.
 
 [h2]Playing This Version[/h2]
-- On touch screens, tap to play or buy.
-- Press and hold any card to read it full size; tap anywhere to close.
-- Tap a card name in the Network Log to see it.
-- Drag to scroll.
-- Menu (or Back / Escape) opens the in-game menu with options, Rules, Save game, Main menu and Exit.
-- The game saves automatically at the start of each of your turns and when you leave. Resume game on the main menu continues your saved game.
 - Click a card in your hand to play it, or press [b]Play All[/b].
 - Click a Center Row card to buy or reserve it. Click your reserved card to buy it.
 - Permanents with abilities show buttons under them.
 - Hover over or right-click any card to read it full size. Hover over card names in the Network Log to see the card.
+- On touch screens, tap to play or buy. Press and hold any card to read it full size; tap anywhere to close. Tap a card name in the Network Log to see it. Drag to scroll.
+- When you have nothing left to do, your turn ends by itself after a moment. Turn [b]Auto-end turn[/b] off on the main menu or in the in-game menu if you prefer to press End Turn yourself.
+- [b]Menu[/b] (or Back / Escape) opens the in-game menu with options, Rules, Save game, Main menu and Exit.
+- The game saves automatically at the start of each of your turns and when you leave. [b]Resume game[/b] on the main menu continues your saved game.
+- On the main menu, type your handle or press [b]Pick a Hero[/b] to play as one of the Hero cards; their art becomes your avatar.
 - Rulings for situations the printed rules don't cover are listed in RULES_NOTES.md.

@@ -53,6 +53,7 @@ static func pulse(node: Control, tint: Color = Color(1.0, 0.86, 0.62)):
  t.tween_property(node, "self_modulate", tint, 0.8)
  t.tween_property(node, "self_modulate", Color.WHITE, 0.8)
 static func dialog(p: PanelContainer, dimensions: Vector2 = Vector2(640, 400)):
+ viewport_cover(p)
  var content = p.get_child(0)
  var layout = func():
   var view = p.get_viewport_rect().size

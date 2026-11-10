@@ -5,8 +5,15 @@ var difficulty: OptionButton
 var handle_input: LineEdit
 var avatar_preview: Control
 var count: OptionButton
+# Hero card art loads in the background so the picker opens instantly (a cold, synchronous load froze phones for seconds).
+var hero_icons: Dictionary = {}
+var loading_icons: Array[String] = []
+var picker_buttons: Dictionary = {}
 func _ready():
  get_tree().auto_accept_quit = true
+ for id in UIStyle.heroes():
+  var path = "res://assets/cards/" + id + ".jpg"
+  if ResourceLoader.load_threaded_request(path) == OK: loading_icons.append(path)
  UIStyle.apply(self)
  UIStyle.background(self)
  var row = HBoxContainer.new()
@@ -27,14 +34,11 @@ func _ready():
   UIStyle.pulse(art, UIStyle.CYAN.lightened(0.5))
  var menu = VBoxContainer.new()
  menu.custom_minimum_size.x = 900
- menu.add_theme_constant_override("separation", 10)
- var menu_scroll = ScrollContainer.new()
- menu_scroll.custom_minimum_size = Vector2(920, 930)
- menu_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
- row.add_child(menu_scroll)
- menu_scroll.add_child(menu)
- TouchInput.register_scroll(menu_scroll)
- var title = UIStyle.label(menu, "PhreakNIC", 82)
+ menu.add_theme_constant_override("separation", 5)
+ # The compact menu fits the supported viewports; avoid native touch-scroll
+ # interception around the handle and Hero button.
+ row.add_child(menu)
+ var title = UIStyle.label(menu, "PhreakNIC", 66)
  title.add_theme_color_override("font_color", UIStyle.CYAN)
  title.add_theme_color_override("font_shadow_color", Color(UIStyle.CYAN, 0.5))
  title.add_theme_constant_override("shadow_offset_x", 3)
@@ -112,16 +116,20 @@ func _ready():
   var seat = UIStyle.button(seats, str(n) + (" / SOON" if n > 2 else " / CONNECTED"), func(): count.select(n - 2))
   seat.disabled = n > 2
   seat.custom_minimum_size.x = 280
+ var actions = HBoxContainer.new()
+ menu.add_child(actions)
  var saved = SaveGame.read()
  if not saved.is_empty():
-  UIStyle.button(menu, "Resume game", func():
+  UIStyle.button(actions, "Resume game", func():
    var latest = SaveGame.read()
    if not latest.is_empty(): launch(latest)).custom_minimum_size.y = 56
   var state = SaveGame.restore(saved.game)
   var age = maxi(0, int(Time.get_unix_time_from_system()) - int(saved.get("saved_at", 0)))
   UIStyle.label(menu, "vs %s (%s) · Turn %d · saved %d min ago" % [saved.table.seat_names[1], BotDifficulty.DISPLAY_NAMES[state.players[1].difficulty], state.turn, age / 60], 18)
- var start_button = UIStyle.button(menu, "Start Game  →", start)
+ for action in actions.get_children(): action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ var start_button = UIStyle.button(actions, "Start Game  →", start)
  start_button.custom_minimum_size.y = 58
+ start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  UIStyle.primary(start_button)
  UIStyle.button(menu, "Rules", rules)
  var switches = HBoxContainer.new()
@@ -207,7 +215,10 @@ func pick_hero():
  scroll.add_child(grid)
  for id in UIStyle.heroes():
   var button = UIStyle.button(grid, str(CardDB.cards[id].name), func(): select_hero(id); overlay.queue_free())
-  button.icon = load("res://assets/cards/" + id + ".jpg")
+  var path = "res://assets/cards/" + id + ".jpg"
+  if hero_icons.has(path): button.icon = hero_icons[path]
+  elif path in loading_icons: picker_buttons[path] = button
+  else: button.icon = load(path)
   button.expand_icon = true
   button.custom_minimum_size = Vector2(170, 260)
   button.clip_text = true
@@ -217,6 +228,16 @@ func pick_hero():
  UIStyle.button(box, "Back", overlay.queue_free)
  UIStyle.dialog(overlay, Vector2(1100, 900))
 
+func _process(_delta):
+ for i in range(loading_icons.size() - 1, -1, -1):
+  var path = loading_icons[i]
+  var status = ResourceLoader.load_threaded_get_status(path)
+  if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS: continue
+  loading_icons.remove_at(i)
+  if status != ResourceLoader.THREAD_LOAD_LOADED: continue
+  hero_icons[path] = ResourceLoader.load_threaded_get(path)
+  if picker_buttons.has(path) and is_instance_valid(picker_buttons[path]): picker_buttons[path].icon = hero_icons[path]
+  picker_buttons.erase(path)
 func start():
  if SaveGame.read().is_empty(): launch(); return
  var dialog = ConfirmationDialog.new()

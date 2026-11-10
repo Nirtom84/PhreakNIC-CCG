@@ -11,6 +11,7 @@ func settle():
  await process_frame
  await process_frame
 func run():
+ var save_backup = FileAccess.get_file_as_bytes(SaveGame.PATH) if FileAccess.file_exists(SaveGame.PATH) else null
  var path = "user://settings.cfg"
  var existed = FileAccess.file_exists(path)
  var backup = FileAccess.get_file_as_bytes(path) if existed else PackedByteArray()
@@ -76,6 +77,7 @@ func run():
   table.decision("Buy", ["Reserve", "Buy", "Inspect", "Cancel"], [], 1, 1, false, false, reserved)
   await settle()
   var overlay = table.get_child(table.get_child_count() - 1)
+  verify(overlay.get_global_rect().is_equal_approx(Rect2(Vector2.ZERO, Vector2(dimensions))), "Decision backdrop covers viewport")
   var box = overlay.get_child(0)
   var rect = box.get_global_rect()
   verify(rect.size.x < dimensions.x * 0.6 and rect.size.y < dimensions.y * 0.6, "Buy dialog fits content")
@@ -126,5 +128,11 @@ func run():
   file.store_buffer(backup)
   file.close()
  else: DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+ if save_backup == null:
+  if FileAccess.file_exists(SaveGame.PATH): DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveGame.PATH))
+ else:
+  var file = FileAccess.open(SaveGame.PATH, FileAccess.WRITE)
+  file.store_buffer(save_backup)
+  file.close()
  print("v05 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
