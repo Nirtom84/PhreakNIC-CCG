@@ -103,12 +103,12 @@ func run():
  table.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
  verify(table.inspect_overlay == null, "Back closes inspect")
  table.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
- verify(table.pending, "Back opens leave dialog")
- var dialog = table.get_child(table.get_child_count() - 1)
- var grid = dialog.get_child(0).get_child(3).get_child(0)
- grid.get_child(1).pressed.emit()
+ verify(is_instance_valid(table.game_menu) and not table.pending, "Back opens in-game menu")
+ table.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
  await settle()
- verify(not table.pending and table.is_inside_tree(), "Keep playing keeps game")
+ verify(table.game_menu == null and table.is_inside_tree(), "Back resumes game")
+ var dialog
+ var grid
  # Exercise a toggle button in a pending card decision too.
  table.decision("Inspect choice", [], p.hand, 0, 1, true)
  await settle()

@@ -36,7 +36,8 @@
 - Press and hold any card to read it full size; tap anywhere to close.
 - Tap a card name in the Network Log to see it.
 - Drag to scroll.
-- The Back button asks before leaving a game.
+- Menu (or Back / Escape) opens the in-game menu with options, Rules, Save game, Main menu and Exit.
+- The game saves automatically at the start of each of your turns and when you leave. Resume game on the main menu continues your saved game.
 - Click a card in your hand to play it, or press [b]Play All[/b].
 - Click a Center Row card to buy or reserve it. Click your reserved card to buy it.
 - Permanents with abilities show buttons under them.

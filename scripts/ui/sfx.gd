@@ -6,6 +6,7 @@ var volume: float = 0.65
 var muted: bool = false
 var handle: String = ""
 var hero_id: String = ""
+var bot_fast: bool = false
 var auto_end_turn: bool = true
 func clean_handle(value: String) -> String:
  return value.replace("[", "").replace("]", "").strip_edges().left(16)
@@ -19,6 +20,7 @@ func _ready():
   handle = clean_handle(str(config.get_value("player", "handle", "")))
   hero_id = str(config.get_value("player", "hero_id", ""))
   if not hero_id.is_empty(): handle = str(config.get_value("player", "handle", ""))
+  bot_fast = bool(config.get_value("game", "bot_fast", false))
   auto_end_turn = bool(config.get_value("game", "auto_end_turn", true))
   muted = bool(config.get_value("sound", "muted", false))
   visual_effects = bool(config.get_value("visual", "effects", true))
@@ -34,6 +36,7 @@ func save():
  config.set_value("player", "handle", handle)
  config.set_value("player", "hero_id", hero_id)
  config.set_value("game", "auto_end_turn", auto_end_turn)
+ config.set_value("game", "bot_fast", bot_fast)
  config.set_value("visual", "effects", visual_effects)
  visuals_changed.emit(visual_effects)
  config.set_value("sound", "volume", volume)

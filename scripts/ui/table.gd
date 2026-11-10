@@ -1,5 +1,15 @@
 extends Control
 signal answered(value)
+var resume_data: Dictionary = {}
+var game_menu: Control
+var rules_overlay: Control
+var menu_button: Button
+var speed_button: Button
+var mute_button: Button
+var save_button: Button
+var save_status: Label
+var last_autosave_turn = -1
+var saving = false
 var engine: GameEngine
 var player_count: int = 2
 var difficulty: int = 0
@@ -31,6 +41,8 @@ var auto_end_turn_number: int = -1
 var previous_hack: Dictionary = {}
 var moved_uids: Dictionary = {}
 func _ready():
+ get_tree().auto_accept_quit = false
+ fast = (fast or Sfx.bot_fast) if resume_data.is_empty() else resume_data.table.fast
  UIStyle.apply(self)
  UIStyle.background(self)
  resized.connect(func(): if engine != null and engine.state != null: redraw.call_deferred())
@@ -49,12 +61,12 @@ func _ready():
  toolbar.add_child(turn_avatar)
  banner = UIStyle.label(toolbar, "Connecting…", 28)
  banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- UIStyle.button(toolbar, "» 1×", func(): fast = not fast; toolbar.get_child(2).text = "» 4×" if fast else "» 1×")
- var mute = UIStyle.button(toolbar, "♪ OFF" if Sfx.muted else "♪ ON", func():
+ speed_button = UIStyle.button(toolbar, "» 4×" if fast else "» 1×", toggle_speed)
+ mute_button = UIStyle.button(toolbar, "♪ OFF" if Sfx.muted else "♪ ON", func():
   Sfx.muted = not Sfx.muted
   Sfx.save())
- mute.pressed.connect(func(): mute.text = "♪ OFF" if Sfx.muted else "♪ ON")
- UIStyle.button(toolbar, "Menu", menu)
+ mute_button.pressed.connect(sync_options)
+ menu_button = UIStyle.button(toolbar, "Menu", menu)
  body = VBoxContainer.new()
  body.size_flags_vertical = Control.SIZE_EXPAND_FILL
  left.add_child(body)
@@ -97,7 +109,23 @@ func _ready():
  var game_seed: int = seed_value if seed_value != 0 else int(Time.get_unix_time_from_system())
  pick_seat_names(game_seed)
  engine.log_message.connect(append_log)
- engine.setup(levels, game_seed, choices)
+ if resume_data.is_empty():
+  engine.setup(levels, game_seed, choices)
+ else:
+  engine.state = SaveGame.restore(resume_data.game)
+  player_count = engine.state.players.size()
+  difficulty = engine.state.players[1].difficulty
+  seat_names.assign(resume_data.table.seat_names)
+  seat_heroes.assign(resume_data.table.seat_heroes)
+  fast = resume_data.table.fast
+  engine.deciders = choices
+  for p in engine.state.players.slice(1): engine.deciders.append(BotDecider.new(engine, p.difficulty))
+  log_view.text = resume_data.table.log
+  for p in engine.state.players:
+   previous_life[p.seat] = p.life
+   previous_hack[p.seat] = p.hacking
+  last_autosave_turn = engine.state.turn
+  sync_options()
  engine.state_changed.connect(redraw)
 
  engine.ice_counter_removed.connect(func(_card): Sfx.play("ice"))
@@ -110,9 +138,10 @@ func _ready():
   turn_band(p)
   redraw())
  engine.game_over.connect(game_over)
- append_log("Network ready · %d players connected" % player_count)
+ if resume_data.is_empty(): append_log("Network ready · %d players connected" % player_count)
  engine.turn_driver = drive_reaction
- await engine.start_turn()
+ if resume_data.is_empty(): await engine.start_turn()
+ auto_save()
  redraw()
 func pick_seat_names(game_seed: int):
  var heroes: Array[String] = []
@@ -690,6 +719,7 @@ func moved(_card, _from, _to):
  banner.modulate = Color("e9c778")
  create_tween().tween_property(banner, "modulate", Color.WHITE, 0.25)
 func game_over(winner):
+ SaveGame.remove()
  Sfx.play("win" if winner != null and winner.seat == 0 else "lose")
  show_result.call_deferred(winner)
 func show_result(winner):
@@ -718,7 +748,102 @@ func restart():
  get_tree().root.add_child(table)
  get_tree().current_scene = table
  queue_free()
-func menu(): get_tree().change_scene_to_file("res://scenes/menu.tscn")
+func menu():
+ if is_instance_valid(game_menu): close_menu(); return
+ if pending: return
+ hide_zoom()
+ auto_end_elapsed = 0
+ var blocker = Control.new()
+ game_menu = blocker
+ blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ blocker.add_to_group("touch_modal")
+ add_child(blocker)
+ blocker.gui_input.connect(func(event):
+  if (event is InputEventMouseButton or event is InputEventScreenTouch) and event.pressed: close_menu())
+ var panel = UIStyle.panel("// GAME MENU")
+ blocker.add_child(panel)
+ panel.mouse_filter = Control.MOUSE_FILTER_STOP
+ var right = menu_button.global_position.x + menu_button.size.x
+ panel.position = Vector2(maxf(16, right - 500), menu_button.global_position.y + menu_button.size.y + 8)
+ panel.custom_minimum_size = Vector2(500, 0)
+ var scroll = ScrollContainer.new()
+ scroll.custom_minimum_size = Vector2(480, minf(850, size.y - panel.position.y - 40))
+ panel.add_child(scroll)
+ TouchInput.register_scroll(scroll)
+ var box = VBoxContainer.new()
+ box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ scroll.add_child(box)
+ UIStyle.button(box, "Resume", close_menu).custom_minimum_size.y = 56
+ UIStyle.label(box, "Options", 24)
+ for setting in ["muted", "visual_effects", "auto_end_turn"]:
+  var toggle = CheckButton.new()
+  toggle.text = {"muted": "Sound enabled", "visual_effects": "Visual effects", "auto_end_turn": "Auto-end turn"}[setting]
+  toggle.custom_minimum_size.y = 56
+  toggle.button_pressed = not Sfx.muted if setting == "muted" else Sfx.get(setting)
+  box.add_child(toggle)
+  toggle.toggled.connect(func(value):
+   Sfx.set(setting, not value if setting == "muted" else value)
+   Sfx.save()
+   sync_options())
+ var volume = HSlider.new()
+ volume.custom_minimum_size.y = 56
+ volume.max_value = 1.0
+ volume.step = 0.01
+ volume.value = Sfx.volume
+ UIStyle.label(box, "Volume")
+ box.add_child(volume)
+ volume.value_changed.connect(func(value): Sfx.volume = value; Sfx.save())
+ UIStyle.button(box, "Bot speed: " + ("4×" if fast else "1×"), func(): toggle_speed(); close_menu(); menu()).custom_minimum_size.y = 56
+ UIStyle.button(box, "Rules", func():
+  close_menu()
+  rules_overlay = RulesPage.open(self)).custom_minimum_size.y = 56
+ save_button = UIStyle.button(box, "Save game", func():
+  if save_game(): save_status.text = "Game saved"
+  else: save_status.text = "Could not save game")
+ save_button.custom_minimum_size.y = 56
+ save_status = UIStyle.label(box, "", 16)
+ save_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ UIStyle.button(box, "Main menu", leave_game.bind(false)).custom_minimum_size.y = 56
+ UIStyle.button(box, "Exit game", leave_game.bind(true)).custom_minimum_size.y = 56
+ update_save_button()
+func close_menu():
+ if is_instance_valid(game_menu):
+  game_menu.queue_free()
+ game_menu = null
+ auto_end_elapsed = 0
+func toggle_speed():
+ fast = not fast
+ Sfx.bot_fast = fast
+ Sfx.save()
+ sync_options()
+func sync_options():
+ speed_button.text = "» 4×" if fast else "» 1×"
+ mute_button.text = "♪ OFF" if Sfx.muted else "♪ ON"
+func can_save() -> bool:
+ return not saving and not pending and not acting and not driving and SaveGame.safe(engine) and not engine.state.players[0].is_bot and engine.state.players.slice(1).all(func(p): return p.is_bot)
+func save_game() -> bool:
+ if not can_save(): return false
+ saving = true
+ auto_end_elapsed = 0
+ var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[0], "fast": fast, "log": log_view.text})
+ saving = false
+ return ok
+func auto_save():
+ if can_save() and last_autosave_turn != engine.state.turn:
+  if save_game(): last_autosave_turn = engine.state.turn
+func update_save_button():
+ if not is_instance_valid(game_menu): return
+ save_button.disabled = not can_save()
+ if save_button.disabled: save_status.text = "Save is available on your turn when nothing is resolving"
+ elif save_status.text.begins_with("Save is available"): save_status.text = ""
+func leave_game(quit_game: bool):
+ close_menu()
+ if not engine.state.finished and not save_game():
+  if pending: return
+  var answer = await decision("Leave without saving? Progress since the last save will be lost.", ["Leave", "Stay"], [], 1, 1, false)
+  if answer != 0: return
+ if quit_game: get_tree().quit()
+ else: get_tree().change_scene_to_file("res://scenes/menu.tscn")
 
 func turn_band(p):
  var band = UIStyle.panel()
@@ -789,13 +914,15 @@ func close_inspect():
  inspect_overlay = null
 func _notification(what):
  if what == NOTIFICATION_WM_GO_BACK_REQUEST: go_back()
+ if what == NOTIFICATION_APPLICATION_PAUSED: save_game()
+ if what == NOTIFICATION_WM_CLOSE_REQUEST: leave_game(true)
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
 func go_back():
- if is_instance_valid(inspect_overlay): close_inspect(); return
- if pending: return
- var choice = await decision("Leave this game?", ["Leave", "Keep playing"], [], 1, 1, false)
- if choice == 0: menu()
+ if is_instance_valid(inspect_overlay): close_inspect()
+ elif is_instance_valid(rules_overlay): rules_overlay.queue_free(); rules_overlay = null
+ elif is_instance_valid(game_menu): close_menu()
+ elif not pending: menu()
 
 func _input(event):
  if event is InputEventScreenTouch or event is InputEventScreenDrag or (event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION):
@@ -820,7 +947,9 @@ func nothing_left() -> bool:
    if ability.enabled: return false
  return true
 func _process(delta):
- if not Sfx.auto_end_turn or not nothing_left():
+ auto_save()
+ update_save_button()
+ if saving or is_instance_valid(game_menu) or is_instance_valid(rules_overlay) or not Sfx.auto_end_turn or not nothing_left():
   auto_end_elapsed = 0
   auto_end_turn_number = -1
   return

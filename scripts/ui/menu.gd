@@ -6,6 +6,7 @@ var handle_input: LineEdit
 var avatar_preview: Control
 var count: OptionButton
 func _ready():
+ get_tree().auto_accept_quit = true
  UIStyle.apply(self)
  UIStyle.background(self)
  var row = HBoxContainer.new()
@@ -27,7 +28,12 @@ func _ready():
  var menu = VBoxContainer.new()
  menu.custom_minimum_size.x = 900
  menu.add_theme_constant_override("separation", 10)
- row.add_child(menu)
+ var menu_scroll = ScrollContainer.new()
+ menu_scroll.custom_minimum_size = Vector2(920, 930)
+ menu_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ row.add_child(menu_scroll)
+ menu_scroll.add_child(menu)
+ TouchInput.register_scroll(menu_scroll)
  var title = UIStyle.label(menu, "PhreakNIC", 82)
  title.add_theme_color_override("font_color", UIStyle.CYAN)
  title.add_theme_color_override("font_shadow_color", Color(UIStyle.CYAN, 0.5))
@@ -106,6 +112,14 @@ func _ready():
   var seat = UIStyle.button(seats, str(n) + (" / SOON" if n > 2 else " / CONNECTED"), func(): count.select(n - 2))
   seat.disabled = n > 2
   seat.custom_minimum_size.x = 280
+ var saved = SaveGame.read()
+ if not saved.is_empty():
+  UIStyle.button(menu, "Resume game", func():
+   var latest = SaveGame.read()
+   if not latest.is_empty(): launch(latest)).custom_minimum_size.y = 56
+  var state = SaveGame.restore(saved.game)
+  var age = maxi(0, int(Time.get_unix_time_from_system()) - int(saved.get("saved_at", 0)))
+  UIStyle.label(menu, "vs %s (%s) · Turn %d · saved %d min ago" % [saved.table.seat_names[1], BotDifficulty.DISPLAY_NAMES[state.players[1].difficulty], state.turn, age / 60], 18)
  var start_button = UIStyle.button(menu, "Start Game  →", start)
  start_button.custom_minimum_size.y = 58
  UIStyle.primary(start_button)
@@ -144,8 +158,9 @@ func _ready():
   percentage.text = "%d%%" % roundi(value * 100)
   Sfx.save())
  UIStyle.button(menu, "Quit", func(): get_tree().quit())
-func start():
+func launch(resume: Dictionary = {}):
  var table = load("res://scenes/table.tscn").instantiate()
+ table.resume_data = resume
  table.player_count = count.get_selected_id()
  table.difficulty = difficulty.selected
  get_tree().root.add_child(table)
@@ -153,21 +168,7 @@ func start():
  queue_free()
 func rules():
  if is_instance_valid(rules_overlay): return
- var overlay = UIStyle.panel("// FIELD MANUAL")
- rules_overlay = overlay
- overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
- add_child(overlay)
- var box = VBoxContainer.new()
- overlay.add_child(box)
- UIStyle.dialog(overlay, Vector2(1100, 900))
- var text = RichTextLabel.new()
- text.bbcode_enabled = true
- text.size_flags_vertical = Control.SIZE_EXPAND_FILL
- text.add_theme_color_override("default_color", UIStyle.TEXT)
- text.text = UIStyle.rules_bbcode(FileAccess.get_file_as_string("res://data/rules.txt"))
- box.add_child(text)
- TouchInput.register_scroll(text)
- UIStyle.button(box, "Back", overlay.queue_free)
+ rules_overlay = RulesPage.open(self)
 
 func _notification(what):
  if what == NOTIFICATION_WM_GO_BACK_REQUEST: go_back()
@@ -215,3 +216,14 @@ func pick_hero():
   button.add_theme_constant_override("icon_max_width", 160)
  UIStyle.button(box, "Back", overlay.queue_free)
  UIStyle.dialog(overlay, Vector2(1100, 900))
+
+func start():
+ if SaveGame.read().is_empty(): launch(); return
+ var dialog = ConfirmationDialog.new()
+ dialog.dialog_text = "Start a new game? Your saved game will be replaced."
+ dialog.ok_button_text = "Yes"
+ dialog.cancel_button_text = "No"
+ add_child(dialog)
+ dialog.confirmed.connect(func(): SaveGame.remove(); launch())
+ dialog.canceled.connect(dialog.queue_free)
+ dialog.popup_centered(Vector2i(650, 200))
