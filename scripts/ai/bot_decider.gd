@@ -53,7 +53,7 @@ func choose_option(player, prompt: String, options: Array[String]) -> int:
 		var best_score = -INF
 		for i in mini(2, sections.size()):
 			var score = 0.0
-			for id in engine.db().cards:
+			for id in engine.db().pool_ids(engine.state.card_pool):
 				if ('"' + id + '"') in sections[i]: score += value(CardInstance.new(0, id), player)
 			if score > best_score:
 				best_score = score
@@ -134,7 +134,7 @@ func choose_number(player, prompt: String, allowed: Array[int]) -> int:
 	if "acquire matching" in prompt:
 		var best = 0
 		var best_score = -INF
-		for id in engine.db().cards:
+		for id in engine.db().pool_ids(engine.state.card_pool):
 			var c = CardInstance.new(0, id)
 			var cost = int(engine.db().get_card(c.id).cost)
 			if cost in allowed and value(c, player) > best_score:

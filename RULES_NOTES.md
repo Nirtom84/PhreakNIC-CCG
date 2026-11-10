@@ -122,3 +122,5 @@ Append `-- --coverage` to print the play count for every card id.
 In a sandbox that cannot write the normal Godot user directory, prefix the run
 with `XDG_DATA_HOME=/tmp/phreak-godot-data`. This changes only Godot's writable
 runtime-data location. The tests require no network, textures, or scenes.
+
+- Card sets: PhreakNIC 2025 uses the base Center Deck of 102 cards. PhreakNIC 2026 adds the 48 expansion cards (150 total). Starter decks stay the same.

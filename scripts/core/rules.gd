@@ -18,9 +18,10 @@ var turn_driver: Callable
 func _init():
 	effects = preload("res://scripts/core/effects.gd").new(self)
 func db() -> Node: return get_node("/root/CardDB")
-func setup(difficulties: Array, seed_value: int = 1, choices: Array = []):
+func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026"):
 	assert(difficulties.size() >= 2 and difficulties.size() <= 4)
 	state = GameState.new()
+	state.card_pool = card_pool if card_pool in ["2025", "2026"] else "2026"
 	state.rng.seed = seed_value
 	deciders = choices.duplicate()
 	for seat in difficulties.size():
@@ -35,7 +36,7 @@ func setup(difficulties: Array, seed_value: int = 1, choices: Array = []):
 		for i in 10: p.deck.append(state.create("Hacking" if i < 8 else "Damage", seat))
 		state.shuffle(p.deck)
 		draw(p, 5)
-	for id in db().cards:
+	for id in db().pool_ids(state.card_pool):
 		if not db().get_card(id).starter: state.center_deck.append(state.create(id))
 	state.shuffle(state.center_deck)
 	for i in 5: refill(i)

@@ -10,7 +10,20 @@ class ScriptedHuman extends Decider:
   var result: Array = []
   for i in await table.decision(prompt, [], cards, min_n, max_n, true): result.append(cards[i])
   return result
-func _initialize(): run.call_deferred()
+# Back up the player's settings and saved game, and put them back on exit (tables autosave during these tests).
+var user_backups = {}
+func _initialize():
+ for path in ["user://settings.cfg", "user://savegame.json"]:
+  user_backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
+ run.call_deferred()
+func _finalize():
+ for path in user_backups:
+  if user_backups[path] == null:
+   if FileAccess.file_exists(path): DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+  else:
+   var file = FileAccess.open(path, FileAccess.WRITE)
+   file.store_buffer(user_backups[path])
+   file.close()
 func verify(ok: bool, message: String):
  checks += 1
  if not ok:

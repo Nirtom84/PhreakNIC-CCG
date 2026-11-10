@@ -23,7 +23,7 @@ func choose_number(_p, prompt: String, allowed: Array[int]) -> int:
 func confirm(_p, prompt: String) -> bool:
  return await ui.decision(prompt, ["Yes", "No"], [], 1, 1, false) == 0
 func name_a_card(_p, prompt: String) -> String:
- var ids: Array = ui.engine.db().cards.keys()
+ var ids: Array = ui.engine.db().pool_ids(ui.engine.state.card_pool)
  ids.sort_custom(func(a, b): return ui.engine.db().get_card(a).name < ui.engine.db().get_card(b).name)
  var names: Array[String] = []
  for id in ids: names.append(ui.engine.db().get_card(id).name)

@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.05**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.06**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -25,6 +25,7 @@ Hover or right-click any card to zoom. On a touch screen: tap to play or buy, pr
 Your turn ends by itself once you have nothing left to do (switch **Auto-end turn** off if you'd rather press End Turn).
 **Menu** (or Back / Escape) opens the in-game menu: options, rules, **Save game**, **Main menu** and **Exit**. The game also saves at the start of each of your turns and when you leave, and **Resume game** on the main menu picks it up again.
 On the main menu you can type a handle or **Pick a Hero** to play as one of the Hero cards, with their art as your avatar.
+Under **Card set**, choose **PhreakNIC 2025** (the base game, 102 cards) or **PhreakNIC 2026** (base game plus the 48-card 2026 expansion, 150 cards).
 
 ### Found a bug?
 Please [open an issue](https://github.com/Nirtom84/PhreakNIC-CCG/issues/new/choose) and pick **Bug report** or **Card or rules problem**. Include the version from the bottom-right corner of the main menu, your platform, and the Network Log lines or a screenshot if you can.
@@ -49,7 +50,7 @@ The official rules are on the in-game Rules screen (scrollable written rules). G
 documented in [RULES_NOTES.md](RULES_NOTES.md). Design and architecture: [DESIGN.md](DESIGN.md).
 
 ## Project layout
-- `data/cards.json` — all 152 cards (cost, type, rules text), transcribed from the card art
+- `data/cards.json` — all 152 cards (cost, type, rules text, and `set`: 2025 base or 2026 expansion), transcribed from the card art
 - `assets/cards/` — 600px card faces and the card back
 - `scripts/core/` — rules engine (`rules.gd`), one effect handler per card (`effects.gd`)
 - `scripts/ai/` — bots and difficulty levels
@@ -72,12 +73,13 @@ One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/s
 
 ## Tests
 ```bash
-godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games, 2-4 players, plus the focused rules scenarios
+godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games (both card sets, 2-4 players) plus the focused rules scenarios
 godot4.7.1 --headless --path . -s tests/ui_smoke.gd      # table UI drives full turns
 godot4.7.1 --headless --path . -s tests/ui_state_sync.gd # UI always matches engine state
 godot4.7.1 --headless --path . -s tests/touch_checks.gd  # taps, long-press, drag scrolling, Back button
 godot4.7.1 --headless --path . -s tests/v05_checks.gd    # auto-end turn, dialog sizing, wide screens, Hero avatars
 godot4.7.1 --headless --path . -s tests/save_checks.gd   # save/resume round trips and the in-game menu
+godot4.7.1 --headless --path . -s tests/v06_checks.gd    # 2025 / 2026 card sets
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot
 ```
 

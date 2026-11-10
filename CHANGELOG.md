@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.06 — Choose your card set: PhreakNIC 2025 or 2026
+- New **Card set** choice on the main menu:
+  - **PhreakNIC 2025**: the base game, a 102-card Center Deck.
+  - **PhreakNIC 2026**: the base game plus the 48 cards of the 2026 expansion, a 150-card Center Deck. This is what earlier versions played.
+- Your choice is remembered between games.
+- In a 2025 game, only base cards appear:
+  - in the Center Deck;
+  - in bot names (bots are named after base-set Heroes);
+  - in "name a card" choices such as I've got the Logs.
+- The table shows the set next to the Center Deck count, and **Resume game** shows it in the save description.
+- Saved games remember their card set. A game saved with v0.05 resumes as a 2026 game.
+- Card sets follow the official FOTTR card lists. The 2026 expansion includes a fifth Botnet; the base game has four.
+
 ## v0.05 — Touch controls, save & resume, Hero avatars
 First version with downloads for **Windows, Linux and Android** on the release page.
 

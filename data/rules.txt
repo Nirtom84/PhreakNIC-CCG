@@ -3,7 +3,7 @@
 [h2]Setup[/h2]
 - Each player shuffles a personal starting deck of [b]8 Hacker[/b] cards and [b]2 Attack[/b] cards.
 - Each player starts with [b]10 life for every player in the game[/b] (20 life in a 2-player game).
-- Shuffle all of the other cards together. This is the [b]Center Deck[/b].
+- The [b]Center Deck[/b] contains the base set’s [b]102 cards[/b] in a PhreakNIC 2025 game, or [b]150 cards[/b] with the 2026 expansion; shuffle it before playing.
 - Deal the top 5 cards of the Center Deck face up. This row is the [b]Center Row[/b].
 - Each player draws 5 cards from their deck as a starting hand.
 

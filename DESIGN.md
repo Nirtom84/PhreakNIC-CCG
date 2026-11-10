@@ -18,10 +18,11 @@ Godot 4.7, GDScript only (typed GDScript where practical). Target 1920x1080, str
   `name` (printed title), `cost`, `kind` ("Action" | "Permanent"), `subtypes` (e.g.
   "Legendary Hero", "Exploit", "Technology", "Location", "Organization", "Event",
   "FOTTR Hero", "pTFS Hero"), `type_line`, `hack`, `damage`, `text` ({H} = hacking symbol,
-  {D} = damage symbol), `image`, `starter`.
+  {D} = damage symbol), `image`, `starter`, `set` ("2025" for the 104 base definitions including starters; "2026" for the 48 expansion cards).
 - Starter cards: `Hacking` (printed name "Hacker", +1 {H}) and `Damage` (printed name "Attack",
   Deal 1 {D}). Each player's starting deck = 8 Hacker + 2 Attack. Starters never go in the center deck.
-- Center deck = one copy of every non-starter card (150 cards). The five "Botnet" files are
+- Card pools: "2025" selects the base game (102 non-starter cards); "2026" selects base plus expansion (150 non-starter cards, the default). GameState.card_pool persists in saves; older saves default to "2026". In-game card naming, bot Hero names and card searches use the selected pool. Cosmetic human avatars may use any Hero.
+- Center deck = one copy of every non-starter card in the selected pool. The five "Botnet" files are
   five copies of Botnet.
 - `assets/cards/<id>.jpg` (600x820) card faces; `assets/cards/phreaknic_fottr_tcg_card_back.jpg` card back.
 - Subtype matching is by word: "Hero" matches "Hero", "Legendary Hero", "FOTTR Hero",

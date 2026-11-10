@@ -13,6 +13,7 @@ var saving = false
 var engine: GameEngine
 var player_count: int = 2
 var difficulty: int = 0
+var card_pool: String = "2026"
 var scripted_decider: Decider
 var auto_drive: bool = true
 var fast: bool = false
@@ -106,14 +107,15 @@ func _ready():
  var choices: Array = [scripted_decider if scripted_decider != null else HumanDecider.new(self)]
  var levels: Array = [-1]
  for i in range(1, player_count): levels.append(difficulty)
- for id in CardDB.cards:
+ if not resume_data.is_empty(): card_pool = str(resume_data.game.state.get("card_pool", "2026"))
+ for id in CardDB.pool_ids(card_pool):
   card_names.append({"id": id, "name": str(CardDB.cards[id].name)})
  card_names.sort_custom(func(a, b): return a.name.length() > b.name.length())
  var game_seed: int = seed_value if seed_value != 0 else int(Time.get_unix_time_from_system())
  pick_seat_names(game_seed)
  engine.log_message.connect(append_log)
  if resume_data.is_empty():
-  engine.setup(levels, game_seed, choices)
+  engine.setup(levels, game_seed, choices, card_pool)
  else:
   engine.state = SaveGame.restore(resume_data.game)
   player_count = engine.state.players.size()
@@ -150,7 +152,7 @@ func _ready():
 func pick_seat_names(game_seed: int):
  var heroes: Array[String] = []
  var hero_ids: Dictionary = {}
- for id in CardDB.cards:
+ for id in CardDB.pool_ids(card_pool):
   var card = CardDB.cards[id]
   var name := str(card.name)
   if not card.get("starter", false) and CardDB.has_subtype(id, "Hero") and name not in heroes and name.to_lower() != Sfx.handle.to_lower() and id != Sfx.hero_id:
@@ -205,7 +207,7 @@ func redraw():
  var piles = VBoxContainer.new()
  center.add_child(piles)
  piles.add_child(UIStyle.picture(UIStyle.BACK, Vector2(110, 150)))
- UIStyle.label(piles, "Deck: %d" % engine.state.center_deck.size())
+ UIStyle.label(piles, "Deck: %d · %s set" % [engine.state.center_deck.size(), engine.state.card_pool])
  UIStyle.button(piles, "Removed: %d" % engine.state.removed.size(), func(): view_cards("Removed from game", engine.state.removed))
  var p = engine.state.players[0]
  var board_scroll = ScrollContainer.new()
@@ -763,6 +765,7 @@ func restart():
  var table = load("res://scenes/table.tscn").instantiate()
  table.player_count = player_count
  table.difficulty = difficulty
+ table.card_pool = engine.state.card_pool
  get_tree().root.add_child(table)
  get_tree().current_scene = table
  queue_free()

@@ -2,7 +2,7 @@ class_name SaveGame
 extends RefCounted
 const PATH = "user://savegame.json"
 const VERSION = 1
-const STATE_FIELDS = ["players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
+const STATE_FIELDS = ["card_pool", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
 const PLAYER_FIELDS = ["seat", "life", "alive", "is_bot", "difficulty", "deck", "hand", "discard", "play_area", "reserve", "hacking", "played", "turn_flags", "turns"]
 const CARD_FIELDS = ["uid", "id", "owner", "controller", "counters", "attached", "flags"]
 var objects: Array = []
@@ -72,6 +72,7 @@ static func restore(data: Dictionary):
    object.set(field, value)
  var state = GameState.new()
  for field in STATE_FIELDS:
+  if field == "card_pool" and not data.state.has(field): continue
   if not data.state.has(field): return null
   var value = codec.decode(data.state[field])
   if field != "winner" and typeof(value) != typeof(state.get(field)): return null
@@ -79,7 +80,7 @@ static func restore(data: Dictionary):
    if value.any(func(line): return not line is String): return null
    state.log.assign(value)
   else: state.set(field, value)
- if not codec.valid: return null
+ if not codec.valid or state.card_pool not in ["2025", "2026"]: return null
  if state.players.size() < 2 or state.players.size() > 4 or state.center_row.size() != 5: return null
  if state.turn < 1: return null
  if state.active_seat < 0 or state.active_seat >= state.players.size(): return null
@@ -90,8 +91,8 @@ static func restore(data: Dictionary):
  for object in codec.objects:
   if object is CardInstance:
    var cards = Engine.get_main_loop().root.get_node("CardDB").cards
-   if not cards.has(object.id): return null
-   if object.flags.has("copy_id") and not cards.has(object.flags.copy_id): return null
+   if not Engine.get_main_loop().root.get_node("CardDB").in_pool(object.id, state.card_pool): return null
+   if object.flags.has("copy_id") and not Engine.get_main_loop().root.get_node("CardDB").in_pool(object.flags.copy_id, state.card_pool): return null
    if object.owner < -1 or object.owner >= state.players.size() or object.controller < -1 or object.controller >= state.players.size(): return null
    for child in object.attached:
     if not child is CardInstance: return null
@@ -114,7 +115,7 @@ static func restore(data: Dictionary):
  if seen.size() != state.initial_count or state.initial_ids.size() != state.initial_count: return null
  var expected = {"Hacking": 8 * state.players.size(), "Damage": 2 * state.players.size()}
  var database = Engine.get_main_loop().root.get_node("CardDB")
- for id in database.cards:
+ for id in database.pool_ids(state.card_pool):
   if not database.cards[id].starter: expected[id] = 1
  for card in identities: expected[card.id] = expected.get(card.id, 0) - 1
  if expected.values().any(func(count): return count != 0): return null

@@ -105,17 +105,38 @@ func _ready():
   tile.add_theme_color_override("font_color", accents[i])
   tile.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, accents[i], 0))
   tile.add_theme_stylebox_override("pressed", UIStyle.box(UIStyle.PANEL.lightened(0.06), accents[i], 10))
- UIStyle.label(menu, "// PLAYERS", 18)
+ var configuration = HBoxContainer.new()
+ menu.add_child(configuration)
+ var players_box = VBoxContainer.new()
+ configuration.add_child(players_box)
+ UIStyle.label(players_box, "// PLAYERS", 18)
  count = OptionButton.new()
  count.visible = false
  for n in [2, 3, 4]: count.add_item(str(n), n)
  menu.add_child(count)
  var seats = HBoxContainer.new()
- menu.add_child(seats)
+ players_box.add_child(seats)
  for n in [2, 3, 4]:
   var seat = UIStyle.button(seats, str(n) + (" / SOON" if n > 2 else " / CONNECTED"), func(): count.select(n - 2))
   seat.disabled = n > 2
-  seat.custom_minimum_size.x = 280
+  seat.custom_minimum_size.x = 96
+  seat.add_theme_font_size_override("font_size", 14)
+ var sets_box = VBoxContainer.new()
+ configuration.add_child(sets_box)
+ UIStyle.label(sets_box, "// CARD SET", 18)
+ var sets = HBoxContainer.new()
+ sets_box.add_child(sets)
+ var pool_group = ButtonGroup.new()
+ for pool in ["2025", "2026"]:
+  var description = "Base game · 102 cards" if pool == "2025" else "Base + 2026 expansion · 150 cards"
+  var tile = UIStyle.button(sets, "PhreakNIC " + pool + "\n" + description, func(): Sfx.card_pool = pool; Sfx.save())
+  tile.toggle_mode = true
+  tile.button_group = pool_group
+  tile.button_pressed = Sfx.card_pool == pool
+  tile.custom_minimum_size = Vector2(280, 60)
+  tile.add_theme_font_size_override("font_size", 16)
+  tile.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, UIStyle.CYAN, 0))
+  tile.add_theme_stylebox_override("pressed", UIStyle.box(UIStyle.PANEL.lightened(0.06), UIStyle.CYAN, 10))
  var actions = HBoxContainer.new()
  menu.add_child(actions)
  var saved = SaveGame.read()
@@ -125,7 +146,7 @@ func _ready():
    if not latest.is_empty(): launch(latest)).custom_minimum_size.y = 56
   var state = SaveGame.restore(saved.game)
   var age = maxi(0, int(Time.get_unix_time_from_system()) - int(saved.get("saved_at", 0)))
-  UIStyle.label(menu, "vs %s (%s) · Turn %d · saved %d min ago" % [saved.table.seat_names[1], BotDifficulty.DISPLAY_NAMES[state.players[1].difficulty], state.turn, age / 60], 18)
+  UIStyle.label(menu, "vs %s (%s) · %s · Turn %d · saved %d min ago" % [saved.table.seat_names[1], BotDifficulty.DISPLAY_NAMES[state.players[1].difficulty], "2025 base" if state.card_pool == "2025" else "2026 expansion", state.turn, age / 60], 18)
  for action in actions.get_children(): action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  var start_button = UIStyle.button(actions, "Start Game  →", start)
  start_button.custom_minimum_size.y = 58
@@ -171,6 +192,7 @@ func launch(resume: Dictionary = {}):
  table.resume_data = resume
  table.player_count = count.get_selected_id()
  table.difficulty = difficulty.selected
+ table.card_pool = Sfx.card_pool
  get_tree().root.add_child(table)
  get_tree().current_scene = table
  queue_free()

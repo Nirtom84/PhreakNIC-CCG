@@ -1,5 +1,6 @@
 class_name GameState
 extends RefCounted
+var card_pool: String = "2026"
 var players: Array = []
 var center_deck: Array = []
 var center_row: Array = [null, null, null, null, null]

@@ -15,3 +15,7 @@ func named(id: String, name: String) -> bool:
 	return id == "What is Truth" or str(get_card(id).get("name", "")).to_lower() == name.to_lower()
 func name_contains(id: String, part: String) -> bool:
 	return id == "What is Truth" or part.to_lower() in str(get_card(id).get("name", "")).to_lower()
+func in_pool(id: String, pool: String = "2026") -> bool:
+	return cards.has(id) and (pool == "2026" or str(cards[id].get("set", "2025")) == "2025")
+func pool_ids(pool: String = "2026") -> Array:
+	return cards.keys().filter(func(id): return in_pool(id, pool))
