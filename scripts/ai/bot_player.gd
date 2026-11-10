@@ -2,11 +2,15 @@ class_name BotPlayer
 extends RefCounted
 const MAX_ACTIONS = 200
 var engine
+var action_delay: float = 0.0
 func _init(game): engine = game
 func take_turn(p):
 	var actions = 0
 	var declined: Dictionary = {}
 	while engine.is_turn(p) and actions < MAX_ACTIONS:
+		if action_delay > 0.0:
+			await engine.get_tree().create_timer(action_delay).timeout
+			if not engine.is_turn(p): break
 		actions += 1
 		var candidates = p.hand.filter(func(c): return engine.can_play(p, c))
 		var ai = engine.dec(p)
