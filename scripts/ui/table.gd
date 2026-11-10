@@ -21,6 +21,8 @@ var textures: Dictionary = {}
 var hover_serial: int = 0
 var spotlights: Array[Control] = []
 var card_names: Array = []
+## Display name per seat; bots get a random Hero card name (seat 0 is "You").
+var seat_names: Array[String] = []
 var previous_hack: Dictionary = {}
 var moved_uids: Dictionary = {}
 func _ready():
@@ -74,8 +76,10 @@ func _ready():
  for id in CardDB.cards:
   card_names.append({"id": id, "name": str(CardDB.cards[id].name)})
  card_names.sort_custom(func(a, b): return a.name.length() > b.name.length())
+ var game_seed: int = seed_value if seed_value != 0 else int(Time.get_unix_time_from_system())
+ pick_seat_names(game_seed)
  engine.log_message.connect(append_log)
- engine.setup(levels, seed_value if seed_value != 0 else int(Time.get_unix_time_from_system()), choices)
+ engine.setup(levels, game_seed, choices)
  engine.state_changed.connect(redraw)
 
  engine.ice_counter_removed.connect(func(_card): Sfx.play("ice"))
@@ -83,6 +87,7 @@ func _ready():
  engine.card_moved.connect(moved)
  engine.turn_started.connect(func(p):
   Sfx.play("turn_start")
+  if p.seat == 0: clear_spotlights(1.5)
   append_log("TURN %d · Seat %d connected" % [engine.state.turn, p.seat])
   redraw())
  engine.game_over.connect(game_over)
@@ -90,8 +95,22 @@ func _ready():
  engine.turn_driver = drive_reaction
  await engine.start_turn()
  redraw()
+func pick_seat_names(game_seed: int):
+ var heroes: Array[String] = []
+ for id in CardDB.cards:
+  var card = CardDB.cards[id]
+  var name := str(card.name)
+  if not card.get("starter", false) and CardDB.has_subtype(id, "Hero") and name not in heroes: heroes.append(name)
+ var rng = RandomNumberGenerator.new()
+ rng.seed = game_seed
+ seat_names = ["You"]
+ for i in range(1, player_count):
+  var pick = heroes.pop_at(rng.randi_range(0, heroes.size() - 1)) if not heroes.is_empty() else "Bot %d" % i
+  seat_names.append(pick)
+func seat_name(seat: int) -> String:
+ return seat_names[seat] if seat < seat_names.size() else ("You" if seat == 0 else "Bot %d" % seat)
 func player_name(p) -> String:
- return "You" if p.seat == 0 else "Bot %d · %s" % [p.seat, BotDifficulty.DISPLAY_NAMES[p.difficulty]]
+ return "You" if p.seat == 0 else "%s · %s" % [seat_name(p.seat), BotDifficulty.DISPLAY_NAMES[p.difficulty]]
 func available() -> bool:
  return engine != null and engine.is_turn(engine.state.players[0]) and not engine.busy and not pending and (not acting or engine.reaction_depth > 0)
 func redraw():
@@ -173,7 +192,7 @@ func seat_area(parent: Node, p, _human: bool):
  box.add_child(status)
  UIStyle.label(status, player_name(p), 18)
  life_labels[p.seat] = readout(status, "life", p.life, 28)
- UIStyle.label(status, " · Hand %d" % p.hand.size(), 16)
+ UIStyle.label(status, " · Hand %d · Deck %d · Discard %d" % [p.hand.size(), p.deck.size(), p.discard.size()], 16)
  var row = HBoxContainer.new()
  box.add_child(row)
  var fan = Control.new()
@@ -184,6 +203,16 @@ func seat_area(parent: Node, p, _human: bool):
   fan.add_child(back)
   back.position = Vector2(i * 8, 25 + abs(i - 2) * 3)
   back.rotation = (i - 2) * 0.07
+ # Discard pile is public: show its top card face up and let the human browse it.
+ var pile = VBoxContainer.new()
+ row.add_child(pile)
+ if p.discard.is_empty():
+  var empty = UIStyle.label(pile, "Discard\nempty", 14)
+  empty.custom_minimum_size = Vector2(90, 120)
+ else:
+  pile.add_child(card_widget(p.discard.back(), "opponent", 90))
+ var opponent_name = seat_name(p.seat)
+ UIStyle.button(pile, "Discard (%d)" % p.discard.size(), func(): view_cards("%s's discard pile" % opponent_name, p.discard))
  var scroll = ScrollContainer.new()
  scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  scroll.custom_minimum_size.y = 154
@@ -448,7 +477,7 @@ func append_log(message: String):
  for i in player_count:
   if "Seat %d" % i in message: seat = i
  var display = message
- for i in player_count: display = display.replace("Seat %d" % i, "You" if i == 0 else "Bot %d" % i)
+ for i in player_count: display = display.replace("Seat %d" % i, seat_name(i))
  for verbs in [["plays", "play"], ["buys", "buy"], ["takes", "take"], ["reserves", "reserve"], ["reveals", "reveal"]]:
   display = display.replace("You " + verbs[0] + " ", "You " + verbs[1] + " ")
  log_view.append_text("[color=#%s]%s[/color]\n\n" % [colors[seat] if seat >= 0 else "a1b1bb", link_cards(display)])
@@ -459,7 +488,7 @@ func append_log(message: String):
    var name_part = message.split(" " + action + " ", true, 1)[1]
    for card in card_names:
     if name_part == card.name or name_part.begins_with(card.name + " for "):
-     spotlight(card.id, "Bot %d %s %s" % [seat, {"plays": "played", "buys": "bought", "reserves": "reserved"}[action], card.name])
+     spotlight(card.id, "%s %s %s" % [seat_name(seat), {"plays": "played", "buys": "bought", "reserves": "reserved"}[action], card.name])
      break
 func escaped(text: String) -> String:
  return text.replace("[", "[lb]")
@@ -487,6 +516,16 @@ func show_log_card(id: String):
  if not CardDB.cards.has(id): return
  show_zoom({"id": id})
  zoom.position = Vector2(maxf(0, log_view.global_position.x - 480), clampf(get_local_mouse_position().y - 300, 0, maxf(0, size.y - 635)))
+## Fades out bot spotlights so they never hide the center row during the human's turn.
+func clear_spotlights(delay: float):
+ for panel in spotlights.duplicate():
+  if not is_instance_valid(panel): continue
+  var tween = panel.create_tween()
+  tween.tween_interval(delay)
+  tween.tween_property(panel, "modulate:a", 0.0, 0.3)
+  tween.tween_callback(func():
+   spotlights.erase(panel)
+   if is_instance_valid(panel): panel.queue_free())
 func spotlight(id: String, caption: String):
  # Four side-by-side slots over the center row; wait for a free slot so cards never overlap.
  var slot = -1
@@ -497,6 +536,8 @@ func spotlight(id: String, caption: String):
     slot = i
     break
   if slot < 0: await get_tree().create_timer(0.1).timeout
+ # A queued spotlight that only gets a slot once the human's turn has begun is dropped.
+ if not is_inside_tree() or (engine.active().seat == 0 and not engine.state.finished): return
  var panel = PanelContainer.new()
  panel.set_meta("slot", slot)
  panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -519,7 +560,9 @@ func spotlight(id: String, caption: String):
  tween.tween_property(panel, "modulate:a", 1.0, 0.2)
  tween.tween_interval(4.6)
  tween.tween_property(panel, "modulate:a", 0.0, 0.2)
- tween.tween_callback(func(): spotlights.erase(panel); panel.queue_free())
+ tween.tween_callback(func():
+  spotlights.erase(panel)
+  if is_instance_valid(panel): panel.queue_free())
 func moved(_card, _from, _to):
  moved_uids[_card.uid] = true
  if _to == "hand" and _from == "deck": Sfx.play("card_draw")
