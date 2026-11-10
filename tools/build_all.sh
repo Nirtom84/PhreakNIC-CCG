@@ -12,6 +12,8 @@ VERSION="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)"
 targets=("$@")
 [ ${#targets[@]} -eq 0 ] && targets=(linux windows android web release)
 
+# Keep Godot from importing the build output (it would add .import files and pack build artefacts).
+mkdir -p build && touch build/.gdignore
 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 
 for target in "${targets[@]}"; do
