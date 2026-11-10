@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.07**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.09**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -11,7 +11,17 @@ Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 _Screenshots are from the current version and are refreshed with every release._
 
 ## Play in your browser
-**[▶ Play PhreakNIC CCG now](https://nirtom84.github.io/PhreakNIC-CCG/)**. Nothing to install. It runs in modern browsers on computers and phones; hold your phone sideways. It's tested in Chrome so far, and Firefox and Safari reports are welcome. The first visit downloads about 28 MB. Saves and settings are kept in that browser.
+**[▶ Play PhreakNIC CCG now at phreaknic-ccg.net](https://phreaknic-ccg.net)**, or use the [GitHub Pages mirror](https://nirtom84.github.io/PhreakNIC-CCG/). Nothing to install. It runs in modern browsers on computers and phones; hold your phone sideways. It's tested in Chrome so far, and Firefox and Safari reports are welcome. The first visit downloads about 28 MB. Saves and settings are kept in that browser.
+
+## Play online
+Choose **Play online** on the main menu to play other people on the official server:
+- **Open games:** browse the public games and join one with an open seat.
+- **Create game:** make a public or invite-only room for 2–4 players. Fill seats with friends or bots, and pick the card set and starting life.
+- **Join by code:** type a friend's four-character code. In a browser, an invite link like `phreaknic-ccg.net/join/CODE` opens the join straight away.
+
+The server runs every game, so nobody can see cards they shouldn't. Your menu handle and Hero are used online.
+**Leave game** keeps your seat: **Resume online game** reconnects, and a bot plays for you after two minutes away.
+Online games need everyone on the same version of the game.
 
 ## Download & play (alpha)
 The game is in **alpha testing**. Prefer an app? Grab the latest build from the [Releases page](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest):
@@ -81,18 +91,9 @@ tools/build_all.sh release    # zip the builds under stable names in build/relea
 
 One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/share/godot/export_templates/4.7.1.stable/`, JDK 17 (`~/.local/opt/jdk-17`), and the Android SDK in `~/Android/Sdk` with `platform-tools`, `build-tools;36.1.0` and `platforms;android-36`. Export settings live in `export_presets.cfg`.
 
-## Play online
-Choose **Play online** to browse public games, create a public or invite-only room,
-or join with a four-character code. Your menu handle and Hero are used online.
-Share the lobby's invite link with friends; browser links open the join flow.
-**Leave game** keeps your seat reserved; **Resume online game** reconnects after
-leaving or restarting the app. A bot covers disconnected seats after two minutes.
-Online games are saved by the server, separately from your offline save. The enabled
-Android export plugin includes Internet permission automatically.
-
-For development, set `PHREAKNIC_SERVER` (for example `http://127.0.0.1:8788`),
-or the `game/online_server` key in `user://settings.cfg`. The default service is
-`https://online-01.phreaknic-ccg.net`.
+## Online server
+The game server is the headless Godot build (the `Server` export preset, `tools/build_all.sh server`), running in Cloudflare Containers behind the Worker in `cloudflare/online/`. It's deployed with `tools/deploy_online.sh` to https://online-01.phreaknic-ccg.net. See [cloudflare/online/README.md](cloudflare/online/README.md).
+For development, point the game at another server with the `PHREAKNIC_SERVER` environment variable (for example `http://127.0.0.1:8788`) or the `game/online_server` key in `user://settings.cfg`.
 
 ## Tests
 ```bash

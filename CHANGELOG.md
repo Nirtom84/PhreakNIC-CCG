@@ -1,5 +1,27 @@
 # Changelog
 
+## v0.09 — Online play
+**Play against other people online.** The game now has an official server at online-01.phreaknic-ccg.net.
+- **Play online** on the main menu:
+  - **Open games:** browse public games with an open seat and join one.
+  - **Create game:** set up a public or invite-only room with 2–4 seats; each seat is an open human seat or a bot (Script Kiddie / Phreak / 31337 Elite). Pick the card set and starting life.
+  - **Join by code:** type a friend's four-character code.
+  - **The room lobby** shows the code and an invite link (`phreaknic-ccg.net/join/CODE` opens the browser version straight into the room). The host can add or remove bots, change settings and start.
+- **Fair play:** the server runs every game with the same rules engine as single-player. Your game only receives what you're allowed to see: other players' hands and every deck's order stay on the server.
+- **Dropped connections:** your game reconnects by itself. **Leave game** keeps your seat, and **Resume online game** on the main menu takes you back. If you're away for 2 minutes, a bot plays for you until you return. A card question nobody answers within 45 seconds is answered for you.
+- **Saving:** the server saves after every move, so a game survives a server restart.
+- **Versions:** online games need everyone on the same version of the game. An older game says so and links to the latest release.
+- **Coverage:** online play works in the Windows, Linux and Android apps and in the browser version.
+
+**Also new**
+- **The browser version's main menu** has **Get the app** links for Windows, Linux and Android, and for all releases.
+- **The web game now lives at https://phreaknic-ccg.net,** served from Cloudflare. The GitHub Pages copy stays as a mirror.
+- **Android:** the app now asks for Internet access, needed for online play.
+
+**Known rough edges** (polish planned for v0.10):
+- The online screens are plain next to the rest of the game.
+- Online bots are named "Bot".
+
 ## v0.08 — Official rules, card sheet and 3–4 player games
 This is now the **official** digital version of the FOTTR TCG. bitwize, one of the game's creators, handed over his rules research: the printed rules, the official errata v1.1 and the designer's rulings, plus an audited card transcription. The game now follows them (see `reference/rules.md`).
 
