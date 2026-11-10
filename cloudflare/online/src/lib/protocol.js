@@ -66,3 +66,13 @@ export const isOpen = r => r.public && !r.started && !r.over && summary(r).open_
 export function checkVersion(client, required) {
   if (required && client !== required) fail('version',409,{need:required});
 }
+
+export const platform = v => v===undefined?'unknown':['windows','linux','macos','android','ios','web'].includes(v)?v:'other';
+export const adminEnabled = key => typeof key==='string'&&key.length>=32;
+export function statsDays(v) {if(v===null||v===undefined)return 30;if(!/^[0-9]+$/.test(v)||Number(v)<1||Number(v)>400)fail('days');return Number(v);}
+export async function constantTimeEqual(a,b) {
+  const hash=v=>crypto.subtle.digest('SHA-256',new TextEncoder().encode(v));
+  const [x,y]=await Promise.all([hash(a),hash(b)]);const left=new Uint8Array(x),right=new Uint8Array(y);let diff=0;
+  for(let i=0;i<left.length;i++)diff|=left[i]^right[i];return diff===0;
+}
+export function creationKeys(r,p) {return ['rooms.created',r.public?'rooms.public':'rooms.invite','seats.'+r.seats.length,'pool.'+r.card_pool,'life.'+r.starting_life,'version.'+r.version,'platform.'+p];}

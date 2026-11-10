@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
-import {ALPHABET,code,validCode,token,validToken,creation,identity,settings,difficulty,originAllowed,route,wrap,summary,isOpen,checkVersion} from '../src/lib/protocol.js';
+import {ALPHABET,code,validCode,token,validToken,creation,identity,settings,difficulty,originAllowed,route,wrap,summary,isOpen,checkVersion,platform,constantTimeEqual,adminEnabled,statsDays,creationKeys} from '../src/lib/protocol.js';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 const input=()=>({name:' Nirtom ',hero:'nirtom',public:true,seats:[{bot:true,difficulty:0},{bot:false,difficulty:0}],card_pool:'2026',starting_life:0,version:'0.09'});
 test('codes use four unambiguous symbols and reject biased random bytes',()=>{
@@ -23,3 +23,9 @@ test('release version gate accepts matching or unconfigured versions',()=>{
  assert.doesNotThrow(()=>checkVersion('0.10','0.10'));
  for(const client of ['0.09','',undefined]) assert.throws(()=>checkVersion(client,'0.10'),e=>e.status===409&&e.message==='version'&&e.extra.need==='0.10');
 });
+
+test('platform normalization is bounded and keeps missing distinct',()=>{for(const p of ['windows','linux','macos','android','ios','web'])assert.equal(platform(p),p);assert.equal(platform(undefined),'unknown');for(const p of [null,'Windows','unknown','',{},42])assert.equal(platform(p),'other');});
+test('hashed constant time comparison handles all lengths',async()=>{assert(await constantTimeEqual('same','same'));assert(!await constantTimeEqual('same','diff'));assert(!await constantTimeEqual('short','a longer value'));assert(await constantTimeEqual('',''));});
+test('admin key must be configured with at least 32 characters',()=>{for(const key of [undefined,null,'','x'.repeat(31),32])assert(!adminEnabled(key));assert(adminEnabled('x'.repeat(32)));assert(adminEnabled('x'.repeat(64)));});
+test('stats ranges accept only whole days from 1 to 400',()=>{assert.equal(statsDays(null),30);assert.equal(statsDays(undefined),30);for(const n of ['1','7','30','90','365','400'])assert.equal(statsDays(n),Number(n));for(const n of ['','0','401','-1','1.5','NaN','Infinity','30x',' 7'])assert.throws(()=>statsDays(n));});
+test('creation daily keys contain only aggregate dimensions',()=>{const r=creation(input());assert.deepEqual(creationKeys(r,'linux'),['rooms.created','rooms.public','seats.2','pool.2026','life.0','version.0.09','platform.linux']);assert(creationKeys({...r,public:false},'unknown').includes('rooms.invite'));assert(!JSON.stringify(creationKeys(r,'linux')).includes('Nirtom'));assert(!('platform' in identity({...input(),platform:'web'})));assert(!('platform' in creation({...input(),platform:'web'}).seats[0]));});

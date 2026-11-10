@@ -65,3 +65,17 @@ The deploy helper reads `config/version` from project.godot and passes
 Workers Paid and Containers access are required. Each active room uses lite (256 MiB, 1/16 vCPU, 2 GB disk per the cached schema); RAM/CPU/disk runtime, Worker/DO requests, storage and nonhibernating WebSocket duration contribute to costs. The plan's rough $5/month and room-hour estimates are planning assumptions, not a verified current quote. Confirm actual pricing and configure usage alerts in Cloudflare before operating at scale. Empty rooms can bill for up to ten minutes before sleep; rate limits are per address and do not impose a global spend cap. Four-symbol codes have finite capacity; creation retries up to 100 random reservations. The SQLite reservation covers private, full and started rooms too.
 
 Pure tests need no npm install. In this sandbox the requested directory command reports one passing file-level test; running `node --test --experimental-test-isolation=none cloudflare/online/test/protocol.test.js` exposes all nine individual passing tests. `test/package.json` supplies the directory entry point for Node 22. A live smoke test must still verify Wrangler provisioning/custom domain, container runtime API, image architecture and shared libraries, embedded PCK, health/link handshake, real Godot snapshot restore and version errors, monitor exits, retries, alarms, multi-client reconnects, CORS upgrades, and local Docker dev. No cloud deployment or Docker build is performed by the test suite. Avoid request URL logging because the WebSocket URL carries a seat secret.
+
+## Admin panel
+
+Open https://online-01.phreaknic-ccg.net/admin for live public room, active game and connected client counts; daily activity, platform/version/settings breakdowns, game durations, recent games and server health. Release asset download totals load directly from public GitHub in your browser. Choose 7, 30, 90 or 365 UTC days; the API accepts 1–400 days. Daily counters are retained for 400 days and individual game rows for 90 days, so duration samples and recent games only cover retained games. Connected clients are socket counts (a player can have multiple sockets); counts become stale after 15 minutes without a Room update. Active games also require a start within 24 hours.
+
+Stats contain no player names, IP addresses or tokens. Random room codes are retained in game rows. Existing IP rate counters remain separate from stats, including failed admin authentication attempts. Create/join bodies optionally accept `platform` (`windows`, `linux`, `macos`, `android`, `ios`, `web`); missing is `unknown`, all other values are `other`. It is used only for stats and never sent to players or the container.
+
+Configure a random key of at least 32 characters using stdin from a secure generator or password manager, from `cloudflare/online/`:
+
+```sh
+npx wrangler secret put ADMIN_KEY
+```
+
+Paste the key into Wrangler's stdin prompt, then enter it in the panel. An unset or shorter key disables every admin route (404). The browser keeps the key only in sessionStorage; Lock forgets it. The stats API requires `Authorization: Bearer <key>`, allows only the panel's own Origin or no Origin, and limits failed authentication to ten attempts per IP per hour. Admin responses disable caching and have no CORS headers. Cloudflare Access can be put in front of `/admin` and `/admin/*` later for extra protection.

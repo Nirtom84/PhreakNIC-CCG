@@ -26,6 +26,9 @@ func take_turn(p):
 				if p.difficulty == 0 and ability.cost > 0: continue
 				if ability.cost > 0 and not candidates.is_empty(): continue
 				if ability.cost > 0 and want_buy(p) and not (p.difficulty == 2 and ability_wins(p, c)): continue
+				if c.effect_id() == "Nashville 2600":
+					if p.difficulty == 0 or not p.hand.any(func(x): return engine.db().get_card(x.id).kind == "Permanent"): continue
+					if (engine.state.center_row + p.reserve).any(func(x): return x != null and engine.can_buy(p, x) and ai.value(x, p) >= (1.8 if p.difficulty == 2 else 0.5)): continue
 				if c.effect_id() == "Shell Speech" and ability.index == 1 and p.difficulty > 0:
 					if not engine.opponents(p).all(func(q): return q.life <= 2): continue
 				if c.effect_id() == "Tennessee Department of Health" and p.difficulty > 0:

@@ -7,18 +7,14 @@ var difficulty: OptionButton
 var handle_input: LineEdit
 var avatar_preview: Control
 var count: OptionButton
-# Hero card art loads in the background so the picker opens instantly (a cold, synchronous load froze phones for seconds).
-var hero_icons: Dictionary = {}
-var loading_icons: Array[String] = []
-var picker_buttons: Dictionary = {}
+var hero_picker
 func _ready():
  if "--server" in OS.get_cmdline_user_args():
   get_tree().change_scene_to_file.call_deferred("res://scenes/server.tscn")
   return
  get_tree().auto_accept_quit = true
- for id in UIStyle.heroes():
-  var path = "res://assets/cards/" + id + ".jpg"
-  if ResourceLoader.load_threaded_request(path) == OK: loading_icons.append(path)
+ hero_picker = load("res://scripts/ui/hero_picker.gd").new()
+ add_child(hero_picker)
  UIStyle.rotate_prompt(self)
  UIStyle.apply(self)
  UIStyle.background(self)
@@ -259,6 +255,7 @@ func _notification(what):
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
 func go_back():
+ if is_instance_valid(hero_picker) and hero_picker.close_top(): return
  if is_instance_valid(rules_overlay): rules_overlay.queue_free()
  else: get_tree().quit()
 
@@ -274,46 +271,8 @@ func select_hero(id: String):
  refresh_avatar()
 func pick_hero():
  if is_instance_valid(rules_overlay): return
- var overlay = PanelContainer.new()
- rules_overlay = overlay
- overlay.add_to_group("touch_modal")
- add_child(overlay)
- overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
- var box = VBoxContainer.new()
- overlay.add_child(box)
- UIStyle.label(box, "Pick a Hero", 26)
- var scroll = ScrollContainer.new()
- scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
- box.add_child(scroll)
- TouchInput.register_scroll(scroll)
- var grid = GridContainer.new()
- grid.columns = 6
- scroll.add_child(grid)
- for id in UIStyle.heroes():
-  var button = UIStyle.button(grid, str(CardDB.cards[id].name), func(): select_hero(id); overlay.queue_free())
-  var path = "res://assets/cards/" + id + ".jpg"
-  if hero_icons.has(path): button.icon = hero_icons[path]
-  elif path in loading_icons: picker_buttons[path] = button
-  else: button.icon = load(path)
-  button.expand_icon = true
-  button.custom_minimum_size = Vector2(170, 260)
-  button.clip_text = true
-  button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-  button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
-  button.add_theme_constant_override("icon_max_width", 160)
- UIStyle.button(box, "Back", overlay.queue_free)
- UIStyle.dialog(overlay, Vector2(1100, 900))
+ rules_overlay = hero_picker.open(select_hero)
 
-func _process(_delta):
- for i in range(loading_icons.size() - 1, -1, -1):
-  var path = loading_icons[i]
-  var status = ResourceLoader.load_threaded_get_status(path)
-  if status == ResourceLoader.THREAD_LOAD_IN_PROGRESS: continue
-  loading_icons.remove_at(i)
-  if status != ResourceLoader.THREAD_LOAD_LOADED: continue
-  hero_icons[path] = ResourceLoader.load_threaded_get(path)
-  if picker_buttons.has(path) and is_instance_valid(picker_buttons[path]): picker_buttons[path].icon = hero_icons[path]
-  picker_buttons.erase(path)
 func start():
  if SaveGame.read().is_empty(): launch(); return
  if await confirm("Start a new game? Your saved game will be replaced.", "Yes, new game", "Keep my save"):

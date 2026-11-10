@@ -44,6 +44,7 @@ When prevention offers a choice, use − and + to split all required absorption,
 - [b]Play online[/b] browses public games or creates a room for friends. Share its invite link or join by code. Leave game keeps your seat for [b]Resume online game[/b]; the server saves online progress.
 - In a web browser, saves and settings are stored in that browser. Hold phones sideways to play.
 - Permanents with abilities show buttons under them.
+- The [b]IN EFFECT[/b] strip above the Center Row lists cards that change the rules for everyone, such as Nashville 2600. Tap a warning to read the card and see what you can do about it.
 - Hover over cards or Network Log card names on desktop to see a larger image.
 - Drag to scroll on touch screens.
 - When you have nothing left to do, your turn ends by itself after a moment. Turn [b]Auto-end turn[/b] off on the main menu or in the in-game menu if you prefer to press End Turn yourself.

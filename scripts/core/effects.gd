@@ -1140,7 +1140,7 @@ func abilities(p, c) -> Array:
 	var result: Array = []
 	if c not in e.permanents(): return result
 	if c.effect_id() == "Nashville 2600":
-		return [{"index": 0, "label": "Pay 6 hacking: remove Nashville 2600", "enabled": e.is_turn(p) and p.hacking >= 6, "cost": 6}]
+		return [{"index": 0, "label": "Pay 6 Hacking: remove Nashville 2600", "enabled": e.is_turn(p) and p.hacking >= 6, "cost": 6}]
 	if c.controller != p.seat: return result
 	var id = c.effect_id()
 	if id in FREE_ONCE:

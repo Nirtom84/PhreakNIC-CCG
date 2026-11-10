@@ -149,7 +149,7 @@ func _watch_over():
 	game.engine.game_over.connect(func(winner):
 		var seat = winner.seat if winner != null else -1
 		print("room %s game over winner=%d" % [room, seat])
-		_send({"t": "over", "winner": seat}))
+		_send({"t": "over", "winner": seat, "turns": game.engine.state.turn}))
 func _receive(message: Dictionary):
 	match message.get("t"):
 		"ping": _send({"t": "pong"})
@@ -168,8 +168,11 @@ func _receive(message: Dictionary):
 				_watch_over()
 				print("room %s restore" % room)
 				if game.engine.state.finished:
-					_send({"t": "over", "winner": game.engine.state.winner.seat if game.engine.state.winner != null else -1})
-			else: push_error("room %s restore failed" % room)
+					_send({"t": "over", "winner": game.engine.state.winner.seat if game.engine.state.winner != null else -1, "turns": game.engine.state.turn})
+			else:
+				# A snapshot from another server version can't be resumed: end the game cleanly instead of leaving players waiting.
+				push_error("room %s restore failed" % room)
+				_send({"t": "over", "winner": -1, "reason": "restore_failed"})
 		"connect", "disconnect", "from":
 			if game == null: return
 			var seat = message.get("seat")

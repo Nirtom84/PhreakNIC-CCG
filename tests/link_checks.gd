@@ -163,7 +163,16 @@ func run():
  wire.send({"t": "restore", "room": "TEST", "snapshot": checkpoint})
  connect_clients()
  await finish()
+ verify(messages.any(func(m): return m.t == "over" and m.get("turns", 0) > 0), "Over reports the turn count")
  await clear_clients()
+ # A snapshot from another server version ends the game cleanly instead of hanging.
+ var stale = checkpoint.duplicate(true)
+ stale.version = "0.00"
+ messages.clear()
+ over = false
+ wire.send({"t": "restore", "room": "TEST", "snapshot": stale})
+ verify(await until(func(): return over, 600), "A snapshot from another version sends over")
+ verify(messages.any(func(m): return m.t == "over" and m.winner == -1 and m.get("reason") == "restore_failed"), "The failed restore says why")
  # With no humans connected, takeover still runs on the server.
  saved = {}
  await setup()

@@ -3,11 +3,18 @@
 ## v0.10 — Online polish
 **Online play gets the neon HUD treatment.**
 - **Online home and room lobby:** panels, avatars, clearer seat status, larger touch controls and an easier-to-read room code. Copying an invite shows a confirmation.
+- **Your online identity:** set your handle and pick a Hero right on the online screen, using the same Hero picker as the main menu.
 - **Open games:** see the host, seats, bot difficulties, card set and starting life before joining, with a friendly message when no games are open.
 - **Ready to start:** the lobby explains when human seats still need filling and shows progress while the game server starts.
 - **Bot identities:** online bots get unique Hero names and avatars from the selected card set, kept when the server restores a game.
-- **Versions:** creating or joining a room checks the server's current game version and links to the update when needed.
 - **Waiting for friends:** a small banner shows who is choosing, without revealing their cards or choices.
+- **Versions:** creating or joining a room checks the server's current game version and links to the update when needed.
+- **Server updates:** games in progress carry on through server updates. If an update means a game can't be resumed, players are told instead of being left waiting.
+
+**At the table**
+- **IN EFFECT:** warnings above the Center Row explain cards that change the rules for everyone (Nashville 2600, Touch Grass, Clarion Inn Air Conditioning and more), show who controls them, and open the card sheet. A banner also appears when one comes into play.
+- **Nashville 2600:** the sheet explains why your permanents can't be played, and anyone can pay 6 Hacking on their turn to remove it, whoever controls it.
+- **Smarter bots:** Phreak and 31337 Elite spend leftover Hacking to remove Nashville 2600 when it blocks a permanent in their hand.
 
 ## v0.09 — Online play
 **Play against other people online.** The game now has an official server at online-01.phreaknic-ccg.net.

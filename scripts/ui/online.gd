@@ -1,5 +1,9 @@
 extends Control
 var api
+var handle_input: LineEdit
+var avatar_preview: Control
+var hero_picker
+var hero_overlay: Control
 var session: OnlineSession
 var content: VBoxContainer
 var message: Label
@@ -27,6 +31,8 @@ func _ready():
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  UIStyle.apply(self)
  UIStyle.background(self)
+ hero_picker = load("res://scripts/ui/hero_picker.gd").new()
+ add_child(hero_picker)
  if api == null:
   api = OnlineAPI.new()
   add_child(api)
@@ -69,6 +75,26 @@ func browser():
  left.size_flags_stretch_ratio = 1.1
  left.add_theme_constant_override("separation", 18)
  columns.add_child(left)
+ var you = section(left, "// YOU")
+ var identity_row = HBoxContainer.new()
+ you.add_child(identity_row)
+ avatar_preview = UIStyle.avatar(Sfx.hero_id)
+ identity_row.add_child(avatar_preview)
+ handle_input = LineEdit.new()
+ handle_input.max_length = 16
+ handle_input.placeholder_text = "You"
+ handle_input.text = Sfx.handle
+ handle_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ identity_row.add_child(handle_input)
+ action(identity_row, "Pick a Hero", pick_hero)
+ handle_input.text_changed.connect(func(value):
+  Sfx.handle = Sfx.clean_handle(value)
+  Sfx.hero_id = ""
+  handle_input.text = value.replace("[", "").replace("]", "")
+  handle_input.caret_column = handle_input.text.length()
+  refresh_avatar()
+  Sfx.save())
+ handle_input.focus_exited.connect(func(): handle_input.text = Sfx.handle)
  var create = section(left, "// CREATE GAME", true)
  public_choice = CheckButton.new()
  public_choice.text = "Public game · switch off for invite only"
@@ -153,7 +179,7 @@ func option(parent, labels: Array, selected: int = 0) -> OptionButton:
  parent.add_child(choice)
  return choice
 func identity() -> Dictionary:
- return {"name": Sfx.handle.left(16) if not Sfx.handle.is_empty() else "You", "hero": Sfx.hero_id, "version": str(ProjectSettings.get_setting("application/config/version", ""))}
+ return {"name": Sfx.handle.left(16) if not Sfx.handle.is_empty() else "You", "hero": Sfx.hero_id, "version": str(ProjectSettings.get_setting("application/config/version", "")), "platform": OS.get_name().to_lower()}
 func create_game():
  if submitting: return
  submitting = true
@@ -214,6 +240,8 @@ func refresh_rooms():
   UIStyle.label(box, " · ".join(seats), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
   UIStyle.label(box, SETS[0 if room.card_pool == "2025" else 1] + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 func enter(data: Dictionary):
+ while hero_picker.close_top(): pass
+ hero_overlay = null
  message.text = "Connecting…"
  in_lobby = true
  clear_content()
@@ -321,10 +349,29 @@ func _exit_tree():
 
 func _notification(what):
  if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+  if hero_picker.close_top(): return
   if in_lobby: leave_lobby()
   else: back()
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"):
+  if hero_picker.close_top():
+   get_viewport().set_input_as_handled()
+   return
   if in_lobby: leave_lobby()
   else: back()
   get_viewport().set_input_as_handled()
+
+func refresh_avatar():
+ var replacement = UIStyle.avatar(Sfx.hero_id)
+ avatar_preview.get_child(0).texture = replacement.get_child(0).texture
+ replacement.free()
+func select_hero(id: String):
+ if in_lobby: return
+ Sfx.hero_id = id
+ Sfx.handle = str(CardDB.cards[id].name)
+ handle_input.text = Sfx.handle.left(16)
+ refresh_avatar()
+ Sfx.save()
+func pick_hero():
+ if in_lobby or is_instance_valid(hero_overlay): return
+ hero_overlay = hero_picker.open(select_hero)

@@ -57,6 +57,7 @@ func _message(data: Dictionary):
 		"welcome": attempts = 0; set_status("Connected")
 		"game_over", "over":
 			OnlineAPI.remember({})
+			if data.get("reason") == "restore_failed": set_status("The server was updated, so this game couldn't be resumed. Start a new one from Play online.")
 			finished.emit(int(data.get("winner", -1)))
 func lobby(action: String, fields: Dictionary = {}):
 	var message = fields.duplicate()

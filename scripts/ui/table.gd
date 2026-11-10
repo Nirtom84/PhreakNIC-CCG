@@ -52,6 +52,7 @@ var previous_hack: Dictionary = {}
 var moved_uids: Dictionary = {}
 var opening_rickroll = null
 var incoming_source: String = "another player"
+var table_rule_uids: Array = []
 func _ready():
  install_page_listeners()
  get_tree().auto_accept_quit = false
@@ -223,11 +224,38 @@ func redraw():
  region(canvas, opponents, Vector2(0, 0), Vector2(width, 220), "// REMOTE HOSTS")
  for p in engine.state.players:
   if p.seat != human_seat: seat_area(opponents, p, false)
+ var active_rules = engine.permanents().filter(func(c): return not CardDB.get_card(c.effect_id()).get("table_rule", "").is_empty())
+ var next_uids = active_rules.map(func(c): return c.uid)
+ var entered = active_rules.filter(func(c): return c.uid not in table_rule_uids)
+ table_rule_uids = next_uids
+ if not entered.is_empty():
+  show_notice(" · ".join(entered.map(func(c): return CardDB.get_card(c.effect_id()).name + " is in play: " + CardDB.get_card(c.effect_id()).table_rule)), 7.0)
+ if not active_rules.is_empty():
+  var strip = HBoxContainer.new()
+  strip.name = "InEffect"
+  canvas.add_child(strip)
+  strip.position = Vector2(0, 220)
+  strip.size = Vector2(width, 56)
+  UIStyle.label(strip, "⚠ IN EFFECT", 14).add_theme_color_override("font_color", UIStyle.AMBER)
+  var rule_scroll = ScrollContainer.new()
+  rule_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  rule_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+  strip.add_child(rule_scroll)
+  TouchInput.register_scroll(rule_scroll)
+  var chips = HBoxContainer.new()
+  rule_scroll.add_child(chips)
+  for c in active_rules:
+   var data = CardDB.get_card(c.effect_id())
+   var chip = UIStyle.button(chips, data.name + " · " + seat_name(c.controller) + "\n" + data.table_rule, func(): inspect_card(c, true))
+   chip.set_meta("table_rule_uid", c.uid)
+   chip.add_theme_font_size_override("font_size", 13)
+   chip.add_theme_color_override("font_color", UIStyle.AMBER)
+ # Reserve room for the strip and its scrollbar without overlapping the rig below.
  var center = HBoxContainer.new()
  center.add_theme_constant_override("separation", maxi(18, int((width - 1120) / 5)))
- region(canvas, center, Vector2(0, 240), Vector2(width, 300), "// CENTER ROW")
+ region(canvas, center, Vector2(0, 296 if not active_rules.is_empty() else 240), Vector2(width, 252 if not active_rules.is_empty() else 300), "// CENTER ROW")
  for c in engine.state.center_row:
-  if c != null: center.add_child(card_widget(c, "market", 170))
+  if c != null: center.add_child(card_widget(c, "market", 135 if not active_rules.is_empty() else 170))
   else:
    var slot = UIStyle.panel()
    slot.custom_minimum_size = Vector2(170, 233)
@@ -450,7 +478,7 @@ func card_widget(c, zone: String, width: int) -> Control:
   readout(cost, "hack", engine.effective_cost(human, c), 16)
  return box
 func card_clicked(c, zone: String):
- if zone in ["market", "reserve", "permanent"]:
+ if zone in ["market", "reserve", "permanent", "opponent"]:
   inspect_card(c, true)
   return
  if not available(): return
@@ -1003,6 +1031,11 @@ func inspect_card(c, interactive: bool = false):
   UIStyle.label(box, "ICE: %d · Owner: %s" % [c.counters, seat_name(c.owner)], 18)
   if c.controller != c.owner: UIStyle.label(box, "Controller: " + seat_name(c.controller), 18)
   if c.flags.get("used", false): UIStyle.label(box, "Used this turn", 18)
+ if c is CardInstance and c in p.hand and data.kind == "Permanent" and not engine.can_play(p, c) and engine.permanents().any(func(x): return x.effect_id() == "Nashville 2600"):
+  UIStyle.label(box, "Nashville 2600 is in play: no one can play permanents.", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ if c is CardInstance and available() and c in engine.permanents():
+  for ability in engine.activatable_abilities(p, c):
+   if ability.enabled: UIStyle.button(box, ability.label, sheet_activate.bind(c, ability.index))
  if interactive and available():
   if c in engine.state.center_row or c in p.reserve:
    var buy = UIStyle.button(box, "Buy — %d Hacking" % cost, sheet_buy.bind(c))
@@ -1015,8 +1048,6 @@ func inspect_card(c, interactive: bool = false):
    elif can_reserve: hint = "If you reserve, you can't buy or acquire anything else this turn"
    if hint != "": UIStyle.label(box, hint, 16).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
   if c in p.hand and engine.can_play(p, c): UIStyle.button(box, "Play", func(): close_inspect(); card_clicked(c, "hand"))
-  for ability in engine.activatable_abilities(p, c):
-   if ability.enabled: UIStyle.button(box, ability.label, sheet_activate.bind(c, ability.index))
  UIStyle.button(box, "Close", close_inspect)
  for control in box.get_children():
   if control is Button:
@@ -1089,7 +1120,7 @@ func nothing_left() -> bool:
   if c != null and (engine.can_buy(p, c) or engine.can_reserve(p, c)): return false
  for c in p.reserve:
   if engine.can_buy(p, c): return false
- for c in p.play_area:
+ for c in engine.permanents():
   for ability in engine.activatable_abilities(p, c):
    if ability.enabled: return false
  return true
