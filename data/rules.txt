@@ -32,6 +32,11 @@
 - [b]ICE counters[/b]: when you would take damage, each point removes one counter from your location instead. Damage beyond the counters left goes through to your life.
 
 [h2]Playing This Version[/h2]
+- On touch screens, tap to play or buy.
+- Press and hold any card to read it full size; tap anywhere to close.
+- Tap a card name in the Network Log to see it.
+- Drag to scroll.
+- The Back button asks before leaving a game.
 - Click a card in your hand to play it, or press [b]Play All[/b].
 - Click a Center Row card to buy or reserve it. Click your reserved card to buy it.
 - Permanents with abilities show buttons under them.

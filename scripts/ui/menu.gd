@@ -1,5 +1,6 @@
 extends Control
 const PLAYER_COUNTS = [2] # Add 3 and 4 here to enable additional seats.
+var rules_overlay: Control
 var difficulty: OptionButton
 var count: OptionButton
 func _ready():
@@ -134,7 +135,9 @@ func start():
  get_tree().current_scene = table
  queue_free()
 func rules():
+ if is_instance_valid(rules_overlay): return
  var overlay = UIStyle.panel("// FIELD MANUAL")
+ rules_overlay = overlay
  overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  add_child(overlay)
  var box = VBoxContainer.new()
@@ -149,4 +152,13 @@ func rules():
  text.add_theme_color_override("default_color", UIStyle.TEXT)
  text.text = UIStyle.rules_bbcode(FileAccess.get_file_as_string("res://data/rules.txt"))
  box.add_child(text)
+ TouchInput.register_scroll(text)
  UIStyle.button(box, "Back", overlay.queue_free)
+
+func _notification(what):
+ if what == NOTIFICATION_WM_GO_BACK_REQUEST: go_back()
+func _unhandled_key_input(event):
+ if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
+func go_back():
+ if is_instance_valid(rules_overlay): rules_overlay.queue_free()
+ else: get_tree().quit()

@@ -15,6 +15,7 @@ var log_view: RichTextLabel
 var banner: Label
 var play_button: Button
 var end_button: Button
+var inspect_overlay: CanvasLayer
 var zoom: PanelContainer
 var life_labels: Dictionary = {}
 var textures: Dictionary = {}
@@ -64,17 +65,19 @@ func _ready():
  log_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
  log_view.scroll_following = true
  log_view.meta_underlined = true
- log_view.meta_hover_started.connect(func(id): show_log_card(str(id)))
+ log_view.meta_hover_started.connect(func(id):
+  if not TouchInput.touch_mode: show_log_card(str(id)))
  log_view.meta_hover_ended.connect(func(_id): hide_zoom())
  log_view.meta_clicked.connect(func(id): show_log_card(str(id)))
  side.add_child(log_view)
+ TouchInput.register_scroll(log_view)
  var cursor = UIStyle.label(side, "> _", 18)
  cursor.add_theme_color_override("font_color", UIStyle.CYAN)
  if Sfx.visual_effects:
   var blink = create_tween().set_loops()
   blink.tween_property(cursor, "modulate:a", 0.0, 0.6)
   blink.tween_property(cursor, "modulate:a", 1.0, 0.6)
- UIStyle.label(side, "Hover / right-click to inspect", 14)
+ UIStyle.label(side, "Right-click or long-press to inspect", 14)
  engine = GameEngine.new()
  add_child(engine)
  var choices: Array = [scripted_decider if scripted_decider != null else HumanDecider.new(self)]
@@ -154,6 +157,7 @@ func redraw():
  UIStyle.button(piles, "Removed: %d" % engine.state.removed.size(), func(): view_cards("Removed from game", engine.state.removed))
  var p = engine.state.players[0]
  var board_scroll = ScrollContainer.new()
+ TouchInput.register_scroll(board_scroll)
  region(canvas, board_scroll, Vector2(0, 560), Vector2(850, 194), "// YOUR RIG & RESERVED")
  board_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
  var board = HBoxContainer.new()
@@ -262,6 +266,7 @@ func seat_area(parent: Node, p, _human: bool):
  var opponent_name = seat_name(p.seat)
  UIStyle.button(pile, "Discard (%d)" % p.discard.size(), func(): view_cards("%s's discard pile" % opponent_name, p.discard))
  var scroll = ScrollContainer.new()
+ TouchInput.register_scroll(scroll)
  scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  scroll.custom_minimum_size.y = 137
  scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -279,7 +284,7 @@ func card_widget(c, zone: String, width: int) -> Control:
  box.set_meta("zone", zone)
  var button = Button.new()
  button.custom_minimum_size = Vector2(width, width * 1.367)
- button.tooltip_text = engine.db().get_card(c.id).name + "\nRight-click to inspect"
+ button.tooltip_text = engine.db().get_card(c.id).name + "\nRight-click or long-press to inspect"
  box.add_child(button)
  if moved_uids.has(c.uid):
   button.modulate.a = 0.25
@@ -301,10 +306,12 @@ func card_widget(c, zone: String, width: int) -> Control:
  button.add_theme_stylebox_override("normal", card_style)
  button.add_theme_stylebox_override("hover", hover_border())
  button.add_theme_stylebox_override("pressed", hover_border())
+ TouchInput.register_card(button, func(): inspect_card(c))
  button.pressed.connect(func(): card_clicked(c, zone))
  button.gui_input.connect(func(event):
   if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed: show_zoom(c))
  button.mouse_entered.connect(func():
+  if TouchInput.touch_mode: return
   hover_serial += 1
   var serial = hover_serial
   if zone == "hand":
@@ -312,7 +319,7 @@ func card_widget(c, zone: String, width: int) -> Control:
    button.position.y = -30
   button.add_theme_stylebox_override("normal", hover_border())
   await get_tree().create_timer(0.4).timeout
-  if is_instance_valid(button) and serial == hover_serial and not pending: show_zoom(c))
+  if is_instance_valid(button) and serial == hover_serial and not pending and not TouchInput.touch_mode: show_zoom(c))
  button.mouse_exited.connect(func():
   hover_serial += 1
   if is_instance_valid(button):
@@ -367,7 +374,9 @@ func card_clicked(c, zone: String):
    acting = true
    await engine.buy_card(p, c)
    acting = false
-  elif options[selected] == "Inspect": show_zoom(c)
+  elif options[selected] == "Inspect":
+   if TouchInput.touch_mode: inspect_card(c)
+   else: show_zoom(c)
  redraw()
 func activate_card(c, index: int):
  if not available(): return
@@ -413,6 +422,7 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  pending = true
  redraw()
  var overlay = UIStyle.panel("// SECURE INPUT")
+ overlay.add_to_group("touch_modal")
  overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  add_child(overlay)
  var box = VBoxContainer.new()
@@ -424,6 +434,7 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  box.add_child(search)
  var counter = UIStyle.label(box, "Select %d–%d" % [min_n, max_n])
  var scroll = ScrollContainer.new()
+ TouchInput.register_scroll(scroll)
  scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
  box.add_child(scroll)
  var grid = GridContainer.new()
@@ -452,7 +463,8 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
    b.icon = texture_for(cards[i].id)
    b.expand_icon = true
    b.custom_minimum_size = Vector2(170, 233)
-   b.tooltip_text = engine.db().get_card(cards[i].id).name
+   TouchInput.register_card(b, func(): inspect_card(cards[i]))
+   b.tooltip_text = engine.db().get_card(cards[i].id).name + "\nRight-click or long-press to inspect"
    b.gui_input.connect(func(event):
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed: show_zoom(cards[i]))
    b.mouse_exited.connect(hide_zoom)
@@ -484,6 +496,7 @@ func view_cards(title: String, cards: Array):
  if pending or engine.busy or driving or acting: return
  await decision(title, ["Close"] if cards.is_empty() else [], cards, 0, 0, true)
 func show_zoom(c):
+ if TouchInput.touch_mode: return
  hide_zoom()
  zoom = PanelContainer.new()
  zoom.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -583,6 +596,9 @@ func word_character(character: String) -> bool:
 func show_log_card(id: String):
  id = id.uri_decode()
  if not CardDB.cards.has(id): return
+ if TouchInput.touch_mode:
+  inspect_card({"id": id})
+  return
  show_zoom({"id": id})
  zoom.position = Vector2(maxf(0, log_view.global_position.x - 480), clampf(get_local_mouse_position().y - 300, 0, maxf(0, size.y - 635)))
 ## Fades out bot spotlights so they never hide the center row during the human's turn.
@@ -689,3 +705,63 @@ func flash_readout(node: Control):
  if not Sfx.visual_effects: return
  node.modulate = Color(1.5, 1.5, 1.5)
  node.create_tween().tween_property(node, "modulate", Color.WHITE, 0.35)
+
+func inspect_card(c):
+ hide_zoom()
+ hover_serial += 1
+ close_inspect()
+ inspect_overlay = CanvasLayer.new()
+ inspect_overlay.layer = 100
+ inspect_overlay.add_to_group("touch_modal")
+ add_child(inspect_overlay)
+ var dim = ColorRect.new()
+ dim.color = Color(0, 0, 0, 0.7)
+ dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ inspect_overlay.add_child(dim)
+ var image = TextureRect.new()
+ image.texture = texture_for(c.id)
+ image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+ image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+ image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ dim.add_child(image)
+ image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ image.offset_top = 20
+ image.offset_bottom = -65
+ var hint = UIStyle.label(dim, "Tap anywhere to close", 22)
+ hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+ hint.offset_top = -55
+ hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ dim.gui_input.connect(func(event):
+  if (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
+   dim.accept_event()
+   # Keep the blocker through release, so the closing gesture cannot hit the table.
+   dim.set_meta("closing", true)
+   image.hide()
+   hint.hide()
+  elif dim.has_meta("closing") and ((event is InputEventScreenTouch and not event.pressed) or (event is InputEventMouseButton and not event.pressed)):
+   dim.accept_event()
+   close_inspect())
+func close_inspect():
+ if is_instance_valid(inspect_overlay):
+  remove_child(inspect_overlay)
+  inspect_overlay.queue_free()
+ inspect_overlay = null
+func _notification(what):
+ if what == NOTIFICATION_WM_GO_BACK_REQUEST: go_back()
+func _unhandled_key_input(event):
+ if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
+func go_back():
+ if is_instance_valid(inspect_overlay): close_inspect(); return
+ if pending: return
+ var choice = await decision("Leave this game?", ["Leave", "Keep playing"], [], 1, 1, false)
+ if choice == 0: menu()
+
+func _input(event):
+ if event is InputEventScreenTouch or event is InputEventScreenDrag or (event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION):
+  hover_serial += 1
+  hide_zoom()
+  for control in TouchInput.cards:
+   if is_ancestor_of(control) and control.get_parent().get_meta("zone", "") == "hand":
+    control.position.y = 0
+    control.get_parent().z_index = 0
