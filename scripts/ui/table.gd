@@ -45,8 +45,10 @@ var auto_end_turn_number: int = -1
 var previous_hack: Dictionary = {}
 var moved_uids: Dictionary = {}
 func _ready():
+ install_page_listeners()
  get_tree().auto_accept_quit = false
  fast = (fast or Sfx.bot_fast) if resume_data.is_empty() else resume_data.table.fast
+ UIStyle.rotate_prompt(self)
  UIStyle.apply(self)
  UIStyle.background(self)
  resized.connect(func(): if engine != null and engine.state != null: redraw.call_deferred())
@@ -825,7 +827,9 @@ func menu():
  save_status = UIStyle.label(box, "", 16)
  save_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  UIStyle.button(box, "Main menu", leave_game.bind(false)).custom_minimum_size.y = 56
- UIStyle.button(box, "Exit game", leave_game.bind(true)).custom_minimum_size.y = 56
+ var exit_button = UIStyle.button(box, "Exit game", leave_game.bind(true))
+ exit_button.custom_minimum_size.y = 56
+ exit_button.visible = not UIStyle.is_web()
  update_save_button()
  var fit_menu = func():
   scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y, get_viewport_rect().size.y - panel.position.y - 40)
@@ -989,3 +993,26 @@ func _process(delta):
  if auto_end_elapsed >= 1.2:
   auto_end_elapsed = 0
   end_human_turn()
+
+# Keep both callbacks alive until their listeners have been removed.
+var page_window
+var visibility_callback
+var pagehide_callback
+func install_page_listeners():
+ if not UIStyle.is_web(): return
+ page_window = JavaScriptBridge.get_interface("window")
+ if page_window == null: return # Headless tests with the web override.
+ visibility_callback = JavaScriptBridge.create_callback(func(_args):
+  if page_window.document.hidden: page_hidden())
+ pagehide_callback = JavaScriptBridge.create_callback(func(_args): page_hidden())
+ page_window.document.addEventListener("visibilitychange", visibility_callback)
+ page_window.addEventListener("pagehide", pagehide_callback)
+func page_hidden():
+ if UIStyle.is_web(): save_game()
+func _exit_tree():
+ if not UIStyle.is_web() or page_window == null: return
+ page_window.document.removeEventListener("visibilitychange", visibility_callback)
+ page_window.removeEventListener("pagehide", pagehide_callback)
+ visibility_callback = null
+ pagehide_callback = null
+ page_window = null

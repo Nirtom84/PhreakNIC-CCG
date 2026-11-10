@@ -1,6 +1,6 @@
 extends Node
 # Observe input before Control routing, including emulated mouse events.
-var touch_mode: bool = OS.has_feature("mobile")
+var touch_mode: bool = UIStyle.is_touch_platform()
 var cards: Array[Control] = []
 var scrollers: Array[Control] = []
 var pressed_button: BaseButton
@@ -37,9 +37,16 @@ func reset_button():
   pressed_button.disabled = true
   pressed_button.disabled = was_disabled
 func _input(event):
+ for cover in get_tree().get_nodes_in_group("rotate_cover"):
+  if cover.is_visible_in_tree():
+   active = false
+   serial += 1
+   reset_button()
+   get_viewport().set_input_as_handled()
+   return
  if event is InputEventScreenTouch or event is InputEventScreenDrag or ((event is InputEventMouse) and event.device == InputEvent.DEVICE_ID_EMULATION):
   touch_mode = true
- elif event is InputEventMouseMotion and not OS.has_feature("mobile"):
+ elif event is InputEventMouseMotion and not UIStyle.is_touch_platform():
   touch_mode = false
  var screen = event is InputEventScreenTouch or event is InputEventScreenDrag
  # Screen events own the gesture; ignore their duplicate mouse stream.

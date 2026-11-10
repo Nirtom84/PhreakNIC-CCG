@@ -10,6 +10,19 @@ const GREEN = Color("6dff9a")
 const MUTED = Color("9fb3bd")
 const TEXT = Color("d9f2ea")
 const HUD = preload("res://scripts/ui/hud_panel.gd")
+# Null uses the real platform; tests can simulate browser features.
+static var web_override = null
+static var web_android_override = null
+static var web_ios_override = null
+static func is_web() -> bool:
+ return OS.has_feature("web") if web_override == null else bool(web_override)
+static func is_touch_platform() -> bool:
+ var android = OS.has_feature("web_android") if web_android_override == null else bool(web_android_override)
+ var ios = OS.has_feature("web_ios") if web_ios_override == null else bool(web_ios_override)
+ return OS.has_feature("mobile") or (is_web() and (android or ios))
+static func rotate_prompt(parent: Control):
+ if is_web(): parent.add_child(load("res://scripts/ui/rotate_prompt.gd").new())
+
 static var display_font: FontVariation
 static func heading() -> Font:
  if display_font == null:

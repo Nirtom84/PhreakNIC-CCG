@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.06**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.07**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -10,8 +10,11 @@ Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
 _Screenshots are from the current version and are refreshed with every release._
 
+## Play in your browser
+**[▶ Play PhreakNIC CCG now](https://nirtom84.github.io/PhreakNIC-CCG/)**. Nothing to install. It runs in modern browsers on computers and phones; hold your phone sideways. It's tested in Chrome so far, and Firefox and Safari reports are welcome. The first visit downloads about 28 MB. Saves and settings are kept in that browser.
+
 ## Download & play (alpha)
-The game is in **alpha testing**. Grab the latest build from the [Releases page](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest):
+The game is in **alpha testing**. Prefer an app? Grab the latest build from the [Releases page](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest):
 
 | Platform | Download | How to run |
 |---|---|---|
@@ -59,12 +62,14 @@ documented in [RULES_NOTES.md](RULES_NOTES.md). Design and architecture: [DESIGN
 ## Sound
 Retro sounds have menu volume/mute controls and a table mute button. Regenerate the WAV files from the project root with `python3 tools/make_sounds.py`.
 
-## Building Linux, Windows and Android versions
+## Building Linux, Windows, Android and Web versions
 ```bash
-tools/build_all.sh            # all three, into build/, then packaged into build/release/
-tools/build_all.sh android    # or just one: linux | windows | android
+tools/build_all.sh            # all four, into build/, then packaged into build/release/
+tools/build_all.sh android    # or just one: linux | windows | android | web
 tools/build_all.sh release    # zip the builds under stable names in build/release/ for a GitHub Release
 ```
+- **Web**: `tools/build_all.sh web` produces a static site in `build/web/`; serve it over HTTP(S), rather than opening `file://`.
+- **GitHub Pages**: `tools/deploy_pages.sh` publishes `build/web/` to the `gh-pages` branch, which GitHub serves at https://nirtom84.github.io/PhreakNIC-CCG/. The branch is replaced on every deploy, so old web builds don't pile up in the repo's history.
 - **Linux**: `build/linux/PhreakNIC-CCG-v<version>.x86_64` — a single file, run it directly.
 - **Windows**: `build/windows/PhreakNIC-CCG-v<version>.exe` — a single file, double-click it.
 - **Android**: `build/android/PhreakNIC-CCG-v<version>-debug.apk` — install with `adb install` or by copying it to the phone (allow "install unknown apps"). It is signed with the standard debug key; publishing on Google Play needs a release keystore.
@@ -80,6 +85,7 @@ godot4.7.1 --headless --path . -s tests/touch_checks.gd  # taps, long-press, dra
 godot4.7.1 --headless --path . -s tests/v05_checks.gd    # auto-end turn, dialog sizing, wide screens, Hero avatars
 godot4.7.1 --headless --path . -s tests/save_checks.gd   # save/resume round trips and the in-game menu
 godot4.7.1 --headless --path . -s tests/v06_checks.gd    # 2025 / 2026 card sets
+godot4.7.1 --headless --path . -s tests/v07_checks.gd    # browser version: hidden Quit/Exit, rotate prompt, save on leaving the page
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot
 ```
 

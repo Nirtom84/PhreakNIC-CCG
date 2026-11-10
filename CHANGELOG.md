@@ -1,5 +1,15 @@
 # Changelog
 
+## v0.07 — Play in your browser
+- **[Play in your browser](https://nirtom84.github.io/PhreakNIC-CCG/)** on GitHub Pages: no install, runs on computers and phones. iPhone owners can play in Safari instead of needing an app. Tested in Chrome so far.
+- In a browser:
+  - **Saves and settings:** kept in that browser.
+  - **Leaving:** closing or switching away from the tab saves your game on your turn, the same way the phone app does.
+  - **Phones:** a phone held upright shows "Turn your phone sideways", since the game plays in landscape. Touch controls switch on automatically in phone browsers.
+  - **Quit and Exit:** hidden, because a web page can't close itself.
+- The loading screen uses the game's dark background and the FOTTR logo, instead of the Godot logo, on every platform.
+- Smaller downloads everywhere: card images are now stored as compressed WebP instead of lossless, cutting the card art in the game from about 45 MB to about 16 MB.
+
 ## v0.06 — Choose your card set: PhreakNIC 2025 or 2026
 - New **Card set** choice on the main menu:
   - **PhreakNIC 2025**: the base game, a 102-card Center Deck.

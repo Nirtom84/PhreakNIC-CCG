@@ -23,6 +23,8 @@ func run():
 	var out: String = args[0]
 	var target: int = int(args[1]) if args.size() > 1 else 8
 	var keep_hand: bool = args.size() > 2 and args[2] == "hand"
+	# Auto-end would end the last turn during the wait below and catch the bot mid-turn; switch it off for this run only (not saved).
+	root.get_node("Sfx").auto_end_turn = false
 	table = load("res://scenes/table.tscn").instantiate()
 	root.add_child(table)
 	table.fast = true

@@ -14,6 +14,7 @@ func _ready():
  for id in UIStyle.heroes():
   var path = "res://assets/cards/" + id + ".jpg"
   if ResourceLoader.load_threaded_request(path) == OK: loading_icons.append(path)
+ UIStyle.rotate_prompt(self)
  UIStyle.apply(self)
  UIStyle.background(self)
  var row = HBoxContainer.new()
@@ -186,7 +187,7 @@ func _ready():
   Sfx.volume = value
   percentage.text = "%d%%" % roundi(value * 100)
   Sfx.save())
- UIStyle.button(menu, "Quit", func(): get_tree().quit())
+ UIStyle.button(menu, "Quit", func(): get_tree().quit()).visible = not UIStyle.is_web()
 func launch(resume: Dictionary = {}):
  var table = load("res://scenes/table.tscn").instantiate()
  table.resume_data = resume
