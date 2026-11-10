@@ -362,7 +362,8 @@ func seat_area(parent: Node, p, _human: bool):
  for c in p.play_area: board.add_child(card_widget(c, "opponent", 70))
  for c in p.reserve: board.add_child(card_widget(c, "opponent_reserve", 70))
 func texture_for(id: String) -> Texture2D:
- if not textures.has(id): textures[id] = load("res://assets/cards/" + id + ".jpg")
+ var asset_id = "phreaknic_fottr_tcg_card_back" if id == "hidden" else id
+ if not textures.has(id): textures[id] = load("res://assets/cards/" + asset_id + ".jpg")
  return textures[id]
 func card_widget(c, zone: String, width: int) -> Control:
  var box = VBoxContainer.new()
@@ -463,12 +464,7 @@ func play_all(basics: bool = false):
  acting = true
  redraw()
  var p = engine.state.players[0]
- # Draws and reshuffles can return an already played card to hand. Re-read
- # the live hand after each resolution, with the same safety cap as bots.
- for action in BotPlayer.MAX_ACTIONS:
-  var playable = p.hand.filter(func(c): return engine.can_play(p, c) and (not basics or c.id in ["Hacking", "Damage"]))
-  if playable.is_empty(): break
-  await engine.play_card(p, playable[0])
+ await engine.play_all(p, basics)
  acting = false
  redraw()
 func end_human_turn(automatic: bool = false):

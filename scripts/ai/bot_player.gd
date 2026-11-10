@@ -2,12 +2,14 @@ class_name BotPlayer
 extends RefCounted
 const MAX_ACTIONS = 200
 var engine
+var continue_turn: Callable
+var action_completed: Callable
 var action_delay: float = 0.0
 func _init(game): engine = game
 func take_turn(p):
 	var actions = 0
 	var declined: Dictionary = {}
-	while engine.is_turn(p) and actions < MAX_ACTIONS:
+	while engine.is_turn(p) and actions < MAX_ACTIONS and (not continue_turn.is_valid() or continue_turn.call()):
 		if action_delay > 0.0:
 			await engine.get_tree().create_timer(action_delay).timeout
 			if not engine.is_turn(p): break
@@ -32,6 +34,7 @@ func take_turn(p):
 				if c.effect_id() == "AI Bens AI Camry" and engine.opponents(p).all(func(q): return q.hand.is_empty()): continue
 				var before = fingerprint(p)
 				await engine.activate(p, c, ability.index)
+				completed()
 				if fingerprint(p) == before: declined[key] = true
 				activated = true
 				break
@@ -41,6 +44,7 @@ func take_turn(p):
 			if p.difficulty > 0:
 				candidates.sort_custom(func(a, b): return play_priority(p, a) > play_priority(p, b))
 			await engine.play_card(p, candidates[0])
+			completed()
 			continue
 		var buys = (engine.state.center_row + p.reserve).filter(func(c): return c != null and engine.can_buy(p, c))
 		if not buys.is_empty():
@@ -50,14 +54,20 @@ func take_turn(p):
 			else: buys.sort_custom(func(a, b): return ai.value(a, p) > ai.value(b, p))
 			if p.difficulty == 0 or ai.value(buys[0], p) >= (1.8 if p.difficulty == 2 else 0.5):
 				await engine.buy_card(p, buys[0])
+				completed()
 				continue
 		if p.difficulty == 2:
 			var reserve = engine.state.center_row.filter(func(c): return c != null and engine.can_reserve(p, c) and ai.value(c, p) >= 4.0 and engine.effective_cost(p, c) <= estimate_hacking(p) + 2)
 			if not reserve.is_empty():
 				reserve.sort_custom(func(a, b): return reserve_priority(a, p) > reserve_priority(b, p))
 				engine.reserve_card(p, reserve[0])
+				completed()
 		break
-	if p == engine.active() and not engine.state.finished: await engine.end_turn(p)
+	if p == engine.active() and not engine.state.finished and (not continue_turn.is_valid() or continue_turn.call()):
+		await engine.end_turn(p)
+		completed()
+func completed():
+	if action_completed.is_valid(): action_completed.call()
 func fingerprint(p) -> String:
 	return str([p.hacking, p.life, p.hand.size(), engine.state.removed.size(), engine.permanents().map(func(c): return [c.uid, c.counters, c.flags.get("used", false)]), engine.state.players.map(func(q): return [q.life, q.hand.size()])])
 func want_buy(p) -> bool:

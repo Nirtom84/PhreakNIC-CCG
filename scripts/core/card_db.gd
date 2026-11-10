@@ -5,6 +5,8 @@ func _ready():
 	for data in JSON.parse_string(FileAccess.get_file_as_string("res://data/cards.json")):
 		cards[data.id] = data
 func get_card(id: String) -> Dictionary:
+	if id == "hidden":
+		return {"id": "hidden", "name": "Hidden card", "cost": 0, "kind": "Hidden", "subtypes": "", "type_line": "", "hack": 0, "damage": 0, "text": "", "image": "res://assets/cards/phreaknic_fottr_tcg_card_back.jpg", "starter": false}
 	return cards.get(id, {})
 func has_subtype(id: String, subtype: String) -> bool:
 	var words = str(get_card(id).get("subtypes", "")).to_lower().split(" ")

@@ -1,5 +1,8 @@
 class_name GameEngine
 extends Node
+signal card_played(player, card)
+signal card_bought(player, card)
+signal card_reserved(player, card)
 signal state_changed
 signal log_message(text)
 signal ice_counter_removed(card)
@@ -200,6 +203,7 @@ func play_card(p, card) -> bool:
 func resolve_play(p, card):
 	if not p.alive or state.finished: return
 	p.played.append(card)
+	card_played.emit(p, card)
 	state.coverage[card.id] = state.coverage.get(card.id, 0) + 1
 	await effects.on_play(p, card)
 	if p.alive and not state.finished: await effects.resolve(p, card)
@@ -234,6 +238,7 @@ func buy_card(p, card, mandatory: bool = false) -> bool:
 	gain_owner(card, p)
 	move(card, p.discard, "discard", "center_row" if from_row else "reserve")
 	say("Seat %d buys %s for %d" % [p.seat, db().get_card(card.id).name, price])
+	card_bought.emit(p, card)
 	await effects.bought(p, card, from_row)
 	busy = saved_busy
 	state_changed.emit()
@@ -252,6 +257,7 @@ func reserve_card(p, card) -> bool:
 	gain_owner(card, p)
 	move(card, p.reserve, "reserve")
 	p.turn_flags.reserved = true
+	card_reserved.emit(p, card)
 	say("Seat %d reserves %s" % [p.seat, db().get_card(card.id).name])
 	state_changed.emit()
 	return true
@@ -474,3 +480,10 @@ func resolve_triggers(pending: Array, stop_on_active_death: bool = true):
 		var trigger = pending.pop_at(index)
 		await trigger.resolve.call()
 	busy = saved_busy
+
+# Shared bounded convenience action, used by local and remote humans.
+func play_all(p, basics: bool = false):
+	for action in BotPlayer.MAX_ACTIONS:
+		var playable = p.hand.filter(func(c): return can_play(p, c) and (not basics or c.id in ["Hacking", "Damage"]))
+		if playable.is_empty(): break
+		await play_card(p, playable[0])

@@ -130,3 +130,121 @@ so the UI never mutates state directly; it calls engine actions:
 difficulties, fixed seeds) with no script errors, every game ends (turn cap 200 → counted as draw),
 prints win rates by difficulty (Elite should beat Script Kiddie clearly), card conservation checks
 (total cards across all zones constant, apart from cards created by nothing), and per-card "played at least once" coverage.
+
+## Online play (core)
+
+`scripts/net/game_server.gd` owns the authoritative engine for a room of 2–4 seats.
+Call `setup(seats, card_pool, starting_life, seed)`, attach transports, and await
+`start()`. Seat dictionaries contain `name`, `hero`, `bot`, and numeric `difficulty`
+(0 Script Kiddie, 1 Phreak, 2 Elite). Only the server uses the seeded game RNG.
+`tokens[seat]` is a cryptographically random credential to distribute through a
+future trusted lobby; tokens are never included in player messages. A room runs
+in process today; WebSockets, hosting, lobby credentials, and table UI integration
+are future work.
+
+`NetTransport` exposes `send(Dictionary)`, `received(Dictionary)`, `closed`, and
+`close()`. `LoopbackTransport.pair()` returns connected endpoints, JSON round trips
+every send, and delivers on the next process frame. `pair(false)` permits explicit
+`pump()` calls. Closing either endpoint disconnects both. Integral JSON numbers
+are normalized recursively on receipt. Visible card UIDs are action targets;
+clients cannot submit engine objects or change authoritative state.
+
+The protocol uses dictionaries with a `t` field:
+
+| Direction | Type | Fields |
+| --- | --- | --- |
+| Client → server | `hello` | `seat`, `token`, `version` |
+| Client → server | `action` | `kind`: `play`, `buy`, `reserve`, `activate`, `end_turn`, `play_all`, or `play_basics`; card actions require `uid`; activate accepts `index` (default 0) |
+| Client → server | `answer` | `id` (prompt ID), `value` |
+| Server → client | `welcome` | `seat`, `seats` (public name/hero/bot/difficulty records), `version`, `card_pool`, `starting_life` |
+| Server → client | `view` | `state` (NetView envelope below) |
+| Server → client | `prompt` | `id`, `kind`, `text`, kind-specific fields below |
+| Server → client | `prompt_done` | `id` |
+| Server → client | `log` | `text`, `seat` (active seat at emission) |
+| Server → client | `event` | `kind`, kind-specific fields below |
+| Server → client | `game_over` | `winner` (seat, or -1 for a draw) |
+| Server → client | `error` | `reason` |
+
+A hello must match `application/config/version` exactly and authenticate a human
+seat. Failure returns an error without authenticating. A new connection with the
+same token replaces the old connection. Reconnect sends welcome, a fresh full
+view, any outstanding prompt, and game_over if applicable. Answer IDs are random,
+room-private pending requests bound to their seat; invalid/stale answers leave the
+request pending. Actions must be legal under engine queries, on the sender's
+active turn, with no pending decision or action at that reaction depth. Engine
+busy state and nested human TOCTOU reaction turns are respected. The shared
+`GameEngine.play_all` implementation retains the local UI's 200-action bound.
+
+Prompt kinds match every Decider method. `choose_option` has `options` and returns
+an option index. `choose_options` adds `count` and returns distinct indices.
+`choose_cards` has `cards`, `min`, `max` and returns distinct UIDs. Prompt card
+records have `uid`, `id`, `owner`, `controller`, `counters` and go only to the
+choosing seat, including cards an effect specifically permits that seat to inspect.
+`choose_player` has `players` (seat numbers) and returns a seat. `choose_number`
+has `allowed` and returns a member. `confirm` returns a Boolean. `name_a_card` has
+`card_pool` and returns a card ID in that pool. `allocate_prevention` has `amount`
+and `sources` (`card` record or null, `capacity`, `full`, `name`), and returns
+nonnegative point counts in source order, totaling mandatory prevention.
+Simultaneous triggers and attached Action ordering use `choose_option` through
+the existing engine, rather than introducing a second ordering API.
+
+Events: `damage_dealt` has `source`, `target`, `amount`; `turn_started`,
+`turn_ended`, and `eliminated` have `seat`; `played`, `bought`, `reserved`, and
+`draw` have `seat`, `uid`, `id`; `ice_counter_removed` has `uid`. Draw events go
+only to the hand's owner. No generic move events expose deck or hand identities.
+Engine logs describe public actions and explicit reveals; ordinary draws are not
+logged. Explicit engine play/buy/reserve signals also cover attached Action plays and
+mandatory start-of-turn buys, without labeling acquisitions as purchases. Events are transient; views are the source of truth.
+
+`NetView.build(engine, seat)` reuses SaveGame's reference/object dictionary codec
+but explicitly selects public state. The envelope contains `state`, `objects`,
+`seat`, `ready` (server availability for this seat), and `counts` (`center_deck`,
+`players: [{deck, hand}]`). It includes all life/alive/hacking, public zones,
+counters, attachments, owner/controller, flags, played history, turn state,
+configuration and winner; only the receiver's hand has real cards. Each hidden
+physical zone contains the appropriate number of `hidden` CardInstances with
+fresh cryptographically random negative UIDs for every view. Even if a played
+card has subsequently returned to a deck, its physical deck entry is a new
+placeholder. Hidden object references in flags are masked too. Authoritative
+RNG, logs, coverage, initial card identities, and UID allocation state are omitted.
+The RNG seed/state never enters a player envelope. The `hidden` CardDB fallback
+is outside the real card catalog so it cannot enter setup pools or affect save
+content signatures.
+
+`NetView.apply` reconstructs a mirror GameState without invoking authoritative
+save validation (a redacted state intentionally cannot satisfy conservation).
+`NetClient` owns a mirror engine solely for rendering and queries; it never runs
+rules on that engine. It exposes view_changed, prompt(id, data), prompt_done(id),
+log(text), event(data), game_over, error(reason), and message_received(message).
+`send_action` and `answer` send protocol messages. Its optional `scripted` mode
+uses only mirror state and prompt payloads to select bounded actions and BotDecider
+choices. This test policy is deliberately simpler than the authoritative bot;
+existing bot strategy is unchanged. Views coalesce to at most one per process
+frame per connection, with a deferred latest view if the connection already got
+one that frame. Prompts and events need not wait for a view.
+
+The server's injectable `clock` Callable returns monotonic seconds. After 45
+seconds a pending human prompt is answered with a fresh Phreak BotDecider, using
+the original engine arguments. At 120 seconds disconnected, the seat uses
+Phreak BotDecider/BotPlayer until authenticated reconnect, including reaction
+turns. Reconnection cancels takeover driving at the next completed action; an
+already resolving rules action must finish. The bot driver's optional continuation
+and completed-action callbacks do not change its default behavior or strategy.
+
+After a completed safe human action or bot action, `snapshot(data)` emits a full
+authoritative SaveGame snapshot plus public seats, private seat tokens, protocol
+version, and card-catalog signature. `last_snapshot` holds the latest checkpoint.
+Snapshots never go to transports. The same engine safety conditions as local
+saving apply: idle, no resolving cards, reactions or simultaneous effects; online
+saving allows any active seat and the terminal state. No coroutine/prompt stack
+is serialized. `restore(snapshot)` validates the SaveGame, catalog and version,
+restores RNG and object identities, rebuilds deciders, and resumes at that safe
+point without starting the turn twice. If a container dies during an action,
+recovery returns to the last completed safe checkpoint. Storage/durability belongs
+to the future host. Clients reconnect with their persisted tokens. Snapshots
+contain private decks/RNG/tokens and must be kept server-side.
+
+Run `tests/net_checks.gd` headlessly with temporary `XDG_DATA_HOME` (and temporary
+`XDG_CONFIG_HOME` for editor operations). It exercises JSON loopback games,
+redaction, illegal actions, every decider method, timeouts, takeover/reconnect,
+private draws, reaction turns, and snapshot/restore with card conservation.
