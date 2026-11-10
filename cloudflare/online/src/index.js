@@ -26,7 +26,8 @@ export default {async fetch(req,env) {
       const r=route(req.method,new URL(req.url).pathname); if(!r) fail('not_found',404);
       const l=lobby(env);
       if(r.kind==='health') response=new Response('ok');
-      if(r.kind==='list') {if(!await l.allow(req.headers.get('CF-Connecting-IP')||'unknown','list'))fail('rate_limit',429);if(!listingCache||listingCache.version!==env.GAME_VERSION||Date.now()>=listingCache.until)listingCache={version:env.GAME_VERSION,until:Date.now()+5000,rooms:await l.list(env.GAME_VERSION)};response=json({rooms:listingCache.rooms});}
+      // Serve the cached list without touching the Lobby; only cache misses are rate limited.
+      if(r.kind==='list') {if(!listingCache||listingCache.version!==env.GAME_VERSION||Date.now()>=listingCache.until){if(!await l.allow(req.headers.get('CF-Connecting-IP')||'unknown','list'))fail('rate_limit',429);listingCache={version:env.GAME_VERSION,until:Date.now()+5000,rooms:await l.list(env.GAME_VERSION)};}response=json({rooms:listingCache.rooms});}
       if(r.kind==='create'||r.kind==='join') {
         if(env.ONLINE_ENABLED==='0'){await l.bump(['refused.maintenance']);fail('maintenance',503);}
         const raw=await body(req), data=r.kind==='create'?creation(raw):identity(raw);data.platform=platform(raw.platform);
@@ -35,9 +36,9 @@ export default {async fetch(req,env) {
         if(r.kind==='create') {
           const c=await l.reserve();
           try {const result=await room(env,c).create(c,data);if(result.failure)fail(result.failure.error,result.failure.status,result.failure.extra);response=json(result,201);} catch(e){await l.remove(c);throw e;}
-        } else {const result=await room(env,r.code).join(data);if(result.failure){await l.allow(req.headers.get('CF-Connecting-IP')||'unknown','failure');fail(result.failure.error,result.failure.status,result.failure.extra);}response=json(result);}
+        } else {const result=await room(env,r.code).join(data);if(result.failure){if(result.failure.error==='not_found')await l.allow(req.headers.get('CF-Connecting-IP')||'unknown','failure');fail(result.failure.error,result.failure.status,result.failure.extra);}response=json(result);}
       }
-      if(r.kind==='ws') {const ip=req.headers.get('CF-Connecting-IP')||'unknown';if(!await l.allow(ip,'ws'))fail('rate_limit',429);response=await room(env,r.code).fetch(req);if(response.status===401)await l.allow(ip,'failure');}
+      if(r.kind==='ws') {const ip=req.headers.get('CF-Connecting-IP')||'unknown';if(!await l.allow(ip,'ws'))fail('rate_limit',429);response=await room(env,r.code).fetch(req);}
     }
   } catch(e) {response=error(e);}
   const key=response.status===409?'refused.version':response.status===429?'refused.rate':response.status===500?'errors.internal':null;
@@ -96,10 +97,14 @@ export class Lobby extends DurableObject {
     const connected=[...this.sql.exec('SELECT COALESCE(SUM(clients),0) AS n FROM games WHERE touched>=?',now-15*60000)][0].n;
     return {now:{open_rooms:[...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE summary IS NOT NULL')][0].n,...live,players_connected:connected},days:[...byDay.values()],totals,durations:{median_minutes:n?(durations[Math.floor((n-1)/2)]+durations[Math.floor(n/2)])/2:null,mean_minutes:n?durations.reduce((a,b)=>a+b,0)/n:null,count:n},recent:[...this.sql.exec('SELECT * FROM games ORDER BY created DESC LIMIT 50')].map(r=>({...r})),generated:now};
   }
-  locked(ip,kind) {const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0];return !rateDecision(r,Date.now(),kind==='admin'?10:30,HOUR).allowed;}
+  locked(ip,kind) {const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0];return !rateDecision(r,Date.now(),kind==='admin'?10:300,HOUR).allowed;}
   allow(ip,kind) {
-    this.clean();const now=Date.now();if(['join','ws'].includes(kind)&&this.locked(ip,'failure'))return false;
-    const limit={admin:10,create:60,join:300,ws:60,list:120,failure:30}[kind]||300,span=['ws','list'].includes(kind)?60000:HOUR;
+    this.clean();const now=Date.now();
+    // Only joins to unknown rooms (code guessing) count as failures, and they never block reconnects:
+    // everyone at the con shares one IP, so one bad actor must not lock out everyone's sockets.
+    if(kind==='join'&&this.locked(ip,'failure'))return false;
+    // Sized for a whole con sharing one public IP; the global game caps bound the cost.
+    const limit={admin:10,create:200,join:600,ws:600,list:1200,failure:300}[kind]||300,span=['ws','list'].includes(kind)?60000:HOUR;
     const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0],d=rateDecision(r,now,limit,span);
     this.sql.exec('INSERT INTO limits VALUES(?,?,?,?) ON CONFLICT(ip,kind) DO UPDATE SET window=excluded.window,count=excluded.count',ip,kind,d.window,d.count);return d.allowed;
   }

@@ -6,10 +6,13 @@ const {Room,default:worker}=await import('data:text/javascript;base64,'+Buffer.f
 const binding=value=>({idFromName:x=>x,get:()=>value});
 const makeRoom=()=>Object.assign(Object.create(Room.prototype),{r:{code:'AB23',created:Date.now(),lastActivity:123,started:false,over:false,host_seat:0,seats:[{token:'a'.repeat(32),bot:false},{token:'b'.repeat(32),bot:false}]},clients:new Map(),rates:new Map(),generation:0,save:async()=>{},broadcastRoom:()=>{}});
 const sock=()=>({close(code,reason){this.closed={code,reason};},send(){}});
-test('HTTP room listing caches results while rate checking every request',async()=>{
- let lists=0,allows=0;const l={allow:async()=>{allows++;return allows<3;},list:async()=>{lists++;return [];},bump:async()=>{}},env={GAME_VERSION:'list-test',LOBBY:binding(l)};
- for(let i=0;i<2;i++)assert.equal((await worker.fetch(new Request('https://server/rooms'),env)).status,200);
- assert.equal(lists,1);assert.equal(allows,2);assert.equal((await worker.fetch(new Request('https://server/rooms'),env)).status,429);
+test('HTTP room listing serves cache hits without Lobby calls and rate checks only misses',async()=>{
+ let lists=0,allows=0;const l={allow:async()=>{allows++;return false;},list:async()=>{lists++;return [];},bump:async()=>{}};
+ // A refused miss returns 429 and caches nothing.
+ assert.equal((await worker.fetch(new Request('https://server/rooms'),{GAME_VERSION:'list-miss',LOBBY:binding(l)})).status,429);assert.equal(lists,0);
+ let ok=0;const m={allow:async()=>{ok++;return true;},list:async()=>{lists++;return [];},bump:async()=>{}},env={GAME_VERSION:'list-test',LOBBY:binding(m)};
+ for(let i=0;i<3;i++)assert.equal((await worker.fetch(new Request('https://server/rooms'),env)).status,200);
+ assert.equal(lists,1);assert.equal(ok,1);
 });
 test('maintenance blocks create and join before body parsing or room calls',async()=>{
  const keys=[],env={ONLINE_ENABLED:'0',LOBBY:binding({bump:async k=>keys.push(...k)})};for(const path of ['/rooms','/rooms/AB23/join']){const res=await worker.fetch(new Request('https://server'+path,{method:'POST',body:'not json'}),env);assert.equal(res.status,503);assert.deepEqual(await res.json(),{error:'maintenance'});}assert.deepEqual(keys,['refused.maintenance','refused.maintenance']);

@@ -34,7 +34,7 @@ assetsignore_path="$PWD/build/web/.assetsignore"
 trap 'rm -f -- "$assetsignore_path"; rm -rf -- "$DOCKER_CONFIG"' EXIT
 
 cd cloudflare/site
-$WRANGLER r2 bucket create "$BUCKET" 2>/dev/null || true   # no-op if it already exists
-$WRANGLER r2 object put "$BUCKET/$KEY" --file ../../build/web/index.wasm --content-type application/wasm --remote
-$WRANGLER deploy --var "WASM_KEY:$KEY"
+"$WRANGLER" r2 bucket create "$BUCKET" 2>/dev/null || true   # no-op if it already exists
+"$WRANGLER" r2 object put "$BUCKET/$KEY" --file ../../build/web/index.wasm --content-type application/wasm --remote
+"$WRANGLER" deploy --var "WASM_KEY:$KEY"
 echo "Deployed v$VERSION to https://phreaknic-ccg.net"
