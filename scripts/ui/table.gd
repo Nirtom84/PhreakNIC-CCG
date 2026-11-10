@@ -6,6 +6,7 @@ var difficulty: int = 0
 var scripted_decider: Decider
 var auto_drive: bool = true
 var fast: bool = false
+var seed_value: int = 0
 var pending: bool = false
 var acting: bool = false
 var driving: bool = false
@@ -61,7 +62,7 @@ func _ready():
  var levels: Array = [-1]
  for i in range(1, player_count): levels.append(difficulty)
  engine.log_message.connect(append_log)
- engine.setup(levels, int(Time.get_unix_time_from_system()), choices)
+ engine.setup(levels, seed_value if seed_value != 0 else int(Time.get_unix_time_from_system()), choices)
  engine.state_changed.connect(redraw)
 
  engine.damage_dealt.connect(damage)
@@ -104,26 +105,29 @@ func redraw():
  UIStyle.button(piles, "Removed: %d" % engine.state.removed.size(), func(): view_cards("Removed from game", engine.state.removed))
  var p = engine.state.players[0]
  var board_scroll = ScrollContainer.new()
- region(canvas, board_scroll, Vector2(0, 508), Vector2(850, 177))
+ region(canvas, board_scroll, Vector2(0, 508), Vector2(850, 195))
+ board_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
  var board = HBoxContainer.new()
  board_scroll.add_child(board)
- for c in p.play_area: board.add_child(card_widget(c, "permanent", 120))
- for c in p.reserve: board.add_child(card_widget(c, "reserve", 120))
+ for c in p.play_area: board.add_child(card_widget(c, "permanent", 110))
+ for c in p.reserve: board.add_child(card_widget(c, "reserve", 110))
  if p.play_area.is_empty() and p.reserve.is_empty(): UIStyle.label(board, "// YOUR RIG & RESERVED CARDS\nBuild your network here.", 18)
  var status = VBoxContainer.new()
  region(canvas, status, Vector2(900, 510), Vector2(600, 175))
  var stats = HBoxContainer.new()
  status.add_child(stats)
- life_labels[0] = readout(stats, "damage", p.life, 48)
+ life_labels[0] = readout(stats, "life", p.life, 48)
  readout(stats, "hack", p.hacking, 48)
- UIStyle.button(status, "Deck %d   /   Discard %d" % [p.deck.size(), p.discard.size()], func(): view_cards("Your discard", p.discard))
+ var piles_button = UIStyle.button(status, "Deck %d   /   Discard %d" % [p.deck.size(), p.discard.size()], func(): view_cards("Your discard", p.discard))
+ piles_button.name = "PlayerPiles"
  var hand_title = UIStyle.label(canvas, "// YOUR HAND  ·  %d CARDS" % p.hand.size(), 16)
- hand_title.position = Vector2(0, 685)
+ hand_title.position = Vector2(0, 710)
  var hand = Control.new()
- region(canvas, hand, Vector2(0, 710), Vector2(1538, 233))
- var step = 178.0 if p.hand.size() <= 7 else minf(178.0, (1538.0 - 170) / maxf(1, p.hand.size() - 1))
+ hand.name = "Hand"
+ region(canvas, hand, Vector2(0, 735), Vector2(1538, 233))
+ var step = 158.0 if p.hand.size() <= 7 else minf(158.0, (1538.0 - 150) / maxf(1, p.hand.size() - 1))
  for i in p.hand.size():
-  var card = card_widget(p.hand[i], "hand", 170)
+  var card = card_widget(p.hand[i], "hand", 150)
   hand.add_child(card)
   card.position.x = i * step
  var actions = HBoxContainer.new()
@@ -153,7 +157,7 @@ func seat_area(parent: Node, p, _human: bool):
  var status = HBoxContainer.new()
  box.add_child(status)
  UIStyle.label(status, player_name(p), 18)
- life_labels[p.seat] = readout(status, "damage", p.life, 28)
+ life_labels[p.seat] = readout(status, "life", p.life, 28)
  UIStyle.label(status, " · Hand %d" % p.hand.size(), 16)
  var row = HBoxContainer.new()
  box.add_child(row)
@@ -168,6 +172,7 @@ func seat_area(parent: Node, p, _human: bool):
  var scroll = ScrollContainer.new()
  scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  scroll.custom_minimum_size.y = 154
+ scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
  row.add_child(scroll)
  var board = HBoxContainer.new()
  scroll.add_child(board)
@@ -178,6 +183,8 @@ func texture_for(id: String) -> Texture2D:
  return textures[id]
 func card_widget(c, zone: String, width: int) -> Control:
  var box = VBoxContainer.new()
+ box.set_meta("card_uid", c.uid)
+ box.set_meta("zone", zone)
  var button = Button.new()
  button.custom_minimum_size = Vector2(width, width * 1.367)
  button.tooltip_text = engine.db().get_card(c.id).name + "\nRight-click to inspect"
@@ -215,11 +222,23 @@ func card_widget(c, zone: String, width: int) -> Control:
    button.remove_theme_stylebox_override("normal")
   hide_zoom())
  if zone == "permanent":
-  UIStyle.label(box, "ICE / counters: %d" % c.counters, 12)
-  for ability in engine.activatable_abilities(human, c):
-   var b = UIStyle.button(box, ability.label, activate_card.bind(c, ability.index))
+  # Counters sit inside the artwork rather than consuming row height.
+  if c.counters > 0 or engine.effects.initial_ice(c.effect_id()) > 0:
+   var badge = PanelContainer.new()
+   badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+   button.add_child(badge)
+   badge.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+   badge.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+   UIStyle.label(badge, str(c.counters), 16)
+  var abilities = engine.activatable_abilities(human, c)
+  var ability_row = HBoxContainer.new()
+  if not abilities.is_empty(): box.add_child(ability_row)
+  else: ability_row.free()
+  for ability in abilities:
+   var b = UIStyle.button(ability_row, "Use %d" % (ability.index + 1) if abilities.size() > 1 else "Activate", activate_card.bind(c, ability.index))
    b.disabled = not available() or not ability.enabled
    b.add_theme_font_size_override("font_size", 12)
+   b.tooltip_text = ability.label
  if zone == "market" or zone == "reserve":
   var cost = HBoxContainer.new()
   box.add_child(cost)
@@ -240,7 +259,7 @@ func card_clicked(c, zone: String):
  elif zone == "market":
   var p = engine.state.players[0]
   var options: Array[String] = ["Inspect", "Cancel"]
-  if engine.can_buy(p, c): options.push_front("Buy — %d {H}" % engine.effective_cost(p, c))
+  if engine.can_buy(p, c): options.push_front("Buy — %d hacking" % engine.effective_cost(p, c))
   if engine.can_reserve(p, c): options.push_front("Reserve")
   var selected: int = await decision(engine.db().get_card(c.id).name, options, [], 1, 1, false)
   if not available(): return
@@ -263,8 +282,12 @@ func play_all():
  acting = true
  redraw()
  var p = engine.state.players[0]
- for c in p.hand.duplicate():
-  if engine.can_play(p, c): await engine.play_card(p, c)
+ # Draws and reshuffles can return an already played card to hand. Re-read
+ # the live hand after each resolution, with the same safety cap as bots.
+ for action in BotPlayer.MAX_ACTIONS:
+  var playable = p.hand.filter(func(c): return engine.can_play(p, c))
+  if playable.is_empty(): break
+  await engine.play_card(p, playable[0])
  acting = false
  redraw()
 func end_human_turn():
@@ -368,23 +391,28 @@ func damage(_source, _target, _amount):
 func track_life():
  for p in engine.state.players:
   var before = previous_life.get(p.seat, p.life)
-  if before != p.life and life_labels.has(p.seat):
-   var label = life_labels[p.seat]
-   var color = Color("ff5555") if p.life < before else Color("65ff99")
-   label.modulate = color
-   create_tween().tween_property(label, "modulate", Color.WHITE, 0.8)
-   var floating = Label.new()
-   floating.text = "%+d" % (p.life - before)
-   floating.add_theme_font_size_override("font_size", 42)
-   floating.modulate = color
-   floating.position = label.global_position
-   floating.z_index = 40
-   add_child(floating)
-   var tween = create_tween().set_parallel(true)
-   tween.tween_property(floating, "position:y", floating.position.y - 65, 1.0)
-   tween.tween_property(floating, "modulate:a", 0.0, 1.0)
-   tween.finished.connect(floating.queue_free)
+  if before != p.life:
+   float_life.call_deferred(p.seat, p.life - before)
   previous_life[p.seat] = p.life
+func float_life(seat: int, amount: int):
+ # Container positions settle at the end of the frame. Look up the current
+ # label afterward: redraw may have replaced it several times during a play.
+ await get_tree().process_frame
+ if not life_labels.has(seat) or not is_instance_valid(life_labels[seat]): return
+ var label = life_labels[seat]
+ var floating = Label.new()
+ floating.set_meta("life_float", true)
+ floating.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ floating.text = "%+d" % amount
+ floating.add_theme_font_size_override("font_size", 42)
+ floating.modulate = Color("ff5555") if amount < 0 else Color("65ff99")
+ floating.z_index = 40
+ add_child(floating)
+ floating.global_position = label.global_position
+ var tween = floating.create_tween().set_parallel(true)
+ tween.tween_property(floating, "position:y", floating.position.y - 65, 0.9)
+ tween.tween_property(floating, "modulate:a", 0.0, 0.9)
+ tween.chain().tween_callback(floating.queue_free)
 func hover_border() -> StyleBoxFlat:
  var style = StyleBoxFlat.new()
  style.bg_color = Color("192c25")
@@ -402,6 +430,8 @@ func append_log(message: String):
   if "Seat %d" % i in message: seat = i
  var display = message
  for i in player_count: display = display.replace("Seat %d" % i, "You" if i == 0 else "Bot %d" % i)
+ for verbs in [["plays", "play"], ["buys", "buy"], ["takes", "take"], ["reserves", "reserve"], ["reveals", "reveal"]]:
+  display = display.replace("You " + verbs[0] + " ", "You " + verbs[1] + " ")
  log_view.append_text("[color=#%s]%s[/color]\n\n" % [colors[seat] if seat >= 0 else "a1b1bb", UIStyle.icon_text(display)])
  if seat > 0 and (" plays " in message or " buys " in message or " reserves " in message):
   if is_instance_valid(action_notice): action_notice.queue_free()
