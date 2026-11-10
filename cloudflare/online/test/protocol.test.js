@@ -29,3 +29,33 @@ test('hashed constant time comparison handles all lengths',async()=>{assert(awai
 test('admin key must be configured with at least 32 characters',()=>{for(const key of [undefined,null,'','x'.repeat(31),32])assert(!adminEnabled(key));assert(adminEnabled('x'.repeat(32)));assert(adminEnabled('x'.repeat(64)));});
 test('stats ranges accept only whole days from 1 to 400',()=>{assert.equal(statsDays(null),30);assert.equal(statsDays(undefined),30);for(const n of ['1','7','30','90','365','400'])assert.equal(statsDays(n),Number(n));for(const n of ['','0','401','-1','1.5','NaN','Infinity','30x',' 7'])assert.throws(()=>statsDays(n));});
 test('creation daily keys contain only aggregate dimensions',()=>{const r=creation(input());assert.deepEqual(creationKeys(r,'linux'),['rooms.created','rooms.public','seats.2','pool.2026','life.0','version.0.09','platform.linux']);assert(creationKeys({...r,public:false},'unknown').includes('rooms.invite'));assert(!JSON.stringify(creationKeys(r,'linux')).includes('Nirtom'));assert(!('platform' in identity({...input(),platform:'web'})));assert(!('platform' in creation({...input(),platform:'web'}).seats[0]));});
+
+const hardening=await import('../src/lib/protocol.js');
+test('spending caps, counted restart, and maintenance decisions',()=>{
+ const {startDecision:s}=hardening;
+ assert.equal(s(undefined,false,19,299),null);assert.equal(s('1',false,20,0),'busy');assert.equal(s('1',false,0,300),'busy');assert.equal(s('1',true,20,300),null);assert.equal(s('0',false,0,0),'maintenance');assert.equal(s('0',true,20,300),'maintenance');
+});
+test('room hard lifetime ignores activity and connections',()=>{
+ const {roomExpired:e,ROOM_LIFETIME:l}=hardening,r={created:100,lastActivity:1e12,emptySince:null};assert(!e(r,100+l-1));assert(e(r,100+l));assert(e(r,100+l+1));
+});
+test('rate windows reset on their boundary and failure buckets lock',()=>{
+ const {rateDecision:r}=hardening;assert(r({window:0,count:59},59999,60,60000).allowed);assert(!r({window:0,count:60},59999,60,60000).allowed);assert.deepEqual(r({window:0,count:60},60000,60,60000),{allowed:true,window:60000,count:1});assert(!r({window:0,count:30},3599999,30,3600000).allowed);assert(r({window:0,count:30},3600000,30,3600000).allowed);
+});
+test('seat traffic is shared across sockets and sustained flooding closes',()=>{
+ let state={};for(let i=0;i<30;i++){state=hardening.seatRate(state,100,1);assert(state.allowed);}state=hardening.seatRate(state,100,1);assert(!state.allowed);assert(!state.close);for(let i=0;i<10;i++)state=hardening.seatRate(state,100,1);assert(state.close);
+ state={};for(let i=0;i<4;i++)state=hardening.seatRate(state,100+i*1000,65536);assert(state.allowed);state=hardening.seatRate(state,5000,1);assert(!state.allowed);assert(state.close);assert(hardening.seatRate(state,10100,1).allowed);
+});
+test('unknown rooms, wrong and malformed tokens use the same authentication decision',()=>{
+ const t='a'.repeat(32),r={started:true,seats:[{bot:false,token:t}]};for(const [room,key]of [[null,t],[r,'b'.repeat(32)],[r,''],[r,null]])assert.equal(hardening.socketSeat(room,key),-1);assert.equal(hardening.socketSeat(r,t),0);
+});
+test('kick accepts only a joined nonhost human before start',()=>{
+ const r={host_seat:0,started:false,seats:[{token:'host'},{token:'human',bot:false},{bot:true},{token:'',bot:false}]};assert.equal(hardening.kickSeat(r,0,1),1);for(const n of [0,-1,2,3,4,1.5,'1'])assert.throws(()=>hardening.kickSeat(r,0,n));assert.throws(()=>hardening.kickSeat(r,1,1));assert.throws(()=>hardening.kickSeat({...r,started:true},0,1));
+});
+test('current clients get room_version and older clients keep version/need',()=>{
+ assert.doesNotThrow(()=>hardening.joinVersion('0.11','0.11','0.11'));assert.throws(()=>hardening.joinVersion('0.11','0.10','0.11'),e=>e.message==='room_version'&&e.status===409&&e.extra.room==='0.10');assert.throws(()=>hardening.joinVersion('0.10','0.10','0.11'),e=>e.message==='version'&&e.extra.need==='0.11');
+});
+test('admin lock is checked before key comparison, including a correct key',async()=>{
+ let calls=0;const compare=()=>{calls++;return true;};assert.equal(await hardening.adminDecision(true,compare),429);assert.equal(calls,0);assert.equal(await hardening.adminDecision(false,compare),200);assert.equal(calls,1);assert.equal(await hardening.adminDecision(false,()=>false),401);
+});
+
+await import("./runtime.test.js");

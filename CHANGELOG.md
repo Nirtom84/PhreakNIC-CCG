@@ -1,7 +1,27 @@
 # Changelog
 
-## v0.11 — Security (in progress)
-- **Open games list (server hotfix, live since v0.10):** the list only shows games on the current version. A game left open from an older version no longer appears, so you can't pick one you can't join.
+## v0.11 — Security
+This release comes from a full security audit, since PhreakNIC is a hacker con and you will poke at it. Found something? See [SECURITY.md](SECURITY.md) to report it privately.
+
+**Fair games**
+- **Unpredictable shuffles online:** the server now uses cryptographic randomness for every shuffle, draw and random effect, so no one can work out the deck order or other players' hands from what they can see.
+- **No more stalled turns:** if a player sits idle on their own turn online, they get a warning after 2 minutes and a bot finishes that turn at 3 minutes. Players who keep idling are handed to a bot, the same as a disconnect.
+- **Oprah Wonka** no longer shows your deck in its real order when you search it.
+
+**Online play**
+- **Open games list (server hotfix, live since v0.10):** the list only shows games on the current version, so you can't pick one you can't join.
+- **Older games:** joining a game made with an older version now says so and suggests creating a new one, instead of telling you to update.
+- **Hosts can remove players** from the lobby before the game starts.
+- **One device per seat:** opening your seat somewhere else takes it over and tells the old one, instead of both fighting over it.
+- **Clearer messages** when the servers are full, paused for maintenance, or your network has made too many attempts.
+- **Server protection:** limits on running games, daily game starts, room lifetime (8 hours), connections and messages keep the servers up and the bill sane during the con.
+
+**Safety and trust**
+- **Verified downloads:** every release lists SHA-256 checksums, and the Android app is now signed with the project's release key (see SECURITY.md for the fingerprint). Because the signing key changed, **uninstall the old Android version before installing this one** (your offline save on Android is lost; online games aren't affected).
+- **Bug reports** now replace other players' names in the attached log.
+- **Website hardening:** strict security headers on phreaknic-ccg.net, and the game no longer runs any JavaScript `eval`.
+- **Sturdier server and saves:** malformed messages, save files and settings are rejected safely (thousands of fuzzed messages are now part of the tests).
+- **Automated tests** run on GitHub for every change.
 
 ## v0.10 — Online polish
 **Online play gets the neon HUD treatment.**

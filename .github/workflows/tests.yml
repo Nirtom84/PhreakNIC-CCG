@@ -1,0 +1,60 @@
+# Runs the test suites on every push and pull request.
+# Actions and the Godot download are pinned (commit SHA / SHA-256) so a changed upstream can't run here.
+name: Tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  server:
+    name: Online server (node)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+      - run: node --test cloudflare/online/test/
+  game:
+    name: Game (Godot headless)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      GODOT_ZIP_SHA256: c7ff14fd28472c8d4f193043de30278dcf7e5241a1dcf7566b02e27addaa33ba
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install Godot 4.7.1 (checksum-verified)
+        run: |
+          curl -fsSL -o godot.zip https://github.com/godotengine/godot/releases/download/4.7.1-stable/Godot_v4.7.1-stable_linux.x86_64.zip
+          echo "$GODOT_ZIP_SHA256  godot.zip" | sha256sum -c -
+          unzip -q godot.zip && mv Godot_v4.7.1-stable_linux.x86_64 "$RUNNER_TEMP/godot" && rm godot.zip
+      - name: Import project
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/data"
+          "$RUNNER_TEMP/godot" --headless --path . --import || true
+      - name: Run suites
+        env:
+          EVENT: ${{ github.event_name }}
+          REF: ${{ github.ref }}
+        run: |
+          export XDG_DATA_HOME="$RUNNER_TEMP/data"
+          suites="ui_smoke touch_checks v05_checks v06_checks v07_checks v08_checks v10_checks save_checks ui_state_sync net_checks online_ui_checks link_checks"
+          for extra in v11_checks fuzz_checks; do [ -f "tests/$extra.gd" ] && suites="$suites $extra"; done
+          # The 300-game bot simulation is slow: run it on pushes to main only.
+          if [ "$EVENT" = push ] && [ "$REF" = refs/heads/main ]; then suites="$suites sim"; fi
+          failed=""
+          for t in $suites; do
+            echo "::group::$t"
+            if timeout 1500 "$RUNNER_TEMP/godot" --headless --path . -s "tests/$t.gd"; then echo "$t passed"; else failed="$failed $t"; fi
+            echo "::endgroup::"
+          done
+          if [ -n "$failed" ]; then echo "::error::Failed suites:$failed"; exit 1; fi

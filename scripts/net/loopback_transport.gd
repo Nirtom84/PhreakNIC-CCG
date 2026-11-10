@@ -14,7 +14,7 @@ static func pair(auto_pump: bool = true) -> Array:
 	b.automatic = auto_pump
 	return [a, b]
 func send(message: Dictionary):
-	if not open or peer == null or not peer.open: return
+	if not open or peer == null or not peer.open or not NetTransport.safe_value(message): return
 	peer.queue.append(NetTransport.normalize(JSON.parse_string(JSON.stringify(message))))
 	if peer.automatic and not peer.scheduled:
 		peer.scheduled = true

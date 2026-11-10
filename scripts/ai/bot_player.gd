@@ -52,7 +52,7 @@ func take_turn(p):
 		var buys = (engine.state.center_row + p.reserve).filter(func(c): return c != null and engine.can_buy(p, c))
 		if not buys.is_empty():
 			if p.difficulty == 0:
-				engine.state.shuffle(buys)
+				engine.shuffle(buys)
 				buys.sort_custom(func(a, b): return engine.effective_cost(p, a) > engine.effective_cost(p, b))
 			else: buys.sort_custom(func(a, b): return ai.value(a, p) > ai.value(b, p))
 			if p.difficulty == 0 or ai.value(buys[0], p) >= (1.8 if p.difficulty == 2 else 0.5):

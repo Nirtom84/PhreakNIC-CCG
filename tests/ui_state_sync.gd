@@ -2,6 +2,7 @@ extends SceneTree
 var checks = 0
 var failures = 0
 var optional_one = false
+var reaction_driving = false
 # Back up the player's settings and saved game, and put them back on exit (tables autosave during these tests).
 var user_backups = {}
 func _initialize():
@@ -21,11 +22,20 @@ func verify(ok: bool, message: String):
  if not ok:
   failures += 1
   push_error(message)
+func drive_human_reaction(table):
+ reaction_driving = true
+ await table.play_all()
+ if is_instance_valid(table) and table.engine.reaction_depth > 0 and table.available(): await table.end_human_turn(true)
+ reaction_driving = false
 func respond(table):
  # Answer the same signal emitted by the modal buttons, on a later frame.
  while is_instance_valid(table) and table.is_inside_tree():
   await process_frame
   if not is_instance_valid(table): return
+  # The outer bot action may await a human TOCTOU turn. Keep the prompt
+  # responder alive while a separate coroutine drives that reaction.
+  if table.engine != null and table.engine.reaction_depth > 0 and table.available() and not reaction_driving:
+   drive_human_reaction(table)
   if table.pending:
    var overlay = table.get_child(table.get_child_count() - 1)
    if not overlay is PanelContainer: continue

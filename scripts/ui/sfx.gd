@@ -17,28 +17,30 @@ var pool: Array[AudioStreamPlayer] = []
 var streams: Dictionary = {}
 var last_play: Dictionary = {}
 func _ready():
- var config = ConfigFile.new()
- if config.load("user://settings.cfg") == OK:
-  volume = clampf(float(config.get_value("sound", "volume", 0.65)), 0.0, 1.0)
-  handle = clean_handle(str(config.get_value("player", "handle", "")))
-  hero_id = str(config.get_value("player", "hero_id", ""))
-  if not hero_id.is_empty(): handle = str(config.get_value("player", "handle", ""))
-  card_pool = str(config.get_value("game", "card_pool", "2026"))
-  if card_pool not in ["2025", "2026"]: card_pool = "2026"
-  bot_fast = bool(config.get_value("game", "bot_fast", false))
-  auto_end_turn = bool(config.get_value("game", "auto_end_turn", true))
-  confirm_end_turn = bool(config.get_value("game", "confirm_end_turn", true))
-  starting_life = int(config.get_value("game", "starting_life", 0))
-  muted = bool(config.get_value("sound", "muted", false))
-  visual_effects = bool(config.get_value("visual", "effects", true))
+ var config = OnlineAPI.settings()
+ var v = config.get_value("sound", "volume", 0.65)
+ if (v is float or v is int) and is_finite(float(v)) and v >= 0 and v <= 1: volume = float(v)
+ v = config.get_value("player", "handle", "")
+ if v is String: handle = clean_handle(v)
+ v = config.get_value("player", "hero_id", "")
+ if v is String and CardDB.cards.has(v):
+  hero_id = v
+  handle = str(CardDB.cards[v].name)
+ v = config.get_value("game", "card_pool", "2026")
+ if v is String and v in ["2025", "2026"]: card_pool = v
+ for entry in [["game", "bot_fast"], ["game", "auto_end_turn"], ["game", "confirm_end_turn"], ["sound", "muted"], ["visual", "effects"]]:
+  if not config.has_section_key(entry[0], entry[1]): continue
+  v = config.get_value(entry[0], entry[1])
+  if v is bool: set("visual_effects" if entry[1] == "effects" else entry[1], v)
+ v = config.get_value("game", "starting_life", 0)
+ if v is int and v >= 0 and v <= 10000: starting_life = v
  if DisplayServer.get_name() == "headless": return
  for i in 8:
   var player = AudioStreamPlayer.new()
   add_child(player)
   pool.append(player)
 func save():
- var config = ConfigFile.new()
- config.load("user://settings.cfg")
+ var config = OnlineAPI.settings()
  handle = str(CardDB.cards[hero_id].name) if CardDB.cards.has(hero_id) else clean_handle(handle)
  config.set_value("player", "handle", handle)
  config.set_value("player", "hero_id", hero_id)

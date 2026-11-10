@@ -31,7 +31,7 @@ func poll():
 			var packet = peer.get_packet()
 			if not peer.was_string_packet(): continue
 			var message = JSON.parse_string(packet.get_string_from_utf8())
-			if message is Dictionary: received.emit(NetTransport.normalize(message))
+			if message is Dictionary and NetTransport.safe_value(message): received.emit(NetTransport.normalize(message))
 	elif state == WebSocketPeer.STATE_CLOSED:
 		active = false
 		close_code = peer.get_close_code()

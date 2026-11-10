@@ -17,6 +17,13 @@ var locks: Dictionary = {}
 var driving: Dictionary = {}
 var view_frames: Dictionary = {}
 var last_snapshot: Dictionary = {}
+var idle_at = 0.0
+var idle_warned = false
+var idle_turn = -1
+var idle_seat = -1
+var idle_streak: Dictionary = {}
+var idle_bot: Dictionary = {}
+var permanent_idle: Dictionary = {}
 var announced_dead: Dictionary = {}
 func version() -> String: return str(ProjectSettings.get_setting("application/config/version", ""))
 func now() -> float: return float(clock.call())
@@ -25,7 +32,7 @@ func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, se
 	seats = []
 	for info in config:
 		seats.append({"name": str(info.get("name", "Bot" if info.get("bot", false) else "Seat %d" % seats.size())), "hero": str(info.get("hero", "")), "bot": bool(info.get("bot", false)), "difficulty": int(info.get("difficulty", 1))})
-	_pick_bot_names(card_pool, seed_value)
+	_pick_bot_names(card_pool)
 	var levels = []
 	for i in seats.size():
 		var info = seats[i]
@@ -37,7 +44,7 @@ func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, se
 	var choices = []
 	for i in seats.size(): choices.append(BotDecider.new(engine, seats[i].difficulty) if seats[i].bot else RemoteDecider.new(self, i))
 	engine.setup(levels, seed_value, choices, card_pool, starting_life)
-func _pick_bot_names(card_pool: String, seed_value: int):
+func _pick_bot_names(card_pool: String):
 	var db = get_node("/root/CardDB")
 	var used_names = []
 	var used_ids = []
@@ -53,11 +60,9 @@ func _pick_bot_names(card_pool: String, seed_value: int):
 		if not card.get("starter", false) and db.has_subtype(id, "Hero") and title not in used_names and id not in used_ids and title not in names:
 			heroes.append(id)
 			names.append(title)
-	var rng = RandomNumberGenerator.new()
-	rng.seed = seed_value
 	for info in seats:
 		if info.bot and info.name in ["", "Bot"] and not heroes.is_empty():
-			var id = heroes.pop_at(rng.randi_range(0, heroes.size() - 1))
+			var id = heroes.pop_at(GameEngine.crypto_int(heroes.size()))
 			info.name = str(db.cards[id].name)
 			info.hero = id
 func _waiting(seat: int, done: bool = false):
@@ -68,12 +73,13 @@ func _waiting(seat: int, done: bool = false):
 			_send(other, data)
 func _install_engine():
 	engine = GameEngine.new()
+	engine.secure_random = true
 	add_child(engine)
 	engine.turn_driver = _drive_reaction
 	engine.state_changed.connect(func(): dirty = true; _eliminations())
 	engine.log_message.connect(func(text): _broadcast({"t": "log", "text": text, "seat": engine.state.active_seat}))
 	engine.damage_dealt.connect(func(p, q, amount): _event({"kind": "damage_dealt", "source": p.seat, "target": q.seat, "amount": amount}))
-	engine.turn_started.connect(func(p): _event({"kind": "turn_started", "seat": p.seat}))
+	engine.turn_started.connect(_turn_started)
 	engine.turn_ended.connect(func(p): _event({"kind": "turn_ended", "seat": p.seat}))
 	engine.ice_counter_removed.connect(func(c): _event({"kind": "ice_counter_removed", "uid": c.uid}))
 	engine.card_moved.connect(_moved)
@@ -87,7 +93,8 @@ func start():
 	dirty = true
 	_checkpoint()
 func attach(transport: NetTransport):
-	transport.received.connect(func(message): _receive(transport, NetTransport.normalize(message)))
+	transport.received.connect(func(message):
+		if NetTransport.safe_value(message): _receive(transport, NetTransport.normalize(message)))
 	transport.closed.connect(func(): _closed(transport))
 func _send(seat: int, message: Dictionary):
 	if connections.has(seat): connections[seat].send(message)
@@ -121,18 +128,19 @@ func _closed(transport):
 		disconnected[seat] = now()
 func _error(transport, reason: String): transport.send({"t": "error", "reason": reason})
 func _receive(transport, message: Dictionary):
+	if not NetTransport.safe_value(message) or not message.get("t") is String: return
 	if message.get("t") == "hello":
-		if message.get("version") != version(): _error(transport, "version mismatch"); return
+		if not message.get("version") is String or message.version != version(): _error(transport, "version mismatch"); return
 		var seat = message.get("seat")
-		if not seat is int or seat < 0 or seat >= seats.size() or seats[seat].bot or message.get("token") != tokens[seat]:
+		if not seat is int or seat < 0 or seat >= seats.size() or seats[seat].bot or not message.get("token") is String or message.token != tokens[seat]:
 			_error(transport, "invalid credentials"); return
 		if authenticated.has(transport) and authenticated[transport] != seat: _error(transport, "already authenticated"); return
 		if connections.has(seat) and connections[seat] != transport: connections[seat].close()
 		connections[seat] = transport
 		authenticated[transport] = seat
 		disconnected.erase(seat)
-		engine.deciders[seat] = RemoteDecider.new(self, seat)
-		engine.state.players[seat].difficulty = -1
+		engine.deciders[seat] = BotDecider.new(engine, 1) if _takeover(seat) else RemoteDecider.new(self, seat)
+		engine.state.players[seat].difficulty = 1 if _takeover(seat) else -1
 		_send(seat, {"t": "welcome", "seat": seat, "seats": seats, "version": version(), "card_pool": engine.state.card_pool, "starting_life": engine.state.starting_life})
 		_view(seat)
 		for id in pending:
@@ -148,12 +156,14 @@ func _receive(transport, message: Dictionary):
 			_error(transport, "unknown prompt"); return
 		var request = pending[id]
 		if not RemoteDecider.valid(request.data, message.get("value"), engine.db()): _error(transport, "invalid answer"); return
+		idle_at = now()
+		idle_warned = false
 		_complete(id, message.value)
 	elif message.get("t") == "action":
 		_action(transport, seat, message)
 	else: _error(transport, "unknown message")
 func available(seat: int) -> bool:
-	return running and engine.is_turn(engine.state.players[seat]) and not engine.busy and not locks.has(engine.reaction_depth) and not pending.values().any(func(r): return r.seat == seat)
+	return not idle_bot.has(seat) and not permanent_idle.has(seat) and running and engine.is_turn(engine.state.players[seat]) and not engine.busy and not locks.has(engine.reaction_depth) and not pending.values().any(func(r): return r.seat == seat)
 func _action(transport, seat: int, message: Dictionary):
 	if not available(seat): _error(transport, "seat cannot act now"); return
 	var p = engine.state.players[seat]
@@ -172,6 +182,8 @@ func _action(transport, seat: int, message: Dictionary):
 		"activate": legal = card != null and index is int and engine.activatable_abilities(p, card).any(func(a): return a.index == index and a.enabled)
 		"end_turn", "play_all", "play_basics": legal = true
 	if not legal: _error(transport, "illegal action"); return
+	idle_at = now()
+	idle_warned = false
 	var depth = engine.reaction_depth
 	locks[depth] = true
 	match kind:
@@ -207,9 +219,10 @@ func _fallback(id: String):
 	var answer = await BotDecider.new(engine, 1).callv(request.data.kind, request.args)
 	if pending.has(id): _complete(id, RemoteDecider.wire_answer(request.data.kind, answer))
 func _takeover(seat: int) -> bool:
-	return not seats[seat].bot and disconnected.has(seat) and now() - disconnected[seat] >= 120.0
+	return permanent_idle.has(seat) or idle_bot.has(seat) or (not seats[seat].bot and disconnected.has(seat) and now() - disconnected[seat] >= 120.0)
 func _process(_delta):
 	if engine == null or not running: return
+	_idle_tick()
 	for id in pending.keys():
 		if now() - pending[id].at >= 45.0 or _takeover(pending[id].seat): _fallback(id)
 	for seat in seats.size():
@@ -222,6 +235,39 @@ func _process(_delta):
 	if not driving.has(engine.reaction_depth) and not engine.busy and not engine.state.finished and not locks.has(engine.reaction_depth):
 		var p = engine.active()
 		if seats[p.seat].bot or _takeover(p.seat): _drive()
+func _turn_started(p):
+	_event({"kind": "turn_started", "seat": p.seat})
+	if engine.reaction_depth == 0: _begin_idle_turn(p)
+func _begin_idle_turn(p):
+	if idle_seat >= 0 and not idle_bot.has(idle_seat) and not permanent_idle.has(idle_seat): idle_streak[idle_seat] = 0
+	for seat in idle_bot:
+		if not permanent_idle.has(seat):
+			engine.deciders[seat] = RemoteDecider.new(self, seat)
+			engine.state.players[seat].difficulty = -1
+	idle_bot.clear()
+	idle_turn = engine.state.turn
+	idle_seat = p.seat
+	idle_at = now()
+	idle_warned = false
+func _idle_tick():
+	if engine.reaction_depth > 0:
+		idle_at = now()
+		return
+	var p = engine.active()
+	if idle_turn != engine.state.turn or idle_seat != p.seat: _begin_idle_turn(p)
+	if engine.state.finished or seats[p.seat].bot or not connections.has(p.seat) or _takeover(p.seat): return
+	if engine.busy or not pending.is_empty() or not locks.is_empty():
+		idle_at = now()
+		return
+	var elapsed = now() - idle_at
+	if elapsed >= 120 and not idle_warned:
+		idle_warned = true
+		_send(p.seat, {"t": "event", "kind": "idle_warning", "seconds_left": 60})
+	if elapsed >= 180:
+		idle_streak[p.seat] = idle_streak.get(p.seat, 0) + 1
+		idle_bot[p.seat] = true
+		if idle_streak[p.seat] >= 3: permanent_idle[p.seat] = true
+		engine.say(seats[p.seat].name + " was idle; a bot finished their turn")
 func _drive_reaction(p):
 	var driver = BotPlayer.new(engine)
 	driver.action_completed = _checkpoint
@@ -240,21 +286,26 @@ func _drive():
 func _checkpoint():
 	if not pending.is_empty() or not locks.is_empty() or engine.busy or engine.reaction_depth != 0 or engine.simultaneous_depth != 0 or not engine.state.resolving.is_empty(): return
 	if not engine.state.finished and not SaveGame.safe(engine, engine.state.active_seat): return
+	engine.trim_log()
 	last_snapshot = {"version": version(), "content": SaveGame.content(), "game": SaveGame.snapshot(engine.state), "seats": seats.duplicate(true), "tokens": tokens.duplicate()}
 	snapshot.emit(last_snapshot.duplicate(true))
 func restore(data: Dictionary) -> bool:
-	if data.get("version") != version() or data.get("content") != SaveGame.content(): return false
+	if not SaveGame.bounded(data) or not data.get("version") is String or not data.get("content") is String or not data.get("game") is Dictionary: return false
+	if data.version != version() or data.content != SaveGame.content(): return false
 	var restored = SaveGame.restore(data.get("game", {}))
 	if restored == null or not restored.resolving.is_empty() or not data.get("seats") is Array or not data.get("tokens") is Array: return false
 	if data.seats.size() != restored.players.size() or data.tokens.size() != restored.players.size(): return false
 	for i in data.seats.size():
 		if not data.seats[i] is Dictionary or not data.tokens[i] is String: return false
+		if not data.seats[i].get("name") is String or not data.seats[i].get("hero") is String or not data.seats[i].get("bot") is bool: return false
+		if not data.seats[i].get("difficulty") is int or data.seats[i].difficulty < 0 or data.seats[i].difficulty > 2: return false
 		for key in ["name", "hero", "bot", "difficulty"]:
 			if not data.seats[i].has(key): return false
 	seats = data.seats.duplicate(true)
 	tokens = data.tokens.duplicate()
 	_install_engine()
 	engine.state = restored
+	engine.trim_log()
 	for i in seats.size():
 		engine.deciders.append(BotDecider.new(engine, seats[i].difficulty) if seats[i].bot else RemoteDecider.new(self, i))
 		disconnected[i] = now()

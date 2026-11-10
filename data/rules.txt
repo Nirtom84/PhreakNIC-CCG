@@ -36,6 +36,7 @@
 - [b]ICE counters[/b]: when you would take damage, each point removes one counter from your location instead. Damage beyond the counters left goes through to your life.
 
 [h2]Playing This Version[/h2]
+- Online turns warn after 2 minutes idle; after 3 minutes a bot finishes your turn. Three idle turns in a row give the bot full control. Prompts keep their 45-second fallback.
 Choose 2–4 players, bot difficulty, card set and Standard or custom starting life. Base Set · PhreakNIC 26 has 102 cards; Base Set + Expansion 1 · PhreakNIC 27 has 150.
 Tap a market or reserved card for its detail sheet and Buy or Reserve. Tap hand cards to play immediately. Right-click, long-press or tap a Network Log link to read a card. Close, tap outside or press Back to dismiss the sheet.
 Play Basics plays only Hacker and Attack; Play All plays every legal card. End Turn asks for confirmation while moves remain; change this in Options. Auto-end never asks.

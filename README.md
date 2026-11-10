@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.10**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.11**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -30,7 +30,7 @@ The game is in **alpha testing**. Prefer an app? Grab the latest build from the 
 |---|---|---|
 | Windows 10/11 (64-bit) | [PhreakNIC-CCG-windows.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-windows.zip) | Unzip and double-click the `.exe`. The app isn't code-signed yet, so Windows SmartScreen may warn you: choose **More info → Run anyway**. |
 | Linux (x86_64) | [PhreakNIC-CCG-linux.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-linux.zip) | Unzip and run the `.x86_64` file. If it won't start, make it executable: `chmod +x PhreakNIC-CCG-*.x86_64`. |
-| Android 7.0+ (64-bit) | [PhreakNIC-CCG-android.apk](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-android.apk) | Open the file on your phone and allow your browser or file manager to install unknown apps. Plays in landscape. |
+| Android 7.0+ (64-bit) | [PhreakNIC-CCG-android.apk](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-android.apk) | Open the file on your phone and allow your browser or file manager to install unknown apps. Plays in landscape. From v0.11 the APK is release-signed: uninstall an older version first. |
 
 Choose 2–4 players (you plus 1–3 bots), a bot level, the card set and the starting life, then start.
 - **Your turn:** click a hand card to play it, or use **Play Basics** (Hackers and Attacks only) or **Play All**.
@@ -87,7 +87,7 @@ tools/build_all.sh release    # zip the builds under stable names in build/relea
 - **GitHub Pages**: `tools/deploy_pages.sh` publishes `build/web/` to the `gh-pages` branch, which GitHub serves at https://nirtom84.github.io/PhreakNIC-CCG/. The branch is replaced on every deploy, so old web builds don't pile up in the repo's history.
 - **Linux**: `build/linux/PhreakNIC-CCG-v<version>.x86_64` — a single file, run it directly.
 - **Windows**: `build/windows/PhreakNIC-CCG-v<version>.exe` — a single file, double-click it.
-- **Android**: `build/android/PhreakNIC-CCG-v<version>-debug.apk` — install with `adb install` or by copying it to the phone (allow "install unknown apps"). It is signed with the standard debug key; publishing on Google Play needs a release keystore.
+- **Android**: `build/android/PhreakNIC-CCG-v<version>.apk`, signed with the project release key when `~/.config/phreaknic/android-signing.sh` exists (maintainer only; it loads the keystore from outside the repo). Without it you get `PhreakNIC-CCG-v<version>-debug.apk`, signed with your own debug key. Install with `adb install` or by copying it to the phone (allow "install unknown apps").
 
 One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/share/godot/export_templates/4.7.1.stable/`, JDK 17 (`~/.local/opt/jdk-17`), and the Android SDK in `~/Android/Sdk` with `platform-tools`, `build-tools;36.1.0` and `platforms;android-36`. Export settings live in `export_presets.cfg`.
 

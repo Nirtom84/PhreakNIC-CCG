@@ -541,7 +541,7 @@ func _effect_jenny(p, c):
 func _effect_john_titor(p, c):
 	if await e.dec(p).confirm(p, "Shuffle John Titor into deck?"):
 		e.move(c, p.deck, "deck")
-		e.state.shuffle(p.deck)
+		e.shuffle(p.deck)
 
 ## JousterL
 func _effect_jousterl(p, c):
@@ -563,7 +563,7 @@ func _effect_lan_party(p, c):
 		if q.deck.is_empty():
 			q.deck.append_array(q.discard)
 			q.discard.clear()
-			e.state.shuffle(q.deck)
+			e.shuffle(q.deck)
 		if not q.deck.is_empty():
 			var x = q.deck.back()
 			e.reveal(q, [x])
@@ -674,10 +674,12 @@ func _effect_o_p_r_a_h(p, c):
 
 ## Oprah Wonka
 func _effect_oprah_wonka(p, c):
-	var selected = await e.choose(p, "Search for five cards", p.deck + p.discard, 5, 5)
+	var options = p.deck + p.discard
+	options.sort_custom(func(a, b): return a.id < b.id or (a.id == b.id and a.uid < b.uid))
+	var selected = await e.choose(p, "Search for five cards", options, 5, 5)
 	if selected.size() < 5:
 		for x in selected: e.move(x, p.hand, "hand")
-		e.state.shuffle(p.deck)
+		e.shuffle(p.deck)
 		return
 	var left = p
 	for step in range(1, e.state.players.size()):
@@ -690,7 +692,7 @@ func _effect_oprah_wonka(p, c):
 	var option = await e.option(p, "Choose pile: %s / %s" % [pile.map(func(x): return x.id), other.map(func(x): return x.id)], ["First pile", "Second pile"])
 	for x in (pile if option == 0 else other): e.move(x, p.hand, "hand")
 	for x in (other if option == 0 else pile): e.remove(x)
-	e.state.shuffle(p.deck)
+	e.shuffle(p.deck)
 
 ## OSINT for Dummies
 func _effect_osint_for_dummies(p, c):
@@ -821,7 +823,7 @@ func _effect_should_have_preregistered(p, c):
 func _effect_speakers_needed(p, c):
 	p.deck.append_array(p.discard)
 	p.discard.clear()
-	e.state.shuffle(p.deck)
+	e.shuffle(p.deck)
 	while not p.deck.is_empty():
 		var x = p.deck.back()
 		e.reveal(p, [x])
@@ -927,7 +929,7 @@ func _effect_treasure_hunters(p, c):
 			if e.db().get_card(x.id).cost == n:
 				await e.acquire(p, x)
 				break
-	e.state.shuffle(e.state.center_deck)
+	e.shuffle(e.state.center_deck)
 
 ## Two Hump Camel
 func _effect_two_hump_camel(p, c):
@@ -1101,7 +1103,7 @@ func start_trigger(p, c):
 		"Tableskirts":
 			if p.play_area.size() > 1: e.leave_play(c)
 		"Unattended Phone":
-			if e.state.rng.randi_range(1, 6) == 1:
+			if e.rand_range(1, 6) == 1:
 				e.leave_play(c)
 				await e.damage(p, p, 1, c)
 		"The Juice":

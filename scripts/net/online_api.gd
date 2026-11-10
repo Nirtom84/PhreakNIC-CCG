@@ -4,13 +4,22 @@ const DEFAULT_SERVER = "https://online-01.phreaknic-ccg.net"
 const ALPHABET = "23456789ABCDEFGHJKMNPQRSTUVWXYZ"
 static func settings() -> ConfigFile:
 	var config = ConfigFile.new()
-	config.load("user://settings.cfg")
+	var file = FileAccess.open("user://settings.cfg", FileAccess.READ)
+	if file != null and file.get_length() <= 65536:
+		if config.load("user://settings.cfg") != OK: config.clear()
 	return config
 static func server() -> String:
 	var override = OS.get_environment("PHREAKNIC_SERVER")
 	return (override if not override.is_empty() else str(settings().get_value("game", "online_server", DEFAULT_SERVER))).trim_suffix("/")
 static func remembered() -> Dictionary:
-	return settings().get_value("game", "online_seat", {})
+	var value = settings().get_value("game", "online_seat", {})
+	if not value is Dictionary: return {}
+	for key in ["server", "code", "token"]:
+		if not value.get(key) is String or value[key].length() > 4096: return {}
+	if not valid_code(value.code) or value.token.is_empty(): return {}
+	if not value.get("seat") is int or value.seat < 0 or value.seat > 3: return {}
+	if not (value.server.begins_with("https://") or value.server.begins_with("http://")): return {}
+	return value
 static func remember(value: Dictionary):
 	var config = settings()
 	config.set_value("game", "online_seat", value)
@@ -26,6 +35,11 @@ static func invite_code(url: String) -> String:
 	value = value.to_upper()
 	return value if valid_code(value) else ""
 static func error_text(status: int, data: Dictionary) -> String:
+	match data.get("error"):
+		"room_version": return "This game was created with an older version (%s). Create a new game or pick another." % data.get("room", "?")
+		"busy": return "The servers are full right now. Try again in a few minutes."
+		"maintenance": return "Online play is paused for maintenance."
+		"rate_limit": return "Too many tries from your network. Wait a minute and try again."
 	if data.get("error") == "version": return "This game runs version %s. Please update" % data.get("need", "?")
 	if status == 429: return "Too many requests. Please try again later."
 	if status == 404: return "Game not found. Check the code."

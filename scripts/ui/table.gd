@@ -1203,7 +1203,8 @@ func show_notice(message: String, duration: float = 4.0):
  tween.tween_callback(notice.queue_free)
 func report_bug():
  var details = "Seed: %s; Set: %s; Players: %d; Difficulties: %s; Turn: %d\n" % [engine.state.rng.seed, engine.state.card_pool, player_count, str(engine.state.players.map(func(p): return p.difficulty)), engine.state.turn]
- details += "\n".join(log_view.get_parsed_text().strip_edges().split("\n").slice(-25))
+ var private_log = "\n".join(log_view.get_parsed_text().strip_edges().split("\n").slice(-25))
+ details += load("res://scripts/ui/bug_report.gd").redact(private_log, seat_names, engine.state.players.map(func(p): return p.is_bot), human_seat)
  load("res://scripts/ui/bug_report.gd").open(details)
 
 func prevention_choice(amount: int, sources: Array) -> Array:
@@ -1307,6 +1308,12 @@ func setup_online():
  for data in client.waiting.values(): online_event(data)
  online_session.finished.connect(func(winner):
   game_over(engine.state.players[winner] if winner >= 0 and winner < engine.state.players.size() else null))
+ online_session.removed.connect(func(text):
+  var screen = load("res://scripts/ui/online.gd").new()
+  screen.initial_status = text
+  get_tree().root.add_child(screen)
+  get_tree().current_scene = screen
+  queue_free())
  online_session.status_changed.connect(func(text):
   redraw()
   connection_dot.tooltip_text = text
@@ -1373,6 +1380,7 @@ func update_waiting_banner():
 func online_event(data: Dictionary):
  if engine.state == null: return
  match data.kind:
+  "idle_warning": show_notice("You'll be auto-played in 60 s", 60)
   "waiting":
    waiting_seats[int(data.seat)] = seat_name(int(data.seat))
    update_waiting_banner()

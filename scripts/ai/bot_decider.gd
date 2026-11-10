@@ -51,7 +51,7 @@ func choose_option(player, prompt: String, options: Array[String]) -> int:
 		for name in priorities:
 			if name in options: return options.find(name)
 		return 0
-	if difficulty == 0: return engine.state.rng.randi_range(0, options.size() - 1)
+	if difficulty == 0: return engine.rand_range(0, options.size() - 1)
 	if prompt.begins_with("Choose pile"):
 		# The split dialog contains stable ids, allowing equal evaluation of each pile.
 		var sections = prompt.trim_prefix("Choose pile: ").split(" / ")
@@ -91,8 +91,8 @@ func choose_options(player, prompt: String, options: Array[String], count: int) 
 func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) -> Array:
 	var sorted = cards.duplicate()
 	if difficulty == 0:
-		engine.state.shuffle(sorted)
-		return sorted.slice(0, engine.state.rng.randi_range(min_n, max_n))
+		engine.shuffle(sorted)
+		return sorted.slice(0, engine.rand_range(min_n, max_n))
 	if "full prevention" in prompt:
 		sorted.sort_custom(func(a, b): return a.effect_id() == "Military-Grade Card Encapsulation" and b.effect_id() != "Military-Grade Card Encapsulation")
 		return sorted.slice(0, 1)
@@ -130,13 +130,13 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 	return sorted.slice(0, maxi(1, min_n))
 func choose_player(_player, _prompt: String, players: Array) -> PlayerState:
 	if players.is_empty(): return null
-	if difficulty == 0: return players[engine.state.rng.randi_range(0, players.size() - 1)]
+	if difficulty == 0: return players[engine.rand_range(0, players.size() - 1)]
 	var sorted = players.duplicate()
 	sorted.sort_custom(func(a, b): return a.life < b.life)
 	return sorted[0]
 func choose_number(player, prompt: String, allowed: Array[int]) -> int:
 	if allowed.is_empty(): return 0
-	if difficulty == 0: return allowed[engine.state.rng.randi_range(0, allowed.size() - 1)]
+	if difficulty == 0: return allowed[engine.rand_range(0, allowed.size() - 1)]
 	if "acquire matching" in prompt:
 		var best = 0
 		var best_score = -INF
@@ -151,7 +151,7 @@ func choose_number(player, prompt: String, allowed: Array[int]) -> int:
 	return allowed.max()
 func confirm(player, prompt: String) -> bool:
 	if "TOCTOU" in prompt: return true
-	if difficulty == 0: return engine.state.rng.randf() < 0.5
+	if difficulty == 0: return engine.coin_flip()
 	if "Put bought" in prompt or "Store bought" in prompt or "Put discard" in prompt: return true
 	if "Shuffle John" in prompt: return true
 	if "Give Merry" in prompt: return true

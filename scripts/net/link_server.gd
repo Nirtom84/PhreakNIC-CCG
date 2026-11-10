@@ -108,7 +108,7 @@ func _process(_delta):
 				var bytes = link.get_packet()
 				if not link.was_string_packet(): continue
 				var message = JSON.parse_string(bytes.get_string_from_utf8())
-				if message is Dictionary: _receive(NetTransport.normalize(message))
+				if message is Dictionary and NetTransport.safe_value(message, 100000, 2 * 1024 * 1024): _receive(NetTransport.normalize(message))
 func _bridge(bridge: Dictionary):
 	bridge.local.poll()
 	bridge.remote.poll()
@@ -151,6 +151,17 @@ func _watch_over():
 		print("room %s game over winner=%d" % [room, seat])
 		_send({"t": "over", "winner": seat, "turns": game.engine.state.turn}))
 func _receive(message: Dictionary):
+	if not NetTransport.safe_value(message, 100000, 2 * 1024 * 1024) or not message.get("t") is String: return
+	if message.get("t") == "setup":
+		if not message.get("seats") is Array or message.seats.size() < 2 or message.seats.size() > 4: return
+		for seat in message.seats:
+			if not seat is Dictionary: return
+			if not seat.get("difficulty", 1) is int or seat.get("difficulty", 1) < 0 or seat.get("difficulty", 1) > 2: return
+			if not seat.get("bot", false) is bool: return
+		for field in ["seed", "starting_life"]:
+			if message.has(field) and not message[field] is int: return
+		if message.get("starting_life", 0) < 0 or message.get("starting_life", 0) > 10000: return
+	if message.get("t") == "restore" and not message.get("snapshot") is Dictionary: return
 	match message.get("t"):
 		"ping": _send({"t": "pong"})
 		"setup":
@@ -178,7 +189,7 @@ func _receive(message: Dictionary):
 			var seat = message.get("seat")
 			if not seat is int or seat < 0 or seat >= game.seats.size() or game.seats[seat].bot: return
 			if message.t == "connect":
-				if message.get("version") != game.version():
+				if not message.get("version") is String or message.version != game.version():
 					_send({"t": "to", "seat": seat, "msg": {"t": "error", "reason": "version", "need": game.version()}})
 					return
 				if endpoints.has(seat): endpoints[seat].close()

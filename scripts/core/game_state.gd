@@ -22,12 +22,6 @@ func create(id: String, owner: int = -1):
 	var card = CardInstance.new(next_uid, id, owner)
 	next_uid += 1
 	return card
-func shuffle(cards: Array):
-	for i in range(cards.size() - 1, 0, -1):
-		var j = rng.randi_range(0, i)
-		var item = cards[i]
-		cards[i] = cards[j]
-		cards[j] = item
 func all_cards() -> Array:
 	var result = center_deck + removed + resolving
 	for card in center_row:

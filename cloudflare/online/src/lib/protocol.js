@@ -76,3 +76,17 @@ export async function constantTimeEqual(a,b) {
   for(let i=0;i<left.length;i++)diff|=left[i]^right[i];return diff===0;
 }
 export function creationKeys(r,p) {return ['rooms.created',r.public?'rooms.public':'rooms.invite','seats.'+r.seats.length,'pool.'+r.card_pool,'life.'+r.starting_life,'version.'+r.version,'platform.'+p];}
+
+export const ROOM_LIFETIME=8*3600000;
+export const roomExpired=(r,now=Date.now())=>now>=r.created+ROOM_LIFETIME;
+export const startDecision=(enabled,counted,live,daily)=>enabled==='0'?'maintenance':counted?null:live>=20||daily>=300?'busy':null;
+export function rateDecision(row,now,limit,span,cost=1) {const window=row&&now-row.window<span?row.window:now,count=window===row?.window?row.count:0;return {allowed:count+cost<=limit,window,count:count+cost};}
+export function socketSeat(r,t) {return r&&validToken(t)?r.seats.findIndex(s=>!s.bot&&s.token===t):-1;}
+export function joinVersion(client,room,server) {checkVersion(client,server);if(client!==room)fail('room_version',409,{room});}
+export function kickSeat(r,actor,seat) {if(r.started||actor!==r.host_seat||!Number.isInteger(seat)||seat<=0||seat>=r.seats.length||r.seats[seat].bot||!r.seats[seat].token)fail('seat');return seat;}
+export async function adminDecision(locked,compare) {if(locked)return 429;return await compare()?200:401;}
+export function seatRate(state,now,bytes) {
+ const messages=rateDecision(state.messages,now,30,1000),traffic=rateDecision(state.traffic,now,262144,10000,bytes);
+ const strikes=rateDecision(state.strikes,now,10,10000,messages.allowed&&traffic.allowed?0:1);
+ return {messages,traffic,strikes,allowed:messages.allowed&&traffic.allowed,close:!traffic.allowed||!strikes.allowed};
+}

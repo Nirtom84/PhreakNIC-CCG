@@ -3,6 +3,7 @@ extends Node
 signal room_changed(data)
 signal status_changed(text)
 signal finished(winner)
+signal removed(text)
 var client: NetClient
 var credential: Dictionary = {}
 var room: Dictionary = {}
@@ -36,11 +37,30 @@ func connect_socket():
 func _closed(endpoint):
 	if stopped or endpoint != transport: return
 	client.can_act = false
+	if endpoint is WebSocketTransport and endpoint.close_reason in ["room_version", "busy", "maintenance", "rate_limit"]:
+		stopped = true
+		retry = 0
+		set_status(OnlineAPI.error_text(0, {"error": endpoint.close_reason, "room": room.get("version", "?")}))
+		return
+	if endpoint is WebSocketTransport and endpoint.close_code in [4000, 4001]:
+		stopped = true
+		retry = 0
+		var text = "The host removed you from the room." if endpoint.close_code == 4001 else "This seat was opened somewhere else."
+		OnlineAPI.remember({})
+		set_status(text)
+		if endpoint.close_code == 4001: removed.emit(text)
+		return
 	set_status("Reconnecting…")
 	retry = minf(15, pow(2, attempts))
 	attempts += 1
 func _message(data: Dictionary):
 	match data.get("t"):
+		"error":
+			var reason = data.get("reason", data.get("error", ""))
+			if reason in ["room_version", "version", "busy", "maintenance", "rate_limit"]:
+				var error = data.duplicate()
+				error.error = reason
+				set_status(OnlineAPI.error_text(0, error))
 		"room":
 			attempts = 0
 			room = data

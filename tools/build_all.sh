@@ -29,8 +29,17 @@ for target in "${targets[@]}"; do
 			"$GODOT" --headless --path . --export-release "Windows" "build/windows/PhreakNIC-CCG-v$VERSION.exe" ;;
 		android)
 			mkdir -p build/android
-			# Debug-signed APK (installs by sideloading). A Play Store release needs a release keystore.
-			"$GODOT" --headless --path . --export-debug "Android" "build/android/PhreakNIC-CCG-v$VERSION-debug.apk" ;;
+			# Release-signed with the project's keystore when ~/.config/phreaknic/android-signing.sh exists
+			# (it loads the keystore path and password from ~/.tokens; nothing secret is in the repo).
+			# Without it, falls back to a debug-signed APK for local testing.
+			rm -f build/android/PhreakNIC-CCG-v$VERSION*.apk
+			if [ -f "$HOME/.config/phreaknic/android-signing.sh" ]; then
+				( source "$HOME/.config/phreaknic/android-signing.sh"
+				  "$GODOT" --headless --path . --export-release "Android" "build/android/PhreakNIC-CCG-v$VERSION.apk" )
+			else
+				echo "No Android signing config; building a debug-signed APK." >&2
+				"$GODOT" --headless --path . --export-debug "Android" "build/android/PhreakNIC-CCG-v$VERSION-debug.apk"
+			fi ;;
 		web)
 			mkdir -p build/web
 			"$GODOT" --headless --path . --export-release "Web" build/web/index.html ;;
@@ -41,7 +50,10 @@ for target in "${targets[@]}"; do
 			rm -f build/release/*
 			(cd build/linux && zip -q -9 "../release/PhreakNIC-CCG-linux.zip" "PhreakNIC-CCG-v$VERSION.x86_64")
 			(cd build/windows && zip -q -9 "../release/PhreakNIC-CCG-windows.zip" "PhreakNIC-CCG-v$VERSION.exe")
-			cp "build/android/PhreakNIC-CCG-v$VERSION-debug.apk" "build/release/PhreakNIC-CCG-android.apk" ;;
+			apk="build/android/PhreakNIC-CCG-v$VERSION.apk"; [ -f "$apk" ] || apk="build/android/PhreakNIC-CCG-v$VERSION-debug.apk"
+			cp "$apk" "build/release/PhreakNIC-CCG-android.apk"
+			# Checksums so players can verify downloads (attach SHA256SUMS.txt to the GitHub Release).
+			(cd build/release && sha256sum PhreakNIC-CCG-* > SHA256SUMS.txt) ;;
 		*) echo "Unknown target: $target (use linux, windows, android, web, server or release)" >&2; exit 1 ;;
 	esac
 done

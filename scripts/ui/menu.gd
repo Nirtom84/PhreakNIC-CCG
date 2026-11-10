@@ -225,7 +225,7 @@ func _ready():
   UIStyle.button(downloads, "All releases", func(): open_link(RELEASES_URL))
  if OS.has_feature("web") and not invite_consumed:
   invite_consumed = true
-  var code = OnlineAPI.invite_code(str(JavaScriptBridge.eval("window.location.href")))
+  var code = OnlineAPI.invite_code(str(JavaScriptBridge.get_interface("location").href))
   if not code.is_empty(): open_online.call_deferred(false, code)
 func open_online(resume: bool = false, code: String = ""):
  var online = load("res://scripts/ui/online.gd").new()
@@ -305,5 +305,5 @@ func confirm(prompt: String, yes_text: String, no_text: String) -> bool:
  return answer
 ## Opens a link in a new browser tab (web) or the system browser (desktop/Android).
 func open_link(url: String):
- if UIStyle.is_web() and OS.has_feature("web"): JavaScriptBridge.eval("window.open(" + JSON.stringify(url) + ", '_blank', 'noopener')")
+ if UIStyle.is_web() and OS.has_feature("web"): JavaScriptBridge.get_interface("window").open(url, "_blank", "noopener")
  else: OS.shell_open(url)

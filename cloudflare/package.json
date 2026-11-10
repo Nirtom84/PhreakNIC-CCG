@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "Pinned deploy tooling for the online server and website (installed with npm ci by tools/deploy_*.sh).",
+  "devDependencies": {
+    "wrangler": "4.160.0"
+  }
+}

@@ -16,6 +16,11 @@ func room(config: Array, seed_value: int = 12, life: int = 12):
  root.add_child(server)
  server.clock = func(): return fake_time
  server.setup(config, "2026", life, seed_value)
+ # Protocol scenarios retain reproducible rule paths; v11/fuzz exercise the
+ # default secure server and same-seed independence separately.
+ server.engine.secure_random = false
+ var levels = config.map(func(s): return int(s.get("difficulty", 1)) if s.get("bot", false) else -1)
+ server.engine.setup(levels, seed_value, server.engine.deciders, "2026", life)
  return server
 func link(server, seat: int, scripted: bool = true):
  var endpoints = LoopbackTransport.pair()
@@ -298,7 +303,7 @@ func bot_names():
  var config = [{"name": db.cards[hero].name, "hero": hero}, {"name": "Bot", "bot": true}, {"name": "", "bot": true}, {"bot": true}]
  var a = room(config, 42)
  var b = room(config, 42)
- verify(a.seats == b.seats, "Bot identities use game seed")
+ verify(a.engine.state.center_deck.map(func(c): return c.id) == b.engine.state.center_deck.map(func(c): return c.id), "Protocol fixtures retain seeded gameplay")
  var names = []
  var ids = []
  for seat in a.seats:

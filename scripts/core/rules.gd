@@ -12,6 +12,8 @@ signal damage_incoming(source_player, target_player, amount, source_card)
 signal turn_started(player)
 signal turn_ended(player)
 signal game_over(winner)
+signal turn_or_game_over
+var secure_random = false
 var state: GameState
 var deciders: Array = []
 var effects
@@ -22,8 +24,41 @@ var turn_driver: Callable
 # Pending triggers use departure generations, including leave/re-enter during reactions.
 var play_versions: Dictionary = {}
 func _init():
+	turn_ended.connect(func(_p): turn_or_game_over.emit())
+	game_over.connect(func(_winner): turn_or_game_over.emit())
 	effects = preload("res://scripts/core/effects.gd").new(self)
 func db() -> Node: return get_node("/root/CardDB")
+# Rejection sampling over 32 random bits avoids modulo bias.
+static func crypto_int(n: int) -> int:
+	assert(n > 0 and n <= 0x100000000)
+	var limit = 0x100000000 - (0x100000000 % n)
+	while true:
+		var bytes = Crypto.new().generate_random_bytes(4)
+		assert(bytes.size() == 4)
+		var value = int(bytes.decode_u32(0))
+		if value < limit: return value % n
+	return 0
+func rand_int(n: int) -> int:
+	return crypto_int(n) if secure_random else state.rng.randi_range(0, n - 1)
+func rand_range(low: int, high: int) -> int:
+	return low + rand_int(high - low + 1)
+func coin_flip() -> bool:
+	return rand_int(2) == 0 if secure_random else state.rng.randf() < 0.5
+func shuffle(cards: Array):
+	for i in range(cards.size() - 1, 0, -1):
+		var j = rand_int(i + 1)
+		var card = cards[i]
+		cards[i] = cards[j]
+		cards[j] = card
+func trim_log():
+	if not secure_random: return
+	while state.log.size() > 200: state.log.pop_front()
+	var size = 0
+	for i in range(state.log.size() - 1, -1, -1):
+		size += state.log[i].to_utf8_buffer().size()
+		if size > 65536:
+			state.log = state.log.slice(i + 1)
+			break
 func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026", starting_life: int = 0):
 	assert(difficulties.size() >= 2 and difficulties.size() <= 4)
 	state = GameState.new()
@@ -41,18 +76,19 @@ func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_p
 			var decider = preload("res://scripts/ai/bot_decider.gd").new(self, p.difficulty)
 			deciders.append(decider)
 		for i in 10: p.deck.append(state.create("Hacking" if i < 8 else "Damage", seat))
-		state.shuffle(p.deck)
+		shuffle(p.deck)
 		draw(p, 5)
 	for id in db().pool_ids(state.card_pool):
 		if not db().get_card(id).starter: state.center_deck.append(state.create(id))
-	state.shuffle(state.center_deck)
+	shuffle(state.center_deck)
 	for i in 5: refill(i)
-	state.active_seat = state.rng.randi_range(0, state.players.size() - 1)
+	state.active_seat = rand_int(state.players.size())
 	say("Seat %d goes first" % state.active_seat)
 	state.initial_count = state.all_cards().size()
 	for c in state.all_cards(): state.initial_ids[c.uid] = c.id
 func say(message: String):
 	state.log.append(message)
+	trim_log()
 	log_message.emit(message)
 func dec(p): return deciders[p.seat]
 func active(): return state.players[state.active_seat]
@@ -74,7 +110,7 @@ func draw(p, count: int):
 			var shuffled = p.discard.duplicate()
 			p.deck.append_array(p.discard)
 			p.discard.clear()
-			state.shuffle(p.deck)
+			shuffle(p.deck)
 			for card in shuffled: card_moved.emit(card, "discard", "deck")
 		if p.deck.is_empty(): break
 		move(p.deck.back(), p.hand, "hand")
@@ -404,7 +440,10 @@ func reaction_turn(p):
 		if p.is_bot:
 			if turn_driver.is_valid(): await turn_driver.call(p)
 			else: await preload("res://scripts/ai/bot_player.gd").new(self).take_turn(p)
-		else: await turn_ended
+		else:
+			await turn_or_game_over
+			# Let end_turn finish while reaction_depth still describes its turn.
+			await Engine.get_main_loop().process_frame
 	while not state.extra_turns.is_empty() and not state.finished:
 		var next_seat = state.extra_turns.pop_front()
 		var next_player = state.players[next_seat]
@@ -414,7 +453,10 @@ func reaction_turn(p):
 		if next_player.is_bot:
 			if turn_driver.is_valid(): await turn_driver.call(next_player)
 			else: await preload("res://scripts/ai/bot_player.gd").new(self).take_turn(next_player)
-		else: await turn_ended
+		else:
+			await turn_or_game_over
+			# Let end_turn finish while reaction_depth still describes its turn.
+			await Engine.get_main_loop().process_frame
 	state.extra_turns = saved_extra
 	reaction_depth -= 1
 	busy = saved_busy

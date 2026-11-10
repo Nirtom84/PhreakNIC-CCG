@@ -40,7 +40,9 @@ func decode(value):
    var result = {}
    for pair in value.dict:
     if not pair is Array or pair.size() != 2: valid = false; return {}
-    result[decode(pair[0])] = decode(pair[1])
+    var key = decode(pair[0])
+    if not (key is String or key is StringName or key is int or key is CardInstance or key is PlayerState): valid = false; return {}
+    result[key] = decode(pair[1])
    return result
   valid = false
   return null
@@ -55,6 +57,7 @@ static func snapshot(state) -> Dictionary:
  data.rng_state = str(state.rng.state)
  return {"state": data, "objects": codec.records}
 static func restore(data: Dictionary):
+ if not bounded(data): return null
  if not data.get("objects") is Array or not data.get("state") is Dictionary: return null
  var codec = SaveGame.new()
  for record in data.objects:
@@ -83,6 +86,7 @@ static func restore(data: Dictionary):
  if not data.state.has("starting_life"): state.starting_life = 24 if state.players.size() == 2 else 10 * state.players.size()
  if not codec.valid or state.card_pool not in ["2025", "2026"]: return null
  if state.players.size() < 2 or state.players.size() > 4 or state.center_row.size() != 5: return null
+ if state.starting_life < 1 or state.starting_life > 10000: return null
  if state.turn < 1: return null
  if state.active_seat < 0 or state.active_seat >= state.players.size(): return null
  for i in state.players.size():
@@ -91,6 +95,8 @@ static func restore(data: Dictionary):
   if player.difficulty < -1 or player.difficulty > 2: return null
  for object in codec.objects:
   if object is CardInstance:
+   if object.counters < 0 or object.counters > 1000000: return null
+   if object.flags.has("copy_id") and not object.flags.copy_id is String: return null
    var cards = Engine.get_main_loop().root.get_node("CardDB").cards
    if not Engine.get_main_loop().root.get_node("CardDB").in_pool(object.id, state.card_pool): return null
    if object.flags.has("copy_id") and not Engine.get_main_loop().root.get_node("CardDB").in_pool(object.flags.copy_id, state.card_pool): return null
@@ -109,7 +115,7 @@ static func restore(data: Dictionary):
   var card = queue.pop_back()
   if not card is CardInstance or card in identities: return null
   if card.uid <= 0 or seen.has(card.uid) or card.flags.get("virtual", false): return null
-  if state.initial_ids.get(card.uid) != card.id or card.uid >= state.next_uid: return null
+  if not state.initial_ids.get(card.uid) is String or state.initial_ids.get(card.uid) != card.id or card.uid >= state.next_uid: return null
   seen[card.uid] = true
   identities.append(card)
   queue.append_array(card.attached)
@@ -160,12 +166,33 @@ static func write(engine, table: Dictionary) -> bool:
  file.close()
  if error != OK: return false
  return DirAccess.rename_absolute(ProjectSettings.globalize_path(PATH + ".tmp"), ProjectSettings.globalize_path(PATH)) == OK
+static func bounded(data) -> bool:
+ # Saves have a larger node budget than wire messages, but never recursive depth.
+ var queue = [[data, 0]]
+ var count = 0
+ while not queue.is_empty():
+  var item = queue.pop_back()
+  var value = item[0]
+  count += 1
+  if count > 100000 or item[1] > 32: return false
+  if value is float and (not is_finite(value) or absf(value) > 9007199254740991.0): return false
+  if value is Array:
+   if value.size() > 100000: return false
+   for child in value: queue.append([child, item[1] + 1])
+  if value is Dictionary:
+   for key in value:
+    if not (key is String or key is StringName): return false
+    queue.append([value[key], item[1] + 1])
+ return true
 static func read() -> Dictionary:
  if not FileAccess.file_exists(PATH): return {}
+ var file = FileAccess.open(PATH, FileAccess.READ)
+ if file == null or file.get_length() > 2 * 1024 * 1024: return {}
  var parser = JSON.new()
- if parser.parse(FileAccess.get_file_as_string(PATH)) != OK: return {}
+ if parser.parse(file.get_as_text()) != OK: return {}
  var data = parser.data
- if not data is Dictionary or data.get("version") != VERSION or data.get("content") != content(): return {}
+ if not data is Dictionary or not (data.get("version") is int or data.get("version") is float) or not data.get("content") is String: return {}
+ if data.version != VERSION or data.content != content(): return {}
  if not data.get("game") is Dictionary or not data.get("table") is Dictionary: return {}
  var state = restore(data.game)
  if state == null: return {}
@@ -185,12 +212,13 @@ static func read() -> Dictionary:
   for entry in table.log_entries:
    if not entry is String: return {}
  if not table.get("log") is String or not table.get("fast") is bool: return {}
- if table.get("player_count") != state.players.size(): return {}
+ if not (table.get("player_count") is int or table.get("player_count") is float) or table.player_count != state.players.size(): return {}
  if not table.get("difficulties") is Array or table.difficulties.size() != state.players.size(): return {}
  for i in state.players.size():
-  if table.difficulties[i] != state.players[i].difficulty: return {}
- if table.get("handle") != table.seat_names[0] or table.get("hero_id") != table.seat_heroes[0]: return {}
- if not (data.get("saved_at") is float or data.get("saved_at") is int): return {}
+  if not (table.difficulties[i] is int or table.difficulties[i] is float) or table.difficulties[i] != state.players[i].difficulty: return {}
+ if not table.get("handle") is String or not table.get("hero_id") is String: return {}
+ if table.handle != table.seat_names[0] or table.hero_id != table.seat_heroes[0]: return {}
+ if not (data.get("saved_at") is float or data.get("saved_at") is int) or not is_finite(float(data.saved_at)) or data.saved_at < 0: return {}
  return data if ok else {}
 static func remove():
  if FileAccess.file_exists(PATH): DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))

@@ -26,6 +26,8 @@ var updated: Label
 var updated_at = 0.0
 var toast: Label
 var starting_indicator: Label
+var initial_status = ""
+var kick_overlay: Control
 const SETS = ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27"]
 func _ready():
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -53,6 +55,7 @@ func _ready():
  toast.add_theme_color_override("font_color", UIStyle.GREEN)
  toast.hide()
  browser()
+ if not initial_status.is_empty(): message.text = initial_status
 func clear_content():
  for child in content.get_children():
   if child != message.get_parent():
@@ -252,7 +255,13 @@ func enter(data: Dictionary):
  session.room_changed.connect(lobby)
  session.status_changed.connect(func(text): message.text = text)
  session.client.view_changed.connect(launch_table)
- session.client.error.connect(func(reason): message.text = reason)
+ session.client.error.connect(func(reason):
+  if reason not in ["room_version", "version", "busy", "maintenance", "rate_limit"]: message.text = reason)
+ session.removed.connect(func(text):
+  session.queue_free()
+  session = null
+  browser()
+  message.text = text)
  session.start(data)
 func lobby(room: Dictionary):
  clear_content()
@@ -269,8 +278,8 @@ func lobby(room: Dictionary):
  main.add_child(invite)
  UIStyle.label(invite, link, 20).size_flags_horizontal = Control.SIZE_EXPAND_FILL
  action(invite, "Copy invite link", func():
+  # On the web this uses navigator.clipboard; no JavaScript eval (the site's CSP forbids it).
   DisplayServer.clipboard_set(link)
-  if OS.has_feature("web"): JavaScriptBridge.eval("navigator.clipboard && navigator.clipboard.writeText(" + JSON.stringify(link) + ")")
   toast.show()
   get_tree().create_timer(2).timeout.connect(func(): if is_instance_valid(toast): toast.hide()))
  UIStyle.label(main, "Share this code with friends", 20)
@@ -291,6 +300,7 @@ func lobby(room: Dictionary):
   if i == int(session.credential.seat): UIStyle.label(row, "[you]", 18)
   if i == int(room.host_seat): UIStyle.label(row, "HOST", 18).add_theme_color_override("font_color", UIStyle.AMBER)
   if host and i != int(room.host_seat) and not room.started:
+   if not seat.bot and not seat.name.is_empty(): action(row, "Remove", kick_seat.bind(i))
    action(row, "Remove seat", func(): session.lobby("remove_seat", {"seat": i})).disabled = room.seats.size() <= 2
  var settings = section(columns, "// HOST SETTINGS" if host else "// READY ROOM", true)
  settings.get_parent().custom_minimum_size.x = 520
@@ -349,11 +359,18 @@ func _exit_tree():
 
 func _notification(what):
  if what == NOTIFICATION_WM_GO_BACK_REQUEST:
+  if is_instance_valid(kick_overlay):
+   kick_confirmed.emit(false)
+   return
   if hero_picker.close_top(): return
   if in_lobby: leave_lobby()
   else: back()
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"):
+  if is_instance_valid(kick_overlay):
+   kick_confirmed.emit(false)
+   get_viewport().set_input_as_handled()
+   return
   if hero_picker.close_top():
    get_viewport().set_input_as_handled()
    return
@@ -375,3 +392,21 @@ func select_hero(id: String):
 func pick_hero():
  if in_lobby or is_instance_valid(hero_overlay): return
  hero_overlay = hero_picker.open(select_hero)
+
+signal kick_confirmed(value)
+func kick_seat(seat: int):
+ if is_instance_valid(kick_overlay): return
+ var overlay = UIStyle.panel()
+ kick_overlay = overlay
+ overlay.add_to_group("touch_modal")
+ add_child(overlay)
+ var box = VBoxContainer.new()
+ overlay.add_child(box)
+ UIStyle.label(box, "Remove this player from the room?", 26)
+ UIStyle.button(box, "Remove", func(): kick_confirmed.emit(true))
+ UIStyle.button(box, "Cancel", func(): kick_confirmed.emit(false))
+ UIStyle.dialog(overlay, Vector2(600, 210))
+ var confirmed = await kick_confirmed
+ kick_overlay = null
+ overlay.queue_free()
+ if confirmed and session != null: session.lobby("kick", {"seat": seat})

@@ -32,7 +32,7 @@ Godot 4.7, GDScript only (typed GDScript where practical). Target 1920x1080, str
 
 ## Official rules (from the rules card) — implement exactly
 Setup: each player shuffles 8 Hacker + 2 Attack. Default life is 24 for two players,
-or 10 × number of players for three or four. Choose the first player with the seeded RNG.
+or 10 × number of players for three or four. Choose the first player randomly (seeded offline; cryptographic online).
 Shuffle the rest = Center Deck. Deal 5 face up = Center Row. Each player draws 5.
 Turn: play any number of cards from hand, in any order. Played actions go to the discard pile
 immediately after resolving. Damage {D} reduces the life of **all other players**. Hacking {H}
@@ -54,7 +54,7 @@ combines the printed rules, official errata v1.1, confirmed rulings and adopted
 defaults. [RULES_NOTES.md](RULES_NOTES.md) records implementation limits only.
 
 - Default life is 24 for two players and 10 × players for three or four; setup
-  accepts a custom starting life. A seeded random player starts, followed by seat order.
+  accepts a custom starting life. A random player starts, followed by seat order.
 - The active player orders simultaneous effects, including the forced Rickroll
   buy and permanent triggers. A pending permanent trigger disappears if its source leaves play.
 - The defender allocates each prevented point among ICE and other prevention.
@@ -138,9 +138,12 @@ Call `setup(seats, card_pool, starting_life, seed)`, attach transports, and awai
 `start()`. Seat dictionaries contain `name`, `hero`, `bot`, and numeric `difficulty`
 (0 Script Kiddie, 1 Phreak, 2 Elite). During setup, empty/default bot identities receive unique non-starter Hero names
 and IDs from the selected pool, excluding human names (case-insensitive) and Hero
-IDs. A separate RNG seeded with the game seed selects cosmetics without changing
-gameplay RNG. Welcome and snapshots retain these identities.
-Only the server uses the seeded game RNG.
+IDs. Independent cryptographic draws select cosmetics without sharing a seed with gameplay. Welcome and snapshots retain these identities.
+Only the server runs authoritative randomness. Online engines use Crypto.generate_random_bytes
+with unbiased rejection sampling for every bounded choice, including shuffles,
+effects, and bot decisions. The numeric setup seed is only an identifier online.
+Offline engines retain deterministic seeded randomness. Restore uses stored zone
+orders and fresh cryptographic randomness for future choices; no seed replay is needed.
 `tokens[seat]` is a cryptographically random credential for direct/loopback use;
 the trusted room link installs the seat tokens supplied by its Room. Tokens are
 never included in player messages. Production rooms are Cloudflare Durable
@@ -396,3 +399,20 @@ The Worker checks create/join client versions against optional `GAME_VERSION`
 before room allocation or seat claims (409 `error:version`, `need:GAME_VERSION`).
 Unset/empty keeps the previous behavior, including the room's locked join version.
 `tools/deploy_online.sh` supplies project.godot's config/version in deploy and dev.
+
+### Version 0.11 security hardening
+
+Connected humans get a private idle warning after 120 seconds on their own turn.
+At 180 seconds a Phreak bot finishes that turn, then returns control. Accepted
+actions reset the deadline; other traffic does not. Prompts retain their separate
+45 second fallback. Three consecutive idle turns cause full bot takeover. The
+server's injectable monotonic clock controls both timers.
+
+Authoritative online logs retain at most 200 entries and 64 KiB of UTF-8 text,
+including before checkpoints. Snapshots remain bounded across long games.
+Oprah Wonka's search choices are sorted by card identity rather than deck order.
+Treasure Hunters and Speakers Needed explicitly reveal top cards as their rules
+require; neither is a hidden-zone search option leak. Network structure checks
+bound depth, node count and strings before recursive normalization or dispatch.
+Save files are capped at 2 MiB; settings and remembered online seats at 64 KiB,
+with type/range checks before use. Bug report logs replace human opponents' names.
