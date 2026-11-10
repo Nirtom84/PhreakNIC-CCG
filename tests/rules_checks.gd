@@ -94,7 +94,7 @@ func run():
 	e.take_control(stolen, p)
 	check(stolen.owner == 1 and stolen.controller == 0, "Control does not change ownership")
 	e.discard(stolen)
-	check(stolen in q.discard, "Stolen permanent returns to owner")
+	check(stolen in p.discard, "Stolen permanent goes to controller discard")
 	var table = card("Tableskirts")
 	await e.play_card(p, table)
 	await e.activate(p, table, 0)

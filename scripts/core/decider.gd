@@ -11,3 +11,27 @@ func choose_player(_player, _prompt: String, players: Array) -> PlayerState: ret
 func choose_number(_player, _prompt: String, allowed: Array[int]) -> int: return allowed[0] if not allowed.is_empty() else 0
 func confirm(_player, _prompt: String) -> bool: return false
 func name_a_card(_player, _prompt: String) -> String: return "Hacking"
+
+func allocate_prevention(player, amount: int, sources: Array) -> Array:
+	var result: Array = []
+	result.resize(sources.size())
+	result.fill(0)
+	var remaining = sources.duplicate()
+	while amount > 0 and not remaining.is_empty():
+		var guards = remaining.filter(func(s): return s.full)
+		var candidates = guards if not guards.is_empty() else remaining
+		if candidates.any(func(s): return s.card == null):
+			for entry in candidates:
+				if entry.card == null: result[sources.find(entry)] = amount
+			break
+		var cards = candidates.map(func(s): return s.card)
+		var chosen = await choose_cards(player, "Choose full prevention source" if not guards.is_empty() else "Choose ICE prevention order", cards, 1, 1)
+		var source = candidates[0]
+		if not chosen.is_empty():
+			for entry in candidates:
+				if entry.card == chosen[0]: source = entry
+		var n = mini(amount, source.capacity)
+		result[sources.find(source)] = n
+		amount -= n
+		remaining.erase(source)
+	return result

@@ -59,7 +59,7 @@ func run():
   if pool == "2025":
    var expansion_names = root.get_node("CardDB").cards.values().filter(func(c): return c.set == "2026" and c.name != "Botnet").map(func(c): return c.name)
    verify(naming.ids.all(func(name): return name not in expansion_names), "No expansion naming choices")
-  await e.start_turn()
+  await e.start_turn(0)
   var snapshot = SaveGame.snapshot(e.state)
   var restored = SaveGame.restore(JSON.parse_string(JSON.stringify(snapshot)))
   verify(restored != null and restored.card_pool == pool, "Save pool round trip " + pool)
@@ -85,6 +85,7 @@ func run():
  current_scene = table
  await process_frame
  verify(table.seat_heroes.slice(1).all(func(id): return root.get_node("CardDB").in_pool(id, "2025") and root.get_node("CardDB").has_subtype(id, "Hero")), "Base bot Heroes")
+ while table.engine.active().is_bot: await table.drive_reaction(table.engine.active())
  verify(table.save_game(), "Base save written")
  var saved = SaveGame.read()
  verify(not saved.is_empty(), "Base save validates")

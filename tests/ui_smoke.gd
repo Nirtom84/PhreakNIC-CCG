@@ -95,6 +95,8 @@ func run():
   var numbers: Array[int] = [3, 7]
   verify(await human.choose_number(p, "Number", numbers) == 3, "Number modal")
   verify(await human.confirm(p, "Confirm"), "Confirm modal")
+  var sources = [{"card": p.hand[0], "capacity": 2, "full": false}, {"card": p.hand[1], "capacity": 3, "full": false}]
+  verify(await human.allocate_prevention(p, 2, sources) == [0, 2], "Human prevention allocation modal")
   verify(table.engine.db().cards.has(await human.name_a_card(p, "Name")), "Searchable name modal")
   for turn in 12:
    if table.engine.state.finished: break
@@ -112,6 +114,24 @@ func run():
   verify(table.engine.state.turn >= 10 or table.engine.state.finished, "Full turns advance")
   table.queue_free()
   await process_frame
+ var opening = load("res://scenes/table.tscn").instantiate()
+ var old_auto_end = settings.auto_end_turn
+ settings.auto_end_turn = false
+ opening.seed_value = 1
+ opening.fast = true
+ opening.starting_life = 31
+ opening.scripted_decider = Decider.new()
+ root.add_child(opening)
+ verify(opening.engine.state.active_seat == 1, "Seeded bot can start before human")
+ for frame in 300:
+  await process_frame
+  if opening.engine.state.turn >= 2 and not opening.driving and not opening.engine.busy: break
+ verify(opening.engine.active().seat == 0 and opening.engine.state.players[1].turns == 1, "Opening bot turn automatically finishes")
+ verify(opening.engine.state.starting_life == 31, "Table passes custom starting life")
+ verify(opening.can_save(), "First human turn is a safe save point after bot starts")
+ opening.queue_free()
+ await process_frame
+ settings.auto_end_turn = old_auto_end
  settings.handle = previous_handle
  print("UI smoke: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)

@@ -21,6 +21,7 @@ body:
         - Windows
         - Linux
         - Android
+        - Web browser
         - Running from source (Godot editor)
     validations:
       required: true

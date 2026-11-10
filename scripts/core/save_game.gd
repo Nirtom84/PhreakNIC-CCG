@@ -2,7 +2,7 @@ class_name SaveGame
 extends RefCounted
 const PATH = "user://savegame.json"
 const VERSION = 1
-const STATE_FIELDS = ["card_pool", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
+const STATE_FIELDS = ["starting_life", "card_pool", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
 const PLAYER_FIELDS = ["seat", "life", "alive", "is_bot", "difficulty", "deck", "hand", "discard", "play_area", "reserve", "hacking", "played", "turn_flags", "turns"]
 const CARD_FIELDS = ["uid", "id", "owner", "controller", "counters", "attached", "flags"]
 var objects: Array = []
@@ -72,7 +72,7 @@ static func restore(data: Dictionary):
    object.set(field, value)
  var state = GameState.new()
  for field in STATE_FIELDS:
-  if field == "card_pool" and not data.state.has(field): continue
+  if field in ["card_pool", "starting_life"] and not data.state.has(field): continue
   if not data.state.has(field): return null
   var value = codec.decode(data.state[field])
   if field != "winner" and typeof(value) != typeof(state.get(field)): return null
@@ -80,6 +80,7 @@ static func restore(data: Dictionary):
    if value.any(func(line): return not line is String): return null
    state.log.assign(value)
   else: state.set(field, value)
+ if not data.state.has("starting_life"): state.starting_life = 24 if state.players.size() == 2 else 10 * state.players.size()
  if not codec.valid or state.card_pool not in ["2025", "2026"]: return null
  if state.players.size() < 2 or state.players.size() > 4 or state.center_row.size() != 5: return null
  if state.turn < 1: return null

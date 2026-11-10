@@ -18,7 +18,7 @@ Godot 4.7, GDScript only (typed GDScript where practical). Target 1920x1080, str
   `name` (printed title), `cost`, `kind` ("Action" | "Permanent"), `subtypes` (e.g.
   "Legendary Hero", "Exploit", "Technology", "Location", "Organization", "Event",
   "FOTTR Hero", "pTFS Hero"), `type_line`, `hack`, `damage`, `text` ({H} = hacking symbol,
-  {D} = damage symbol), `image`, `starter`, `set` ("2025" for the 104 base definitions including starters; "2026" for the 48 expansion cards).
+  {D} = damage symbol), `image`, `starter`, optional `legendary` and `aliases` metadata, `set` ("2025" for the 104 base definitions including starters; "2026" for the 48 expansion cards).
 - Starter cards: `Hacking` (printed name "Hacker", +1 {H}) and `Damage` (printed name "Attack",
   Deal 1 {D}). Each player's starting deck = 8 Hacker + 2 Attack. Starters never go in the center deck.
 - Card pools: "2025" selects the base game (102 non-starter cards); "2026" selects base plus expansion (150 non-starter cards, the default). GameState.card_pool persists in saves; older saves default to "2026". In-game card naming, bot Hero names and card searches use the selected pool. Cosmetic human avatars may use any Hero.
@@ -28,10 +28,11 @@ Godot 4.7, GDScript only (typed GDScript where practical). Target 1920x1080, str
 - Subtype matching is by word: "Hero" matches "Hero", "Legendary Hero", "FOTTR Hero",
   "pTFS Hero", "Hero Legend", "Legendary pTFS Hero". "Legendary" matches any subtype with that word.
   "FOTTR Hero" = subtype contains FOTTR and Hero. Name matching ("card named X", "with X in its name")
-  is case-insensitive against the printed `name`. `What is Truth` has every name.
+  is case-insensitive against the printed `name` and official aliases. `What is Truth` has every name.
 
 ## Official rules (from the rules card) — implement exactly
-Setup: each player shuffles 8 Hacker + 2 Attack. Each player's life = 10 × number of players.
+Setup: each player shuffles 8 Hacker + 2 Attack. Default life is 24 for two players,
+or 10 × number of players for three or four. Choose the first player with the seeded RNG.
 Shuffle the rest = Center Deck. Deal 5 face up = Center Row. Each player draws 5.
 Turn: play any number of cards from hand, in any order. Played actions go to the discard pile
 immediately after resolving. Damage {D} reduces the life of **all other players**. Hacking {H}
@@ -46,48 +47,30 @@ A reserved card is not in play and does nothing. Reserving is not buying or acqu
 Additional: if several sources would prevent damage, their controller chooses the order.
 Losing life is the same as taking damage, and prevention prevents life loss.
 
-## House interpretations (rules gaps) — put these in `RULES_NOTES.md` too
-- Unspent {H} is lost at end of turn. Spending {H} for an ability uses the same pool.
-- Bought / acquired cards go to the buyer's discard pile unless a card says otherwise.
-  "Acquire" = gain without paying. Buying for free counts as buying.
-- Reserve: at most one reserve per turn, only if nothing was bought or acquired yet this turn,
-  and after reserving you can't buy or acquire for the rest of the turn (Tips and tricks lifts both limits for that turn).
-- Permanents: when played they go into the controller's play area (not the discard pile) and
-  stay until a card removes them. "Discard a permanent" = put it in its owner's discard pile.
-  "Control" = in your play area. Gaining control moves the permanent into your play area; if
-  it later leaves play it goes to its **owner's** discard pile (track `owner` and `controller`).
-- "In play" = permanents in any play area. Action cards are only "played this turn".
-- ICE counters: when a player with ICE locations would take damage, each point of damage
-  removes one counter instead. Damage beyond the counters available passes on to the next
-  prevention source, then to life. Order: Military-Grade Card Encapsulation / Phreaknic
-  Network (prevent all) first, then ICE locations in the order the controller picks (bots and
-  the default UI order: fewest counters first). A location that runs out of counters triggers its
-  "when you remove the last counter" text.
-- "Each player loses 1 life" (r0nk, Air Conditioning, etc.) and "lose N life" are damage for prevention purposes,
-  but are not "dealing damage" for CTF Bangers or Dick Van Dyke Stamp.
-- Cost reductions stack and never go below 0. "Hero cards cost 1 less" etc. apply to center row and reserved cards.
-- Center deck empty: the slot stays empty. Removed-from-game cards go to a shared `removed` zone (face up).
-- Elimination: a player at 0 or less life is out immediately, mid-effect; their cards stay
-  where they are but do nothing (permanents they control are removed from play to their owner's discard). If the active player dies, their turn ends.
-  If all remaining players die at once, the active player wins if alive, otherwise it is a draw.
-- Win/lose by card: Lowes Shopping Cart 25 counters → that player wins. The Juice 5th counter
-  → that player loses (eliminated).
-- Rickroll in the center row at the start of a player's turn: that player must buy it (cost 0,
-  pay normally after reductions) before doing anything else; this counts as buying (so they can't reserve that turn).
-- "Once per turn" permanent abilities and "as often as you like" paid abilities are
-  **activated** by the controller on their turn (UI button on the permanent; bots decide).
-  Triggered abilities ("at the beginning of your turn", "whenever ...") resolve automatically,
-  asking for choices only when needed.
-- "Choose one / choose two" and "you may" are player decisions (human: dialog; bot: AI).
-- Jenny: "Pay 8, 6, 7, 5, 3, 0, or 9" — pay that much {H} from the pool, deal that much damage.
-- Oprah Wonka: the player to the left (next seat) splits the five cards into two piles.
-- TOCTOU: reaction, checked whenever the holder would be eliminated.
-- Touch Grass "end of your next turn": removed at the end of the controller's next turn after the one it was played on.
-- FOTTR Greatest Hits Vol 2 "a card with Rick Astley in the art": the cards Rick Astley,
-  Rickroll, Never Gonna Give You Up, Never Gonna Let You Down count. Keep this list in one constant.
-- Etch-a-Sketch: choose an action card in another player's discard pile; resolve its effect as if
-  you played it (the copied card stays where it is).
-- Treasure Hunters: if no card of that cost is found, nothing is acquired; shuffle the center deck afterward either way.
+## House interpretations / official rulings
+
+[reference/rules.md](reference/rules.md) is authoritative: bitwize's research
+combines the printed rules, official errata v1.1, confirmed rulings and adopted
+defaults. [RULES_NOTES.md](RULES_NOTES.md) records implementation limits only.
+
+- Default life is 24 for two players and 10 × players for three or four; setup
+  accepts a custom starting life. A seeded random player starts, followed by seat order.
+- The active player orders simultaneous effects, including the forced Rickroll
+  buy and permanent triggers. A pending permanent trigger disappears if its source leaves play.
+- The defender allocates each prevented point among ICE and other prevention.
+  Prevention is mandatory; overflow reaches life. Final-counter text still resolves.
+- Buying (including buying for free) triggers buy effects; acquiring without buying
+  does not. Buying prohibitions block the forced Rickroll buy, but permit acquisitions.
+- A departing permanent goes to its controller's discard. Elimination removes
+  controlled permanents from the game and returns reserves under the Center Deck;
+  empty Center Row slots refill immediately. Simultaneous elimination of everyone is a draw.
+- Name checks include official aliases (`_NASKEY` = `_NSAKEY`); Rick Astley's
+  printed Hero Legend type counts as Legendary Hero. What is Truth has every name.
+- DeMartian/m8trix and "this turn" combinations work in either order; Mog's Ice
+  Cream and Walmart require their named partner to have been played earlier.
+- Etch-a-Sketch copies text while keeping its identity and ignoring copied play
+  restrictions. "This card" moves Etch itself. The Book's attached Actions play
+  in the controller's chosen order. Oprah Wonka uses the next living splitter.
 
 ## Architecture (keep engine and UI separate)
 ```

@@ -10,6 +10,7 @@ var save_button: Button
 var save_status: Label
 var last_autosave_turn = -1
 var saving = false
+var starting_life: int = 0
 var engine: GameEngine
 var player_count: int = 2
 var difficulty: int = 0
@@ -117,7 +118,7 @@ func _ready():
  pick_seat_names(game_seed)
  engine.log_message.connect(append_log)
  if resume_data.is_empty():
-  engine.setup(levels, game_seed, choices, card_pool)
+  engine.setup(levels, game_seed, choices, card_pool, starting_life)
  else:
   engine.state = SaveGame.restore(resume_data.game)
   player_count = engine.state.players.size()

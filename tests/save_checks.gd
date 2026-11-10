@@ -53,7 +53,7 @@ func focused():
  var e = GameEngine.new()
  root.add_child(e)
  e.setup([-1, 1, 2], 42, [BotDecider.new(e, 1)])
- await e.start_turn()
+ await e.start_turn(0)
  var p = e.active()
  p.turn_flags = {"bought": 1, "acquired": 2, "reserved": false, "tips": true, "no_buy": false, "reductions": {"Hero": 2}, "free_names": ["Hacker", "Hacker"], "demartian": 2, "matrix": true, "super_ronk": true, "combos": {0: true, 2: true}, "zenthere": true}
  var grass = e.state.all_cards().filter(func(c): return c.id == "Touch Grass")[0]
@@ -150,9 +150,11 @@ func ui():
  var table = load("res://scenes/table.tscn").instantiate()
  table.auto_drive = false
  table.seed_value = 41
+ table.fast = true
  root.add_child(table)
  current_scene = table
  await process_frame
+ while table.engine.active().is_bot: await table.drive_reaction(table.engine.active())
  verify(table.can_save(), "Table safe")
  for card in table.engine.active().hand.duplicate():
   if table.engine.can_play(table.engine.active(), card): await table.engine.play_card(table.engine.active(), card)

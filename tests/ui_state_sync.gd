@@ -135,6 +135,7 @@ func run():
   var e = table.engine
   var p = e.state.players[0]
   if seed_id == 1:
+   while e.active().is_bot and not e.state.finished: await table.drive_reaction(e.active())
    await draw_regression(table)
    await buy_and_sink_regression(table)
   e.state_changed.connect(func():

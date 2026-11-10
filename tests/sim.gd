@@ -43,6 +43,7 @@ func game(levels: Array, seed_value: int):
 	engine.free()
 func tournament():
 	await RulesChecks.new(self).run()
+	await preload("res://tests/rules_v08.gd").new(self).run()
 	if failures > 0:
 		quit(1)
 		return

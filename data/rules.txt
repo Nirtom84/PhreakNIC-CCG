@@ -2,10 +2,11 @@
 
 [h2]Setup[/h2]
 - Each player shuffles a personal starting deck of [b]8 Hacker[/b] cards and [b]2 Attack[/b] cards.
-- Each player starts with [b]10 life for every player in the game[/b] (20 life in a 2-player game).
+- Start with [b]24 life in a 2-player game[/b], or [b]10 life per player[/b] with 3–4 players. Starting life can be agreed before play.
 - The [b]Center Deck[/b] contains the base set’s [b]102 cards[/b] in a PhreakNIC 2025 game, or [b]150 cards[/b] with the 2026 expansion; shuffle it before playing.
 - Deal the top 5 cards of the Center Deck face up. This row is the [b]Center Row[/b].
 - Each player draws 5 cards from their deck as a starting hand.
+- Choose the first player at random, then follow seat order.
 
 [h2]Your Turn[/h2]
 - Play any number of cards from your hand, in any order. Action cards go to your discard pile right after they are played.
@@ -17,7 +18,8 @@
 
 [h2]Drawing, Life and Winning[/h2]
 - If you need to draw a card and your deck is empty, shuffle your discard pile to form a new deck.
-- A player with zero life is out of the game.
+- A player with zero life is out. Remove their permanents from the game and return their reserved cards to the bottom of the Center Deck. Fill any empty Center Row slots right away.
+- If everyone is eliminated at the same time, the game is a draw.
 - The last player still alive wins.
 
 [h2]Reserving a Card[/h2]
@@ -27,7 +29,9 @@
 - Reserving a card does not count as buying or acquiring a card.
 
 [h2]Additional Rules[/h2]
-- If several cards would prevent damage to you, you choose which one prevents each point of damage.
+- If several cards would prevent damage to you, you choose how to split each point among them, including ICE and cards that prevent all damage. You must use available prevention before losing life.
+- When effects happen at the same time, the active player chooses their order. This includes start-of-turn effects and buying Rickroll. A buying prohibition blocks that buy.
+- The card printed [b]_NASKEY[/b] counts as [b]_NSAKEY[/b] for card-name checks.
 - Losing life is the same as taking damage, and cards that prevent damage also prevent loss of life.
 - [b]ICE counters[/b]: when you would take damage, each point removes one counter from your location instead. Damage beyond the counters left goes through to your life.
 

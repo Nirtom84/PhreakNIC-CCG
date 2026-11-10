@@ -1,0 +1,28 @@
+[
+ {
+  "id": "base",
+  "name": "Base Set",
+  "released_at": "PhreakNIC 26",
+  "release_year": 2025,
+  "printed_code": "PhreakNIC 26",
+  "required": true,
+  "source": "https://www.fellowshipofthetokenring.com/phreakNIC-cards-2025",
+  "image_base": "https://www.fellowshipofthetokenring.com/cardimages/",
+  "cards": 104,
+  "starter_cards": 2,
+  "center_deck_cards": 102
+ },
+ {
+  "id": "exp1",
+  "name": "Expansion 1",
+  "released_at": "PhreakNIC 27",
+  "release_year": 2026,
+  "printed_code": "PhreakNIC 27",
+  "required": false,
+  "source": "https://www.fellowshipofthetokenring.com/some-new-cards-phreaknic-2026",
+  "image_base": "https://www.fellowshipofthetokenring.com/cardimages2/",
+  "cards": 48,
+  "starter_cards": 0,
+  "center_deck_cards": 48
+ }
+]

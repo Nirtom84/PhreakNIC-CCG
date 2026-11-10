@@ -15,18 +15,21 @@ var busy: bool = false
 var reaction_depth: int = 0
 var simultaneous_depth: int = 0
 var turn_driver: Callable
+# Pending triggers use departure generations, including leave/re-enter during reactions.
+var play_versions: Dictionary = {}
 func _init():
 	effects = preload("res://scripts/core/effects.gd").new(self)
 func db() -> Node: return get_node("/root/CardDB")
-func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026"):
+func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026", starting_life: int = 0):
 	assert(difficulties.size() >= 2 and difficulties.size() <= 4)
 	state = GameState.new()
 	state.card_pool = card_pool if card_pool in ["2025", "2026"] else "2026"
 	state.rng.seed = seed_value
+	state.starting_life = starting_life if starting_life > 0 else (24 if difficulties.size() == 2 else 10 * difficulties.size())
 	deciders = choices.duplicate()
 	for seat in difficulties.size():
 		var p = PlayerState.new(seat)
-		p.life = 10 * difficulties.size()
+		p.life = state.starting_life
 		p.difficulty = difficulties[seat]
 		p.is_bot = difficulties[seat] >= 0
 		state.players.append(p)
@@ -40,6 +43,8 @@ func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_p
 		if not db().get_card(id).starter: state.center_deck.append(state.create(id))
 	state.shuffle(state.center_deck)
 	for i in 5: refill(i)
+	state.active_seat = state.rng.randi_range(0, state.players.size() - 1)
+	say("Seat %d goes first" % state.active_seat)
 	state.initial_count = state.all_cards().size()
 	for c in state.all_cards(): state.initial_ids[c.uid] = c.id
 func say(message: String):
@@ -108,13 +113,14 @@ func gain_owner(card, p):
 	card.owner = p.seat
 	card.controller = p.seat
 func leave_play(card, remove: bool = false):
+	play_versions[card.uid] = play_versions.get(card.uid, 0) + 1
 	var owner = state.players[card.owner] if card.owner >= 0 else active()
 	var attachment_recipient = state.players[card.controller] if card.controller >= 0 else owner
 	for child in card.attached.duplicate():
 		move(child, attachment_recipient.discard, "discard")
 		gain_owner(child, attachment_recipient)
-	move(card, state.removed if remove else owner.discard, "removed" if remove else "discard")
-	card.controller = card.owner
+	move(card, state.removed if remove else attachment_recipient.discard, "removed" if remove else "discard")
+	gain_owner(card, attachment_recipient)
 	card.counters = 0
 	card.flags.clear()
 func discard(card):
@@ -158,9 +164,6 @@ func start_turn(seat: int = -1):
 	for c in permanents(): c.flags.erase("used")
 	turn_started.emit(p)
 	await effects.start_turn(p)
-	for c in state.center_row.duplicate():
-		if c != null and c.id == "Rickroll" and p.alive and not state.finished:
-			await buy_card(p, c, true)
 	busy = saved_busy
 	state_changed.emit()
 	if not p.alive and not state.finished: await end_turn(p)
@@ -207,7 +210,7 @@ func can_buy(p, card) -> bool:
 	return card != null and can_acquire(p) and (card in state.center_row or card in p.reserve) and not p.turn_flags.get("no_buy", false) and not in_play("Grass") and p.hacking >= effective_cost(p, card)
 func buy_card(p, card, mandatory: bool = false) -> bool:
 	if busy and not mandatory: return false
-	if not can_buy(p, card) and not (mandatory and is_turn(p) and card in state.center_row): return false
+	if not can_buy(p, card): return false
 	var saved_busy = busy
 	busy = true
 	var from_row = card in state.center_row
@@ -302,27 +305,54 @@ func counter_removed(card):
 func deal(p, amount: int, source = null):
 	if amount <= 0 or not p.alive: return
 	if source != null and db().get_card(source.effect_id()).kind == "Permanent": amount += controlled(p, "CTF Bangers").size()
-	if source != null and db().named(source.id, "m8trix"): amount += 2 * p.turn_flags.get("demartian", 0)
 	for q in opponents(p): await damage(p, q, amount, source, true)
 func damage(p, q, amount: int, source = null, dealing: bool = false):
+	var saved_busy = busy
+	busy = true
+	await resolve_damage(p, q, amount, source, dealing)
+	busy = saved_busy
+func resolve_damage(p, q, amount: int, source = null, dealing: bool = false):
 	if not q.alive or state.finished or amount <= 0: return
-	if q.turn_flags.get("prevent_all", false): return
 	var guards = controlled(q, "Military-Grade Card Encapsulation") + controlled(q, "Phreaknic Network")
-	if not guards.is_empty():
-		var selected = await choose(q, "Choose full prevention source", guards)
-		if selected[0].effect_id() == "The Phreaknic Network":
-			leave_play(selected[0])
-			q.turn_flags.prevent_all = true
-		return
 	var ice = q.play_area.filter(func(c): return c.counters > 0 and db().has_subtype(c.effect_id(), "Location"))
-	while amount > 0 and not ice.is_empty():
-		var chosen = await choose(q, "Choose ICE prevention order", ice)
-		var c = chosen[0]
-		ice.erase(c)
-		var blocked = mini(c.counters, amount)
-		c.counters -= blocked
-		amount -= blocked
-		await counter_removed(c)
+	var sources: Array = []
+	if q.turn_flags.get("prevent_all", false):
+		sources.append({"card": null, "name": "Phreaknic Network (rest of turn)", "capacity": amount, "full": true})
+	for c in guards + ice:
+		sources.append({"card": c, "capacity": amount if c in guards else c.counters, "full": c in guards})
+	if not sources.is_empty():
+		var total = 0
+		for entry in sources: total += entry.capacity
+		var allocation: Array = []
+		if sources.size() > 1 and total > amount:
+			allocation = await dec(q).allocate_prevention(q, amount, sources)
+		# Clamp invalid decisions and fill any unallocated mandatory prevention.
+		var remaining = amount
+		var points: Array = []
+		for i in sources.size():
+			var n = clampi(int(allocation[i]) if i < allocation.size() else sources[i].capacity, 0, mini(remaining, sources[i].capacity))
+			points.append(n)
+			remaining -= n
+		for i in sources.size():
+			var n = mini(remaining, sources[i].capacity - points[i])
+			points[i] += n
+			remaining -= n
+		var depleted: Array = []
+		for i in sources.size():
+			if points[i] == 0: continue
+			var c = sources[i].card
+			if c not in permanents(): continue
+			if sources[i].full:
+				if c.effect_id() == "The Phreaknic Network":
+					leave_play(c)
+					q.turn_flags.prevent_all = true
+			else:
+				c.counters -= points[i]
+				if c.counters == 0 and c.effect_id() != "Walmart Parking Lot":
+					depleted.append({"card": c, "commutes": c.effect_id() not in ["Carpeted Pool", "The Clarion Inn"], "resolve": counter_removed.bind(c)})
+				else: ice_counter_removed.emit(c)
+		amount = remaining
+		await resolve_triggers(depleted, false)
 	if not q.alive or state.finished: return
 	if amount > 0:
 		q.life -= amount
@@ -339,7 +369,14 @@ func eliminate(p, forced: bool = false):
 		await reaction_turn(p)
 		return
 	p.alive = false
-	for c in p.play_area.duplicate(): leave_play(c)
+	for c in p.play_area.duplicate(): leave_play(c, true)
+	for c in p.reserve.duplicate():
+		detach(c)
+		c.owner = -1
+		c.controller = -1
+		state.center_deck.push_front(c)
+		card_moved.emit(c, "reserve", "center_deck")
+	for slot in 5: refill(slot)
 	say("Seat %d eliminated%s" % [p.seat, " by card" if forced else ""])
 	check_win()
 func reaction_turn(p):
@@ -419,3 +456,19 @@ func transfer_to_discard(p, card) -> bool:
 func reveal(p, cards: Array):
 	if not cards.is_empty():
 		say("Seat %d reveals %s" % [p.seat, ", ".join(cards.map(func(c): return db().get_card(c.id).name))])
+
+func resolve_triggers(pending: Array, stop_on_active_death: bool = true):
+	var saved_busy = busy
+	busy = true
+	for trigger in pending:
+		if trigger.get("card") != null: trigger.generation = play_versions.get(trigger.card.uid, 0)
+	while not pending.is_empty() and not state.finished and (active().alive or not stop_on_active_death):
+		pending = pending.filter(func(t): return t.get("card") == null or (t.generation == play_versions.get(t.card.uid, 0) and (t.card in state.center_row if t.get("row", false) else t.card in permanents())))
+		if pending.is_empty(): break
+		var index = 0
+		var names = pending.map(func(t): return db().get_card(t.card.id).name if t.get("card") != null else t.name)
+		if pending.size() > 1 and names.any(func(n): return n != names[0]) and not pending.all(func(t): return t.get("commutes", false)):
+			index = await option(active(), "Choose next simultaneous effect", names)
+		var trigger = pending.pop_at(index)
+		await trigger.resolve.call()
+	busy = saved_busy

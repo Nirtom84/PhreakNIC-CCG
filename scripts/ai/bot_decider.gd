@@ -45,6 +45,12 @@ func value(card, player = null) -> float:
 		if enemy_life < 12: score += float(d.damage) * 0.8
 	return score
 func choose_option(player, prompt: String, options: Array[String]) -> int:
+	if "simultaneous" in prompt or "attached Action" in prompt:
+		var priorities = ["Clarion Inn Air Conditioning", "Rickroll", "Clarion Inn Storage Closet", "pTFS", "The Book", "Zenthere, Mind Goblin", "The Phreaknic Network", "Military-Grade Card Encapsulation"]
+		if "attached Action" in prompt: priorities = ["Rookie Numbers", "heartsh8ped"]
+		for name in priorities:
+			if name in options: return options.find(name)
+		return 0
 	if difficulty == 0: return engine.state.rng.randi_range(0, options.size() - 1)
 	if prompt.begins_with("Choose pile"):
 		# The split dialog contains stable ids, allowing equal evaluation of each pile.

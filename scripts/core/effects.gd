@@ -162,7 +162,9 @@ func resolve(p, c):
 	var data = e.db().get_card(c.effect_id())
 	p.hacking += int(data.hack)
 	if e.db().named(c.id, "DeMartian"): p.hacking += 2 * p.turn_flags.get("matrix", 0)
-	if int(data.damage) > 0: await e.deal(p, int(data.damage), c)
+	var damage = int(data.damage)
+	if e.db().named(c.id, "m8trix"): damage += 2 * p.turn_flags.get("demartian", 0)
+	if damage > 0: await e.deal(p, damage, c)
 	if not p.alive or e.state.finished: return
 	if data.kind == "Permanent": c.counters = initial_ice(c.effect_id())
 	await handlers[c.effect_id()].call(p, c)
@@ -193,11 +195,15 @@ func choice_power(p, c, n: int):
 	if option == 0: p.hacking += n
 	else: await e.deal(p, n, c)
 func copied(p, original, host):
-	# A virtual card carries copied printed identity, but cannot move the physical source.
-	var virtual = CardInstance.new(-original.uid, original.id, p.seat)
+	# Copy text only; name/type/cost checks continue to see the copying Action.
+	var virtual = CardInstance.new(-original.uid, host.id, p.seat)
+	virtual.flags.copy_id = original.effect_id()
 	virtual.flags.virtual = true
 	virtual.flags.host = host.flags.get("host", host)
-	await e.resolve_play(p, virtual)
+	var texts = p.turn_flags.get("copied_text", {})
+	texts[p.played.size() - 1] = original.effect_id()
+	p.turn_flags.copied_text = texts
+	await resolve(p, virtual)
 
 ## 5ud0
 func _effect_5ud0(p, c):
@@ -251,7 +257,7 @@ func _effect_ben_the_meek(p, c):
 
 ## Ben the Phreak
 func _effect_ben_the_phreak(p, c):
-	var choices = e.state.center_row.filter(func(x): return x != null and (c.id != "itsamenathan" or e.db().get_card(x.id).cost <= 4))
+	var choices = row()
 	for x in await e.choose(p, "Acquire center card", choices): await e.acquire(p, x)
 
 ## Bitwize
@@ -261,7 +267,7 @@ func _effect_bitwize(p, c):
 ## Bony
 func _effect_bony(p, c):
 	p.life += 2
-	free_name(p, "F.O.T.T.R. Greatest Hits")
+	free_name(p, "@bony")
 
 ## Botnet
 func _effect_botnet(p, c):
@@ -372,6 +378,7 @@ func _effect_damage(p, c):
 ## DeMartian
 func _effect_demartian(p, c):
 	p.turn_flags.demartian = p.turn_flags.get("demartian", 0) + 1
+	await e.deal(p, 2 * p.played.filter(func(x): return e.db().named(x.id, "m8trix")).size(), c)
 
 ## Dick Van Dyke Stamp
 func _effect_dick_van_dyke_stamp(p, c):
@@ -426,9 +433,9 @@ func _effect_errorgone(p, c):
 ## Etch-a-Sketch Skillz
 func _effect_etch_a_sketch_skillz(p, c):
 	var choices: Array = []
-	for q in e.opponents(p): choices += q.discard.filter(func(x): return e.db().get_card(x.id).kind == "Action" and x.id != "Etch-a-Sketch Skillz")
+	for q in e.opponents(p): choices += q.discard.filter(func(x): return e.db().get_card(x.id).kind == "Action")
 	for x in await e.choose(p, "Copy action", choices):
-		if e.legal_effect(p, x): await copied(p, x, c)
+		await copied(p, x, c)
 
 ## Even More Logo
 func _effect_even_more_logo(p, c):
@@ -516,7 +523,7 @@ func _effect_i_ve_got_the_logs(p, c):
 
 ## itsamenathan
 func _effect_itsamenathan(p, c):
-	var choices = e.state.center_row.filter(func(x): return x != null and (c.id != "itsamenathan" or e.db().get_card(x.id).cost <= 4))
+	var choices = row().filter(func(x): return e.db().get_card(x.id).cost <= 4)
 	for x in await e.choose(p, "Acquire center card", choices): await e.acquire(p, x)
 
 ## Jenny
@@ -578,6 +585,7 @@ func _effect_lowes_shopping_cart(p, c):
 ## m8trix310
 func _effect_m8trix310(p, c):
 	p.turn_flags.matrix = p.turn_flags.get("matrix", 0) + 1
+	p.hacking += 2 * p.played.filter(func(x): return e.db().named(x.id, "DeMartian")).size()
 
 ## Makeshift Lectern
 func _effect_makeshift_lectern(p, c):
@@ -604,7 +612,7 @@ func _effect_mog(p, c):
 
 ## Mog's Ice Cream
 func _effect_mog_s_ice_cream(p, c):
-	pass
+	if e.played_name(p, "Rookie Numbers"): e.draw(p, 3)
 
 ## Mogs Pancake Breakfast
 func _effect_mogs_pancake_breakfast(p, c):
@@ -667,7 +675,16 @@ func _effect_o_p_r_a_h(p, c):
 ## Oprah Wonka
 func _effect_oprah_wonka(p, c):
 	var selected = await e.choose(p, "Search for five cards", p.deck + p.discard, 5, 5)
-	var left = e.state.players[(p.seat + 1) % e.state.players.size()]
+	if selected.size() < 5:
+		for x in selected: e.move(x, p.hand, "hand")
+		e.state.shuffle(p.deck)
+		return
+	var left = p
+	for step in range(1, e.state.players.size()):
+		var candidate = e.state.players[(p.seat + step) % e.state.players.size()]
+		if candidate.alive:
+			left = candidate
+			break
 	var pile = await e.choose(left, "Split cards into first pile", selected, 0, selected.size())
 	var other = selected.filter(func(x): return x not in pile)
 	var option = await e.option(p, "Choose pile: %s / %s" % [pile.map(func(x): return x.id), other.map(func(x): return x.id)], ["First pile", "Second pile"])
@@ -720,7 +737,7 @@ func _effect_phreaknic_website_refresh(p, c):
 
 ## Pooping in the Dark
 func _effect_pooping_in_the_dark(p, c):
-	var selected = p.hand.duplicate() if c.id == "Pooping in the Dark" else await e.choose(p, "Discard to redraw", p.hand, 0, p.hand.size())
+	var selected = p.hand.duplicate()
 	for x in selected: e.discard(x)
 	e.draw(p, selected.size())
 
@@ -887,7 +904,7 @@ func _effect_tips_and_tricks_for_windows_os_and_office365(p, c):
 
 ## tipsybacchus
 func _effect_tipsybacchus(p, c):
-	var selected = p.hand.duplicate() if c.id == "Pooping in the Dark" else await e.choose(p, "Discard to redraw", p.hand, 0, p.hand.size())
+	var selected = await e.choose(p, "Discard to redraw", p.hand, 0, p.hand.size())
 	for x in selected: e.discard(x)
 	e.draw(p, selected.size())
 
@@ -976,25 +993,29 @@ func cost(p, c) -> int:
 	if e.db().has_subtype(c.id, "Technology"): value -= e.controlled(p, "Hardware Hacking Village").size()
 	return maxi(0, value)
 func on_play(p, c):
-	for permanent in p.play_area.duplicate():
-		if not p.alive or e.state.finished: return
-		match permanent.effect_id():
-			"Dick Van Dyke Stamp":
-				if e.db().named(c.id, "Hacker"): await e.deal(p, 1, permanent)
-				if e.db().named(c.id, "Attack"): p.hacking += 1
-			"Foundation of Time Temporal Reconstruction":
-				if e.db().has_subtype(c.id, "Hero"): p.hacking += 1
-				if e.db().has_subtype(c.id, "Exploit"): await e.deal(p, 1, permanent)
-				if e.db().has_subtype(c.id, "Event"): p.life += 1
-	if e.db().has_subtype(c.id, "Hero"): p.hacking += p.turn_flags.get("super_ronk", 0)
+	var pending: Array = []
+	for permanent in p.play_area:
+		if permanent.effect_id() == "Dick Van Dyke Stamp":
+			if e.db().named(c.id, "Hacker"): pending.append({"card": permanent, "resolve": e.deal.bind(p, 1, permanent)})
+			if e.db().named(c.id, "Attack"): pending.append({"card": permanent, "commutes": true, "resolve": add_hacking.bind(p, 1)})
+		if permanent.effect_id() == "Foundation of Time Temporal Reconstruction":
+			if e.db().has_subtype(c.id, "Hero"): pending.append({"card": permanent, "commutes": true, "resolve": add_hacking.bind(p, 1)})
+			if e.db().has_subtype(c.id, "Exploit"): pending.append({"card": permanent, "resolve": e.deal.bind(p, 1, permanent)})
+			if e.db().has_subtype(c.id, "Event"): pending.append({"card": permanent, "commutes": true, "resolve": add_life.bind(p, 1)})
+	if e.db().has_subtype(c.id, "Hero") and p.turn_flags.get("super_ronk", 0) > 0:
+		pending.append({"name": "Super r0nk", "commutes": true, "resolve": add_hacking.bind(p, p.turn_flags.super_ronk)})
+	await e.resolve_triggers(pending)
+func add_hacking(p, n: int): p.hacking += n
+func add_life(p, n: int): p.life += n
 func combos(p):
 	# Conditional "this turn" abilities wait for their partner, in either play order.
 	var fired = p.turn_flags.get("combos", {})
+	var pending: Array = []
 	for i in p.played.size():
 		var c = p.played[i]
 		var key = "%d" % i
 		if fired.has(key): continue
-		var id = c.id
+		var id = p.turn_flags.get("copied_text", {}).get(i, c.id)
 		var ready = false
 		var damage = 0
 		if id in ["5ud0", "Bitwize", "crook3dfingers"]:
@@ -1006,15 +1027,31 @@ func combos(p):
 			damage = 3
 		elif id == "Never Gonna Give You Up": ready = e.played_name(p, "Never Gonna Let You Down")
 		elif id == "Never Gonna Let You Down": ready = e.played_name(p, "Never Gonna Give You Up")
-		elif id == "Mog's Ice Cream": ready = e.played_name(p, "Rookie Numbers")
 		if not ready: continue
 		fired[key] = true
 		p.turn_flags.combos = fired
-		if damage > 0: await e.deal(p, damage, c)
-		elif id == "Mog's Ice Cream": e.draw(p, 3)
-		else:
-			for q in e.opponents(p): await e.discard_choices(q, q.play_area if id == "Never Gonna Give You Up" else q.hand)
+		pending.append({"name": e.db().get_card(c.id).name, "resolve": combo_effect.bind(p, c, id, damage)})
+	await e.resolve_triggers(pending)
+func combo_effect(p, c, id: String, damage: int):
+	if damage > 0: await e.deal(p, damage, c)
+	else:
+		for q in e.opponents(p): await e.discard_choices(q, q.play_area if id == "Never Gonna Give You Up" else q.hand)
 func bought(p, c, from_row: bool):
+	var pending: Array = []
+	# Destination choices are local to this purchase, including nested reactions.
+	var destination = {"chosen": false}
+	if c.id in ["Fore04", "G4nd4lf", "JousterL", "hfuller", "mog", "Nuvious", "proudF00F", "Venaul"]:
+		pending.append({"name": e.db().get_card(c.id).name, "resolve": bought_self.bind(p, c)})
+	if e.db().has_subtype(c.id, "Hero"):
+		for permanent in p.play_area:
+			if permanent.effect_id() in ["The Fellowship of the Token Ring", "pTFS"]:
+				pending.append({"card": permanent, "resolve": bought_destination.bind(p, c, permanent, destination)})
+	if from_row:
+		for permanent in e.permanents():
+			if permanent.effect_id() == "Powered On Taser Maintenance" and permanent.controller != p.seat:
+				pending.append({"card": permanent, "resolve": e.damage.bind(e.state.players[permanent.controller], p, 1, permanent)})
+	await e.resolve_triggers(pending)
+func bought_self(p, c):
 	if c.id in ["hfuller", "proudF00F"]:
 		for q in e.state.players:
 			if q.alive: e.reveal(q, q.hand)
@@ -1036,59 +1073,67 @@ func bought(p, c, from_row: bool):
 		"Venaul":
 			for q in e.state.players:
 				if q.alive: q.life += 5
-	if not p.alive: return
-	if e.db().has_subtype(c.id, "Hero"):
-		for permanent in p.play_area.duplicate():
-			if permanent.effect_id() == "The Fellowship of the Token Ring" and await e.dec(p).confirm(p, "Put bought hero in hand?"):
-				e.move(c, p.hand, "hand")
-				break
-			if permanent.effect_id() == "pTFS" and await e.dec(p).confirm(p, "Store bought hero on pTFS?"):
-				e.move(c, permanent.attached, "attached")
-				break
-	if from_row:
-		for permanent in e.permanents():
-			if permanent.effect_id() == "Powered On Taser Maintenance" and permanent.controller != p.seat:
-				await e.damage(e.state.players[permanent.controller], p, 1, permanent)
+func bought_destination(p, c, permanent, destination: Dictionary):
+	if destination.get("chosen", false): return
+	if permanent.effect_id() == "The Fellowship of the Token Ring" and await e.dec(p).confirm(p, "Put bought hero in hand?"):
+		e.move(c, p.hand, "hand")
+		destination.chosen = true
+	if permanent.effect_id() == "pTFS" and await e.dec(p).confirm(p, "Store bought hero on pTFS?"):
+		e.move(c, permanent.attached, "attached")
+		destination.chosen = true
+const START_TRIGGERS = ["Clarion Inn Closet", "Kevin's Desk", "Military-Grade Card Encapsulation", "Tableskirts", "Unattended Phone", "The Juice", "The Phreaknic Network", "pTFS", "The Book"]
 func start_turn(p):
+	var pending: Array = []
 	for c in e.permanents():
-		if not p.alive or e.state.finished: return
-		if c not in e.permanents(): continue
-		if c.effect_id() == "Clarion Inn Air Conditioning": await e.damage(e.state.players[c.controller], p, 1, c)
-		if c.controller != p.seat: continue
-		match c.effect_id():
-			"Clarion Inn Closet": c.counters += 2
-			"Kevin's Desk":
-				for x in await e.choose(p, "Take control of permanent", e.permanents()): e.take_control(x, p)
-			"Military-Grade Card Encapsulation": e.leave_play(c)
-			"Tableskirts":
-				if p.play_area.size() > 1: e.leave_play(c)
-			"Unattended Phone":
-				if e.state.rng.randi_range(1, 6) == 1:
-					e.leave_play(c)
-					await e.damage(p, p, 1, c)
-			"The Juice":
-				c.counters += 1
-				if c.counters >= 5: await e.eliminate(p, true)
-				else: await e.deal(p, c.counters, c)
-			"The Phreaknic Network":
-				e.remove(c)
-				await e.deal(p, 5, c)
-			"pTFS":
-				for x in c.attached.duplicate(): e.move(x, p.hand, "hand")
-			"The Book":
-				for x in await e.choose(p, "Attach action to The Book", p.hand.filter(func(x): return e.db().get_card(x.id).kind == "Action")):
-					e.move(x, c.attached, "attached")
-				for x in c.attached.duplicate():
-					if e.legal_effect(p, x):
-						await e.resolve_play(p, x)
-						# Normal resolution does not discard attachments; self-moving effects do.
+		if c.effect_id() == "Clarion Inn Air Conditioning" or (c.controller == p.seat and c.effect_id() in START_TRIGGERS):
+			pending.append({"card": c, "commutes": c.effect_id() in ["Clarion Inn Closet", "pTFS"], "resolve": start_trigger.bind(p, c)})
+	for c in row():
+		if c.id == "Rickroll": pending.append({"card": c, "row": true, "resolve": e.buy_card.bind(p, c, true)})
+	await e.resolve_triggers(pending)
+func start_trigger(p, c):
+	if c.effect_id() == "Clarion Inn Air Conditioning": await e.damage(e.state.players[c.controller], p, 1, c)
+	if c.controller != p.seat: return
+	match c.effect_id():
+		"Clarion Inn Closet": c.counters += 2
+		"Kevin's Desk":
+			for x in await e.choose(p, "Take control of permanent", e.permanents()): e.take_control(x, p)
+		"Military-Grade Card Encapsulation": e.leave_play(c)
+		"Tableskirts":
+			if p.play_area.size() > 1: e.leave_play(c)
+		"Unattended Phone":
+			if e.state.rng.randi_range(1, 6) == 1:
+				e.leave_play(c)
+				await e.damage(p, p, 1, c)
+		"The Juice":
+			c.counters += 1
+			if c.counters == 5: await e.eliminate(p, true)
+			else: await e.deal(p, c.counters, c)
+		"The Phreaknic Network":
+			e.remove(c)
+			await e.deal(p, 5, c)
+		"pTFS":
+			for x in c.attached.duplicate(): e.move(x, p.hand, "hand")
+		"The Book":
+			for x in await e.choose(p, "Attach action to The Book", p.hand.filter(func(x): return e.db().get_card(x.id).kind == "Action")):
+				e.move(x, c.attached, "attached")
+			var pending = c.attached.duplicate()
+			while not pending.is_empty() and c in e.permanents():
+				var names = pending.map(func(x): return e.db().get_card(x.id).name)
+				var index = await e.option(p, "Choose next attached Action", names) if pending.size() > 1 else 0
+				var x = pending.pop_at(index)
+				if x in c.attached and e.legal_effect(p, x):
+					await e.resolve_play(p, x)
+					# Normal resolution does not discard attachments; self-moving effects do.
 func end_turn(p):
+	var pending: Array = []
 	if p.turn_flags.get("acquired", 0) == 0:
-		for i in p.turn_flags.get("zenthere", 0): await e.deal(p, 2)
+		for i in p.turn_flags.get("zenthere", 0): pending.append({"name": "Zenthere, Mind Goblin", "resolve": e.deal.bind(p, 2)})
 	for c in e.permanents():
-		if c.effect_id() == "Touch Grass" and c.controller == p.seat and p.turns >= c.flags.get("expires", 999999): e.remove(c)
-		elif c.effect_id() == "FOTTR Greatest Hits Vol 2" and c.controller != p.seat:
-			if not p.played.any(func(x): return x.id in RICK_ART): await e.damage(e.state.players[c.controller], p, 2, c)
+		if c.effect_id() == "Touch Grass" and c.controller == p.seat and p.turns >= c.flags.get("expires", 999999):
+			pending.append({"card": c, "resolve": e.remove.bind(c)})
+		elif c.effect_id() == "FOTTR Greatest Hits Vol 2" and c.controller != p.seat and not p.played.any(func(x): return x.id in RICK_ART):
+			pending.append({"card": c, "resolve": e.damage.bind(e.state.players[c.controller], p, 2, c)})
+	await e.resolve_triggers(pending)
 const FREE_ONCE = ["Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4", "Tableskirts", "Unattended Phone", "The Big Dipper", "Payphone", "Shell Speech", "Disassembled Sink", "FOTTR Greatest Hits"]
 const PAID = {"Bribery": 2, "AI Bens AI Camry": 2, "Fivrr Friendship": 2, "White Python Boots": 2, "The Sandwich Factory": 2, "Lowes Shopping Cart": 1}
 func abilities(p, c) -> Array:
@@ -1175,6 +1220,7 @@ func consume_free_buy(p, c, price: int):
 			break
 
 func free_matches(c, name: String) -> bool:
+	if name == "@bony": return c in e.state.center_row and e.db().name_contains(c.id, "F.O.T.T.R. Greatest Hits")
 	if name == "@payphone_dave":
 		return ["Payphone", "You've Got Mail", "Shell Speech"].any(func(n): return e.db().named(c.id, n))
 	return e.db().name_contains(c.id, name)
