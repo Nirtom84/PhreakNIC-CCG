@@ -1,5 +1,8 @@
 # Changelog
 
+## v0.11 — Security (in progress)
+- **Open games list (server hotfix, live since v0.10):** the list only shows games on the current version. A game left open from an older version no longer appears, so you can't pick one you can't join.
+
 ## v0.10 — Online polish
 **Online play gets the neon HUD treatment.**
 - **Online home and room lobby:** panels, avatars, clearer seat status, larger touch controls and an easier-to-read room code. Copying an invite shows a confirmation.

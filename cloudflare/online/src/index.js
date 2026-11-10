@@ -25,7 +25,7 @@ export default {async fetch(req,env) {
       const r=route(req.method,new URL(req.url).pathname); if(!r) fail('not_found',404);
       const l=lobby(env);
       if(r.kind==='health') response=new Response('ok');
-      if(r.kind==='list') response=json({rooms:await l.list()});
+      if(r.kind==='list') response=json({rooms:await l.list(env.GAME_VERSION)});
       if(r.kind==='create'||r.kind==='join') {
         const raw=await body(req), data=r.kind==='create'?creation(raw):identity(raw);data.platform=platform(raw.platform);
         checkVersion(data.version,env.GAME_VERSION);
@@ -59,7 +59,8 @@ export class Lobby extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS limits (ip TEXT, kind TEXT, window INTEGER, count INTEGER, PRIMARY KEY(ip,kind))');
   }
   clean() {this.sql.exec('DELETE FROM daily WHERE day < ?',new Date(Date.now()-400*DAY).toISOString().slice(0,10));this.sql.exec('DELETE FROM games WHERE created < ?',Date.now()-90*DAY);this.sql.exec('DELETE FROM rooms WHERE expires <= ?',Date.now());this.sql.exec('DELETE FROM limits WHERE window <= ?',Date.now()-HOUR);}
-  list() {this.clean();return [...this.sql.exec('SELECT summary FROM rooms WHERE summary IS NOT NULL ORDER BY code')].map(r=>JSON.parse(r.summary));}
+  // Only list rooms players on the server's current version can join; older rooms linger until they expire.
+  list(version) {this.clean();return [...this.sql.exec('SELECT summary FROM rooms WHERE summary IS NOT NULL ORDER BY code')].map(r=>JSON.parse(r.summary)).filter(r=>!version||r.version===version);}
   reserve() {
     this.clean();for(let i=0;i<100;i++){const c=code();const rows=[...this.sql.exec('INSERT OR IGNORE INTO rooms(code,expires) VALUES(?,?) RETURNING code',c,Date.now()+DAY)];if(rows.length)return c;} fail('capacity',503);
   }
