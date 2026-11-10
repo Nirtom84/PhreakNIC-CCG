@@ -35,6 +35,9 @@ func run():
   root.add_child(menu)
   await process_frame
   verify(find_button(menu, "Quit").visible == not web, "Quit visibility")
+  for label in ["Windows", "Linux", "Android", "All releases"]:
+   var link = find_button(menu, label)
+   verify((link != null and link.visible) == web, "Download link " + label + " only on the web")
   if web: await check_rotate(menu)
   menu.queue_free()
   await process_frame

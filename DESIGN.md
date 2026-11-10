@@ -325,3 +325,49 @@ checks HTTP health, private views/events, snapshots, mid-game container restore,
 version errors, replacement links and takeover without clients. When the exported
 binary exists it also launches it as a subprocess and probes `/health`. A sandbox
 that denies TCP socket creation reports the network suite as skipped.
+
+### Online player UI
+
+`OnlineAPI` is the single address/REST boundary: `HTTPRequest` works on desktop,
+Android and web. Address precedence is `PHREAKNIC_SERVER`, `game/online_server`
+in settings, then the production HTTPS service. It also validates invite codes,
+parses `/join/CODE` and `?join=CODE`, translates REST failures and stores the private
+`game/online_seat` credential dictionary (`server`, `code`, `seat`, `token`).
+`Sfx.save()` preserves these extra ConfigFile keys. Credentials never enter invites
+or logs. The website redirects invite paths to the root query so export assets
+resolve normally. Native clients use the code field.
+
+`scripts/ui/online.gd` presents a scrollable UIStyle browser, creation form and live
+room lobby, using the menu's identity and configuration. REST is injectable via
+`api.request(method, path, body)`; public rooms refresh every five seconds while
+browsing. Room messages supply seats and host controls. Starting waits for the
+first game view before constructing the existing table.
+
+`OnlineSession` owns one `NetClient` and a polled `WebSocketTransport`. Production
+sockets authenticate with the room token URL and use `NetClient.bind_transport`,
+which never sends hello. Direct server tests retain `connect_to` and its hello.
+The session handles room/server/over lifecycle messages and reconnects at 1, 2,
+4, 8, then at most 15 seconds, reusing the stored credential. The transport factory
+is injectable for offline room-layer tests. The session moves from lobby to table
+without closing the socket. A welcome retires stale prompts before retransmission.
+
+`table.gd` selects its existing local engine or the client's mirror at setup.
+`human_seat` selects the bottom hand, rig, names, turn labels, queries and effects.
+Online action branches send protocol messages and never run mirror rules. Prompt
+payloads use the existing decision/search/prevention dialogs; card choices become
+UIDs and player choices become seat numbers. `prompt_done` closes an open dialog
+without answering again. Mirror views redraw the table, logs retain their card
+links, and events drive transient effects. Availability requires a ready view and
+no pending prompt; auto-end and confirmation share the offline UI flow. Online
+mode cannot save/autosave or remove an offline save. Leaving disconnects while
+retaining the resumable credential; terminal messages clear it.
+
+`tests/online_ui_checks.gd` injects REST and a tiny room layer over JSON loopback
+transports connected to a real in-process GameServer, exercising the actual table
+and dialogs without HTTP or socket access. Like other UI tests it backs up settings
+and the offline save. Run every Godot command with temporary `XDG_DATA_HOME`.
+
+`addons/online_export` registers an Android-only EditorExportPlugin override for
+`permissions/internet`, enabled in project.godot. This grants network access to APKs
+without modifying export_presets.cfg; other export platforms receive no overrides.
+The debug APK's manifest is checked with Android SDK `aapt dump permissions`.

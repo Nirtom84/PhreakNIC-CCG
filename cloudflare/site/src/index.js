@@ -11,6 +11,12 @@ export default {
       return Response.redirect(url.toString(), 301);
     }
 
+    if (request.method === "GET" && /^\/join\/[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{4}$/i.test(url.pathname)) {
+      url.searchParams.set("join", url.pathname.split("/")[2].toUpperCase());
+      url.pathname = "/";
+      return Response.redirect(url.toString(), 302);
+    }
+
     if (url.pathname === "/index.wasm") {
       if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method not allowed", { status: 405 });

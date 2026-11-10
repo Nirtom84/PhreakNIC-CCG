@@ -15,6 +15,7 @@ var engine: GameEngine
 var scripted = false
 var can_act = false
 var prompts: Dictionary = {}
+var log_history: Array[String] = []
 var actions_this_turn = 0
 var last_turn = -1
 var declined: Dictionary = {}
@@ -22,10 +23,13 @@ func _init():
 	engine = GameEngine.new()
 	add_child(engine)
 func connect_to(endpoint: NetTransport, index: int, token: String, protocol_version: String = str(ProjectSettings.get_setting("application/config/version", ""))):
+	bind_transport(endpoint)
+	transport.send({"t": "hello", "seat": index, "token": token, "version": protocol_version})
+func bind_transport(endpoint: NetTransport):
+	if transport != null and transport.received.is_connected(_receive): transport.received.disconnect(_receive)
 	transport = endpoint
 	transport.received.connect(_receive)
 	transport.closed.connect(func(): can_act = false)
-	transport.send({"t": "hello", "seat": index, "token": token, "version": protocol_version})
 func send_action(kind: String, uid = null, index = null):
 	can_act = false
 	var data = {"t": "action", "kind": kind}
@@ -38,6 +42,9 @@ func _receive(raw: Dictionary):
 	message_received.emit(message)
 	match message.get("t"):
 		"welcome":
+			for id in prompts.keys():
+				prompts.erase(id)
+				prompt_done.emit(id)
 			seat = message.seat
 			seats = message.seats
 		"view":
@@ -53,7 +60,10 @@ func _receive(raw: Dictionary):
 		"prompt_done":
 			prompts.erase(message.id)
 			prompt_done.emit(message.id)
-		"log": log.emit(message.text)
+		"log":
+			log_history.append(str(message.text))
+			if log_history.size() > 400: log_history.pop_front()
+			log.emit(message.text)
 		"event": event.emit(message)
 		"game_over": game_over.emit()
 		"error": error.emit(message.reason)

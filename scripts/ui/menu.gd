@@ -1,5 +1,7 @@
 extends Control
+static var invite_consumed = false
 const PLAYER_COUNTS = [2, 3, 4]
+const RELEASES_URL = "https://github.com/Nirtom84/PhreakNIC-CCG/releases"
 var rules_overlay: Control
 var difficulty: OptionButton
 var handle_input: LineEdit
@@ -171,6 +173,8 @@ func _ready():
  start_button.custom_minimum_size.y = 58
  start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  UIStyle.primary(start_button)
+ UIStyle.button(actions, "Play online", open_online)
+ if not OnlineAPI.remembered().is_empty(): UIStyle.button(menu, "Resume online game", func(): open_online(true))
  var help_row = HBoxContainer.new()
  menu.add_child(help_row)
  UIStyle.button(help_row, "Rules", rules)
@@ -214,6 +218,28 @@ func _ready():
   percentage.text = "%d%%" % roundi(value * 100)
   Sfx.save())
  UIStyle.button(menu, "Quit", func(): get_tree().quit()).visible = not UIStyle.is_web()
+ if UIStyle.is_web():
+  # Web version only: download the installable app, or browse every release.
+  var downloads = HBoxContainer.new()
+  menu.add_child(downloads)
+  UIStyle.label(downloads, "Get the app:", 16)
+  for item in [["Windows", "PhreakNIC-CCG-windows.zip"], ["Linux", "PhreakNIC-CCG-linux.zip"], ["Android", "PhreakNIC-CCG-android.apk"]]:
+   var url = RELEASES_URL + "/latest/download/" + item[1]
+   UIStyle.button(downloads, item[0], func(): open_link(url))
+  UIStyle.button(downloads, "All releases", func(): open_link(RELEASES_URL))
+ if OS.has_feature("web") and not invite_consumed:
+  invite_consumed = true
+  var code = OnlineAPI.invite_code(str(JavaScriptBridge.eval("window.location.href")))
+  if not code.is_empty(): open_online.call_deferred(false, code)
+func open_online(resume: bool = false, code: String = ""):
+ var online = load("res://scripts/ui/online.gd").new()
+ online.default_count = count.get_selected_id()
+ online.default_difficulty = difficulty.selected
+ online.initial_code = code
+ get_tree().root.add_child(online)
+ get_tree().current_scene = online
+ if resume: online.enter(OnlineAPI.remembered())
+ queue_free()
 func launch(resume: Dictionary = {}):
  var table = load("res://scenes/table.tscn").instantiate()
  table.resume_data = resume
@@ -318,3 +344,7 @@ func confirm(prompt: String, yes_text: String, no_text: String) -> bool:
   rules_overlay = null
   overlay.queue_free()
  return answer
+## Opens a link in a new browser tab (web) or the system browser (desktop/Android).
+func open_link(url: String):
+ if UIStyle.is_web() and OS.has_feature("web"): JavaScriptBridge.eval("window.open(" + JSON.stringify(url) + ", '_blank', 'noopener')")
+ else: OS.shell_open(url)

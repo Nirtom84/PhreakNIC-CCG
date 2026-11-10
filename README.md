@@ -81,9 +81,23 @@ tools/build_all.sh release    # zip the builds under stable names in build/relea
 
 One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/share/godot/export_templates/4.7.1.stable/`, JDK 17 (`~/.local/opt/jdk-17`), and the Android SDK in `~/Android/Sdk` with `platform-tools`, `build-tools;36.1.0` and `platforms;android-36`. Export settings live in `export_presets.cfg`.
 
+## Play online
+Choose **Play online** to browse public games, create a public or invite-only room,
+or join with a four-character code. Your menu handle and Hero are used online.
+Share the lobby's invite link with friends; browser links open the join flow.
+**Leave game** keeps your seat reserved; **Resume online game** reconnects after
+leaving or restarting the app. A bot covers disconnected seats after two minutes.
+Online games are saved by the server, separately from your offline save. The enabled
+Android export plugin includes Internet permission automatically.
+
+For development, set `PHREAKNIC_SERVER` (for example `http://127.0.0.1:8788`),
+or the `game/online_server` key in `user://settings.cfg`. The default service is
+`https://online-01.phreaknic-ccg.net`.
+
 ## Tests
 ```bash
 godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games (both card sets, 2-4 players), the rules scenarios and the official-rulings checks (rules_v08)
+godot4.7.1 --headless --path . -s tests/online_ui_checks.gd # offline fake REST/room and real online table dialogs
 godot4.7.1 --headless --path . -s tests/ui_smoke.gd      # table UI drives full turns
 godot4.7.1 --headless --path . -s tests/ui_state_sync.gd # UI always matches engine state
 godot4.7.1 --headless --path . -s tests/touch_checks.gd  # taps, long-press, drag scrolling, Back button

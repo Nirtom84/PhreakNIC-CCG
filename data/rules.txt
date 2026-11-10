@@ -41,6 +41,7 @@ Tap a market or reserved card for its detail sheet and Buy or Reserve. Tap hand 
 Play Basics plays only Hacker and Attack; Play All plays every legal card. End Turn asks for confirmation while moves remain; change this in Options. Auto-end never asks.
 When prevention offers a choice, use − and + to split all required absorption, then Confirm. Report a bug opens a prefilled GitHub form from either menu.
 
+- [b]Play online[/b] browses public games or creates a room for friends. Share its invite link or join by code. Leave game keeps your seat for [b]Resume online game[/b]; the server saves online progress.
 - In a web browser, saves and settings are stored in that browser. Hold phones sideways to play.
 - Permanents with abilities show buttons under them.
 - Hover over cards or Network Log card names on desktop to see a larger image.
