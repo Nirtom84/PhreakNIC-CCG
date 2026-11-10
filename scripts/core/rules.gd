@@ -5,6 +5,7 @@ signal log_message(text)
 signal ice_counter_removed(card)
 signal card_moved(card, from_zone, to_zone)
 signal damage_dealt(source_player, target_player, amount)
+signal damage_incoming(source_player, target_player, amount, source_card)
 signal turn_started(player)
 signal turn_ended(player)
 signal game_over(winner)
@@ -315,6 +316,7 @@ func resolve_damage(p, q, amount: int, source = null, dealing: bool = false):
 	if not q.alive or state.finished or amount <= 0: return
 	var guards = controlled(q, "Military-Grade Card Encapsulation") + controlled(q, "Phreaknic Network")
 	var ice = q.play_area.filter(func(c): return c.counters > 0 and db().has_subtype(c.effect_id(), "Location"))
+	damage_incoming.emit(p, q, amount, source)
 	var sources: Array = []
 	if q.turn_flags.get("prevent_all", false):
 		sources.append({"card": null, "name": "Phreaknic Network (rest of turn)", "capacity": amount, "full": true})

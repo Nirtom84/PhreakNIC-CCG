@@ -1,5 +1,43 @@
 # Changelog
 
+## v0.08 — Official rules, card sheet and 3–4 player games
+This is now the **official** digital version of the FOTTR TCG. bitwize, one of the game's creators, handed over his rules research: the printed rules, the official errata v1.1 and the designer's rulings, plus an audited card transcription. The game now follows them (see `reference/rules.md`).
+
+**Card fixes**
+- **CRT LAN Party** costs 4 (it was wrongly 1).
+- **Never Gonna Let You Down** now deals its 2 damage.
+- **Rick Astley** counts as a Legendary Hero.
+- **_NASKEY** counts as _NSAKEY (official errata), including Even More Logo's restriction.
+
+**Rules now matching the official rulings**
+- **Starting life:** 24 in a 2-player game, 10 per player with 3–4. You can also pick 20, 30 or 40 on the main menu.
+- **First player:** chosen at random.
+- **Simultaneous effects:** when several happen at once (for example start-of-turn effects and a forced Rickroll buy), the player whose turn it is chooses the order.
+- **Damage prevention:** when you have more ICE than damage, you choose which cards absorb it, with − and + buttons. Absorbing is still mandatory.
+- **Taken permanents:** a permanent you took control of goes to *your* discard pile when it leaves play.
+- **Elimination:** an eliminated player's permanents are removed from the game, and their reserved cards go to the bottom of the Center Deck.
+- **Specific cards:**
+  - The forced Rickroll buy is blocked by "can't buy" effects such as Grass.
+  - DeMartian and m8trix boost each other in either order, while Mog's Ice Cream needs Rookie Numbers played first.
+  - BONY's free buy is from the Center Row only.
+  - Etch-a-Sketch copies only the text.
+  - Oprah Wonka is split by the next player still in the game.
+  - You choose the order The Book's cards resolve in.
+
+**Playing**
+- **3 and 4 player games:** you against 1–3 bots.
+- **Card sheet:** click or tap a Center Row or reserved card to see it full size. It shows the set, type, cost, the rules as readable text, any combo partners, and **Buy** / **Reserve** buttons with hints. Long-press, right-click or a log link opens it read-only.
+- **Play Basics** plays only your Hackers and Attacks.
+- **End Turn** asks before ending while you still have moves. Switch it off with **Confirm end turn**.
+- **Banners** explain things such as who goes first, a forced Rickroll buy, an elimination, or "No moves left".
+- **Report a bug** on the main menu and in the in-game menu opens a GitHub bug report already filled in with the version, platform and your last moves. Submitting it needs a free GitHub account.
+- **Set names** now match the cards: **Base Set · PhreakNIC 26** and **Expansion 1 · PhreakNIC 27**.
+- **Fixes:**
+  - Dialogs size themselves to their contents.
+  - Dialogs stay above the bot's card previews.
+  - The "start a new game?" question has finger-sized buttons.
+  - The log says "You go first".
+
 ## v0.07 — Play in your browser
 - **[Play in your browser](https://nirtom84.github.io/PhreakNIC-CCG/)** on GitHub Pages: no install, runs on computers and phones. iPhone owners can play in Safari instead of needing an app. Tested in Chrome so far.
 - In a browser:

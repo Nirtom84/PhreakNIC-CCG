@@ -30,6 +30,9 @@ func respond(table):
    var overlay = table.get_child(table.get_child_count() - 1)
    if not overlay is PanelContainer: continue
    var box = overlay.get_child(0)
+   if box.get_child(0).text.contains("damage incoming"):
+    box.get_child(box.get_child_count() - 1).pressed.emit()
+    continue
    var grid = box.get_child(3).get_child(0)
    var done = box.get_child(4)
    if done.visible:

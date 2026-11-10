@@ -3,7 +3,7 @@
 [h2]Setup[/h2]
 - Each player shuffles a personal starting deck of [b]8 Hacker[/b] cards and [b]2 Attack[/b] cards.
 - Start with [b]24 life in a 2-player game[/b], or [b]10 life per player[/b] with 3–4 players. Starting life can be agreed before play.
-- The [b]Center Deck[/b] contains the base set’s [b]102 cards[/b] in a PhreakNIC 2025 game, or [b]150 cards[/b] with the 2026 expansion; shuffle it before playing.
+- The [b]Center Deck[/b] contains the base set’s [b]102 cards[/b] in a Base Set · PhreakNIC 26 game, or [b]150 cards[/b] with Expansion 1 · PhreakNIC 27; shuffle it before playing.
 - Deal the top 5 cards of the Center Deck face up. This row is the [b]Center Row[/b].
 - Each player draws 5 cards from their deck as a starting hand.
 - Choose the first player at random, then follow seat order.
@@ -36,14 +36,17 @@
 - [b]ICE counters[/b]: when you would take damage, each point removes one counter from your location instead. Damage beyond the counters left goes through to your life.
 
 [h2]Playing This Version[/h2]
+Choose 2–4 players, bot difficulty, card set and Standard or custom starting life. Base Set · PhreakNIC 26 has 102 cards; Base Set + Expansion 1 · PhreakNIC 27 has 150.
+Tap a market or reserved card for its detail sheet and Buy or Reserve. Tap hand cards to play immediately. Right-click, long-press or tap a Network Log link to read a card. Close, tap outside or press Back to dismiss the sheet.
+Play Basics plays only Hacker and Attack; Play All plays every legal card. End Turn asks for confirmation while moves remain; change this in Options. Auto-end never asks.
+When prevention offers a choice, use − and + to split all required absorption, then Confirm. Report a bug opens a prefilled GitHub form from either menu.
+
 - In a web browser, saves and settings are stored in that browser. Hold phones sideways to play.
-- Click a card in your hand to play it, or press [b]Play All[/b].
-- Click a Center Row card to buy or reserve it. Click your reserved card to buy it.
 - Permanents with abilities show buttons under them.
-- Hover over or right-click any card to read it full size. Hover over card names in the Network Log to see the card.
-- On touch screens, tap to play or buy. Press and hold any card to read it full size; tap anywhere to close. Tap a card name in the Network Log to see it. Drag to scroll.
+- Hover over cards or Network Log card names on desktop to see a larger image.
+- Drag to scroll on touch screens.
 - When you have nothing left to do, your turn ends by itself after a moment. Turn [b]Auto-end turn[/b] off on the main menu or in the in-game menu if you prefer to press End Turn yourself.
 - [b]Menu[/b] (or Back / Escape) opens the in-game menu with options, Rules, Save game, Main menu and Exit.
 - The game saves automatically at the start of each of your turns and when you leave. [b]Resume game[/b] on the main menu continues your saved game.
 - On the main menu, type your handle or press [b]Pick a Hero[/b] to play as one of the Hero cards; their art becomes your avatar.
-- Rulings for situations the printed rules don't cover are listed in RULES_NOTES.md.
+- This game follows the official rules card, the official errata v1.1 (tcg.fottr.io) and the designer's rulings, compiled by bitwize.

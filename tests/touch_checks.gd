@@ -128,7 +128,7 @@ func run():
  finger(point, true)
  finger(point, false)
  await settle()
- verify(table.pending, "Tap on Center Row card opens the buy dialog")
+ verify(is_instance_valid(table.inspect_overlay) and not table.pending, "Tap on Center Row card opens the card sheet")
  table.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
  await settle()
  verify(not table.pending and table.game_menu == null and table.engine.state.center_row == row_before and p.discard.size() == discard_before, "Back cancels the buy dialog without buying")

@@ -232,9 +232,17 @@ func ui():
  await process_frame
  var menu_scene = current_scene
  menu_scene.start()
- var confirmation = menu_scene.get_child(menu_scene.get_child_count() - 1)
- verify(confirmation is ConfirmationDialog and confirmation.dialog_text == "Start a new game? Your saved game will be replaced.", "New game asks before replacing save")
- if confirmation is ConfirmationDialog: confirmation.canceled.emit()
+ await process_frame
+ var confirmation = menu_scene.rules_overlay
+ var asks = is_instance_valid(confirmation) and find_button(confirmation, "Keep my save") != null and find_button(confirmation, "Yes, new game") != null
+ var label_found = false
+ if is_instance_valid(confirmation):
+  for node in confirmation.find_children("*", "Label", true, false):
+   if node.text == "Start a new game? Your saved game will be replaced.": label_found = true
+ verify(asks and label_found, "New game asks before replacing save")
+ if asks: find_button(confirmation, "Keep my save").pressed.emit()
+ await process_frame
+ verify(not is_instance_valid(menu_scene.rules_overlay) and SaveGame.read().size() > 0, "Keeping the save closes the question and keeps the save")
  verify(find_button(menu_scene, "Resume game") != null, "Main menu shows Resume after leave")
  for dimensions in [Vector2i(1920, 1080), Vector2i(2400, 1080), Vector2i(1920, 1440)]:
   root.size = dimensions

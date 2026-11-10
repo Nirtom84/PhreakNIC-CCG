@@ -38,6 +38,9 @@ func respond(table):
    var overlay = table.get_child(table.get_child_count() - 1)
    if not overlay is PanelContainer: continue
    var box = overlay.get_child(0)
+   if box.get_child(0).text.contains("damage incoming"):
+    box.get_child(box.get_child_count() - 1).pressed.emit()
+    continue
    var grid = box.get_child(3).get_child(0)
    var done = box.get_child(4)
    if done.visible:
@@ -96,7 +99,7 @@ func run():
   verify(await human.choose_number(p, "Number", numbers) == 3, "Number modal")
   verify(await human.confirm(p, "Confirm"), "Confirm modal")
   var sources = [{"card": p.hand[0], "capacity": 2, "full": false}, {"card": p.hand[1], "capacity": 3, "full": false}]
-  verify(await human.allocate_prevention(p, 2, sources) == [0, 2], "Human prevention allocation modal")
+  verify(await human.allocate_prevention(p, 2, sources) == [2, 0], "Human prevention allocation modal")
   verify(table.engine.db().cards.has(await human.name_a_card(p, "Name")), "Searchable name modal")
   for turn in 12:
    if table.engine.state.finished: break
@@ -106,8 +109,9 @@ func run():
     var buys = table.engine.state.center_row.filter(func(c): return c != null and table.engine.can_buy(p, c))
     if not buys.is_empty():
      # Market modal auto-selects reserve if available, otherwise buy.
-     await table.card_clicked(buys[0], "market")
-    await table.end_human_turn()
+     table.card_clicked(buys[0], "market")
+     await table.sheet_buy(buys[0])
+    await table.end_human_turn(true)
    else: await BotPlayer.new(table.engine).take_turn(table.engine.active())
    verify(table.engine.state.conservation_ok(), "UI action conservation")
    await process_frame

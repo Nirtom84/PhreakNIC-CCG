@@ -29,21 +29,5 @@ func name_a_card(_p, prompt: String) -> String:
  for id in ids: names.append(ui.engine.db().get_card(id).name)
  return ids[await ui.decision(prompt, names, [], 1, 1, false, true)]
 
-func allocate_prevention(player, amount: int, sources: Array) -> Array:
- var result: Array = []
- var remaining = amount
- for i in sources.size():
-  var later = 0
-  for j in range(i + 1, sources.size()): later += sources[j].capacity
-  var minimum = maxi(0, mini(remaining, remaining - later))
-  var maximum = mini(remaining, sources[i].capacity)
-  var n = maximum
-  if minimum < maximum:
-   var allowed: Array[int] = []
-   for value in range(minimum, maximum + 1): allowed.append(value)
-   var name = sources[i].get("name", "")
-   if sources[i].card != null: name = ui.engine.db().get_card(sources[i].card.id).name
-   n = await choose_number(player, "Prevent how many of %d damage with %s?" % [remaining, name], allowed)
-  result.append(n)
-  remaining -= n
- return result
+func allocate_prevention(_player, amount: int, sources: Array) -> Array:
+ return await ui.prevention_choice(amount, sources)

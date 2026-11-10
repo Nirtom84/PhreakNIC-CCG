@@ -22,16 +22,19 @@ The game is in **alpha testing**. Prefer an app? Grab the latest build from the 
 | Linux (x86_64) | [PhreakNIC-CCG-linux.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-linux.zip) | Unzip and run the `.x86_64` file. If it won't start, make it executable: `chmod +x PhreakNIC-CCG-*.x86_64`. |
 | Android 7.0+ (64-bit) | [PhreakNIC-CCG-android.apk](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-android.apk) | Open the file on your phone and allow your browser or file manager to install unknown apps. Plays in landscape. |
 
-Pick an opponent and start. Click a hand card to play it, click a center-row card to buy or reserve it,
-click your reserved card to buy it, use the buttons on your permanents for their abilities, then **End Turn**.
-Hover or right-click any card to zoom. On a touch screen: tap to play or buy, press and hold any card to read it, drag to scroll.
+Choose 2–4 players (you plus 1–3 bots), a bot level, the card set and the starting life, then start.
+- **Your turn:** click a hand card to play it, or use **Play Basics** (Hackers and Attacks only) or **Play All**.
+- **Buying:** click a Center Row card or your reserved card to open its card sheet. It shows the full card, its rules as text, and the **Buy** and **Reserve** buttons.
+- **Abilities:** use the buttons on your permanents.
+- **Ending:** press **End Turn**. It asks first if you still have moves left.
+- **Reading cards:** hover or right-click any card to zoom. On a touch screen, tap to play or buy, press and hold any card to read it, and drag to scroll.
 Your turn ends by itself once you have nothing left to do (switch **Auto-end turn** off if you'd rather press End Turn).
 **Menu** (or Back / Escape) opens the in-game menu: options, rules, **Save game**, **Main menu** and **Exit**. The game also saves at the start of each of your turns and when you leave, and **Resume game** on the main menu picks it up again.
 On the main menu you can type a handle or **Pick a Hero** to play as one of the Hero cards, with their art as your avatar.
-Under **Card set**, choose **PhreakNIC 2025** (the base game, 102 cards) or **PhreakNIC 2026** (base game plus the 48-card 2026 expansion, 150 cards).
+Under **Card set**, choose **Base Set · PhreakNIC 26** (102 cards) or **Base Set + Expansion 1 · PhreakNIC 27** (150 cards). Starting life defaults to the official 24 for two players, or 10 per player with 3–4 players.
 
 ### Found a bug?
-Please [open an issue](https://github.com/Nirtom84/PhreakNIC-CCG/issues/new/choose) and pick **Bug report** or **Card or rules problem**. Include the version from the bottom-right corner of the main menu, your platform, and the Network Log lines or a screenshot if you can.
+Press **Report a bug** on the main menu or in the in-game menu. It opens a GitHub bug report already filled in with your version, platform and the last moves of your game. You need a free GitHub account to submit it. You can also [open an issue](https://github.com/Nirtom84/PhreakNIC-CCG/issues/new/choose) directly and pick **Bug report** or **Card or rules problem**.
 
 ### Run from source
 Install [Godot 4.7](https://godotengine.org/download) and run from the project folder:
@@ -46,14 +49,15 @@ godot4.7.1 --path .
 | Phreak | Values cards, plays draw first, makes sensible choices, uses paid abilities |
 | 31337 Elite | Adds lethal checks, deck thinning, reserving/denying cards and combo hunting |
 
-2 players today; the engine already supports 2–4 seats (3–4 player tables are disabled in the menu for now).
+Games have 2–4 players: you and 1–3 bots at the chosen level. Who goes first is random.
 
 ## Rules
-The official rules are on the in-game Rules screen (scrollable written rules). Gaps the cards don't cover are
-documented in [RULES_NOTES.md](RULES_NOTES.md). Design and architecture: [DESIGN.md](DESIGN.md).
+This is the **official** digital version of the FOTTR TCG. The game follows [reference/rules.md](reference/rules.md): the printed rules card, the official errata v1.1 from [tcg.fottr.io](https://tcg.fottr.io/) and the designer's rulings. bitwize compiled them, along with the audited card transcription in [reference/cards_transcribed.json](reference/cards_transcribed.json).
+The in-game Rules screen has a player-friendly summary. Implementation notes are in [RULES_NOTES.md](RULES_NOTES.md), and the design and architecture in [DESIGN.md](DESIGN.md).
 
 ## Project layout
-- `data/cards.json` — all 152 cards (cost, type, rules text, and `set`: 2025 base or 2026 expansion), transcribed from the card art
+- `data/cards.json` — all 152 cards (cost, type, rules text, aliases, Legendary flag, and `set`: 2025 base or 2026 expansion), checked against `reference/cards_transcribed.json` by the tests
+- `reference/` — official rules, errata and rulings (`rules.md`), the audited card transcription and the set list
 - `assets/cards/` — 600px card faces and the card back
 - `scripts/core/` — rules engine (`rules.gd`), one effect handler per card (`effects.gd`)
 - `scripts/ai/` — bots and difficulty levels
@@ -78,7 +82,7 @@ One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/s
 
 ## Tests
 ```bash
-godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games (both card sets, 2-4 players) plus the focused rules scenarios
+godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games (both card sets, 2-4 players), the rules scenarios and the official-rulings checks (rules_v08)
 godot4.7.1 --headless --path . -s tests/ui_smoke.gd      # table UI drives full turns
 godot4.7.1 --headless --path . -s tests/ui_state_sync.gd # UI always matches engine state
 godot4.7.1 --headless --path . -s tests/touch_checks.gd  # taps, long-press, drag scrolling, Back button
@@ -86,6 +90,7 @@ godot4.7.1 --headless --path . -s tests/v05_checks.gd    # auto-end turn, dialog
 godot4.7.1 --headless --path . -s tests/save_checks.gd   # save/resume round trips and the in-game menu
 godot4.7.1 --headless --path . -s tests/v06_checks.gd    # 2025 / 2026 card sets
 godot4.7.1 --headless --path . -s tests/v07_checks.gd    # browser version: hidden Quit/Exit, rotate prompt, save on leaving the page
+godot4.7.1 --headless --path . -s tests/v08_checks.gd    # card sheet, Play Basics, end-turn confirmation, 3-4 players, starting life, bug report
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot
 ```
 

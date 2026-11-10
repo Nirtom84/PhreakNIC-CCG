@@ -70,15 +70,19 @@ static func dialog(p: PanelContainer, dimensions: Vector2 = Vector2(640, 400)):
  var content = p.get_child(0)
  var layout = func():
   var view = p.get_viewport_rect().size
-  var extent = dimensions.min(view - Vector2(80, 80))
+  # Grow to fit the content (e.g. a two-line prompt) instead of letting it spill past the box.
+  var extent = dimensions.max(content.get_combined_minimum_size()).min(view - Vector2(80, 80))
   var shade = box(Color(0, 0, 0, 0.7), Color.TRANSPARENT, 0)
   shade.content_margin_left = (view.x - extent.x) / 2
   shade.content_margin_right = shade.content_margin_left
   shade.content_margin_top = (view.y - extent.y) / 2
   shade.content_margin_bottom = shade.content_margin_top
   p.add_theme_stylebox_override("panel", shade)
+  # A control never shrinks on its own after its content was briefly too big; snap the backdrop back to the screen.
+  p.size = view
  p.get_viewport().size_changed.connect(layout)
  p.tree_exiting.connect(func(): p.get_viewport().size_changed.disconnect(layout), CONNECT_ONE_SHOT)
+ content.minimum_size_changed.connect(layout)
  layout.call()
  content.draw.connect(func(): content.draw_style_box(box(), Rect2(Vector2(-20,-20), content.size + Vector2(40,40))))
  content.resized.connect(content.queue_redraw)
@@ -213,3 +217,6 @@ static func escape_bbcode(text: String) -> String:
  for character in text:
   result += "[lb]" if character == "[" else ("[rb]" if character == "]" else character)
  return result
+
+static func pool_label(pool: String) -> String:
+ return "Base Set · PhreakNIC 26" if pool == "2025" else "Base Set + Expansion 1 · PhreakNIC 27"

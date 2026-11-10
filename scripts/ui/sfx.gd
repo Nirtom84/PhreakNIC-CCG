@@ -8,6 +8,8 @@ var handle: String = ""
 var hero_id: String = ""
 var bot_fast: bool = false
 var auto_end_turn: bool = true
+var confirm_end_turn: bool = true
+var starting_life: int = 0
 var card_pool: String = "2026"
 func clean_handle(value: String) -> String:
  return value.replace("[", "").replace("]", "").strip_edges().left(16)
@@ -25,6 +27,8 @@ func _ready():
   if card_pool not in ["2025", "2026"]: card_pool = "2026"
   bot_fast = bool(config.get_value("game", "bot_fast", false))
   auto_end_turn = bool(config.get_value("game", "auto_end_turn", true))
+  confirm_end_turn = bool(config.get_value("game", "confirm_end_turn", true))
+  starting_life = int(config.get_value("game", "starting_life", 0))
   muted = bool(config.get_value("sound", "muted", false))
   visual_effects = bool(config.get_value("visual", "effects", true))
  if DisplayServer.get_name() == "headless": return
@@ -39,6 +43,8 @@ func save():
  config.set_value("player", "handle", handle)
  config.set_value("player", "hero_id", hero_id)
  config.set_value("game", "auto_end_turn", auto_end_turn)
+ config.set_value("game", "confirm_end_turn", confirm_end_turn)
+ config.set_value("game", "starting_life", starting_life)
  config.set_value("game", "bot_fast", bot_fast)
  config.set_value("game", "card_pool", card_pool)
  config.set_value("visual", "effects", visual_effects)

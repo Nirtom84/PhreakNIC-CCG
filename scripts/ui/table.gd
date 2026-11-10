@@ -45,6 +45,8 @@ var auto_end_elapsed: float = 0.0
 var auto_end_turn_number: int = -1
 var previous_hack: Dictionary = {}
 var moved_uids: Dictionary = {}
+var opening_rickroll = null
+var incoming_source: String = "another player"
 func _ready():
  install_page_listeners()
  get_tree().auto_accept_quit = false
@@ -93,7 +95,7 @@ func _ready():
  log_view.scroll_following = true
  log_view.meta_underlined = true
  log_view.meta_hover_started.connect(func(id):
-  if not TouchInput.touch_mode: show_log_card(str(id)))
+  if not TouchInput.touch_mode: show_zoom({"id": str(id).uri_decode()}))
  log_view.meta_hover_ended.connect(func(_id): hide_zoom())
  log_view.meta_clicked.connect(func(id): show_log_card(str(id)))
  side.add_child(log_view)
@@ -121,6 +123,7 @@ func _ready():
   engine.setup(levels, game_seed, choices, card_pool, starting_life)
  else:
   engine.state = SaveGame.restore(resume_data.game)
+  starting_life = int(resume_data.table.get("starting_life", 0))
   player_count = engine.state.players.size()
   difficulty = engine.state.players[1].difficulty
   seat_names.assign(resume_data.table.seat_names)
@@ -139,8 +142,14 @@ func _ready():
 
  engine.ice_counter_removed.connect(func(_card): Sfx.play("ice"))
  engine.damage_dealt.connect(damage)
+ engine.damage_incoming.connect(func(source_player, target_player, _amount, source_card):
+  if target_player.seat == 0:
+   incoming_source = CardDB.cards[source_card.id].name + " / " + seat_name(source_player.seat) if source_card != null else seat_name(source_player.seat))
  engine.card_moved.connect(moved)
  engine.turn_started.connect(func(p):
+  opening_rickroll = null
+  for card in engine.state.center_row:
+   if card != null and card.id == "Rickroll": opening_rickroll = card
   Sfx.play("turn_start")
   if p.seat == 0: clear_spotlights(1.5)
   append_log("TURN %d · Seat %d connected" % [engine.state.turn, p.seat])
@@ -149,7 +158,10 @@ func _ready():
  engine.game_over.connect(game_over)
  if resume_data.is_empty(): append_log("Network ready · %d players connected" % player_count)
  engine.turn_driver = drive_reaction
- if resume_data.is_empty(): await engine.start_turn()
+ if resume_data.is_empty():
+  var first = seat_name(engine.active().seat)
+  show_notice(first + (" go first" if first == "You" else " goes first"), 6.0)
+  await engine.start_turn()
  auto_save()
  redraw()
 func pick_seat_names(game_seed: int):
@@ -180,6 +192,9 @@ func redraw():
  auto_end_elapsed = 0
  auto_end_turn_number = -1
  if not is_instance_valid(body) or engine.state == null: return
+ if opening_rickroll != null and not engine.busy:
+  show_notice("Rickroll was in the Center Row when your turn started, so you had to buy it" if opening_rickroll not in engine.state.center_row else "Rickroll forced buy was blocked", 7.0)
+  opening_rickroll = null
  for child in body.get_children():
   body.remove_child(child)
   child.queue_free()
@@ -209,8 +224,10 @@ func redraw():
    center.add_child(slot)
  var piles = VBoxContainer.new()
  center.add_child(piles)
- piles.add_child(UIStyle.picture(UIStyle.BACK, Vector2(110, 150)))
- UIStyle.label(piles, "Deck: %d · %s set" % [engine.state.center_deck.size(), engine.state.card_pool])
+ piles.add_child(UIStyle.picture(UIStyle.BACK, Vector2(110, 115)))
+ var deck_label = UIStyle.label(piles, "Deck: %d" % engine.state.center_deck.size(), 16)
+ deck_label.custom_minimum_size.x = 180
+ UIStyle.label(piles, "Base Set" if engine.state.card_pool == "2025" else "Base + Expansion 1", 14)
  UIStyle.button(piles, "Removed: %d" % engine.state.removed.size(), func(): view_cards("Removed from game", engine.state.removed))
  var p = engine.state.players[0]
  var board_scroll = ScrollContainer.new()
@@ -247,6 +264,8 @@ func redraw():
  var actions = HBoxContainer.new()
  status.add_child(actions)
  play_button = UIStyle.button(actions, "▶ Play All", play_all)
+ var basics = UIStyle.button(actions, "Play Basics", play_basics)
+ basics.disabled = not available()
  end_button = UIStyle.button(actions, "End Turn →", end_human_turn)
  play_button.custom_minimum_size.y = 38
  end_button.custom_minimum_size.y = 38
@@ -284,6 +303,7 @@ func readout(parent, icon: String, value: int, font_size: int) -> Label:
  return number
 func seat_area(parent: Node, p, _human: bool):
  var panel = UIStyle.panel()
+ panel.name = "Opponent%d" % p.seat
  panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  var inset = UIStyle.box()
  inset.set_content_margin_all(0)
@@ -293,9 +313,16 @@ func seat_area(parent: Node, p, _human: bool):
  panel.add_child(box)
  var status = HBoxContainer.new()
  box.add_child(status)
- status.add_child(UIStyle.avatar(seat_heroes[p.seat], 56))
- UIStyle.label(status, seat_name(p.seat), 24)
+ status.add_child(UIStyle.avatar(seat_heroes[p.seat], 40))
+ var name_label = UIStyle.label(status, seat_name(p.seat), 20)
+ name_label.custom_minimum_size.x = 80
+ name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ name_label.clip_text = true
  var badge = UIStyle.label(status, BotDifficulty.DISPLAY_NAMES[p.difficulty].to_upper(), 14)
+ badge.visible = player_count == 2
+ if not p.alive:
+  panel.modulate = Color(0.5, 0.5, 0.5)
+  name_label.text = "DISCONNECTED · " + seat_name(p.seat)
  badge.add_theme_color_override("font_color", [UIStyle.GREEN, UIStyle.AMBER, UIStyle.RED][p.difficulty])
  life_labels[p.seat] = readout(status, "life", p.life, 28)
  var life_frame = life_labels[p.seat].get_parent().get_parent()
@@ -303,7 +330,7 @@ func seat_area(parent: Node, p, _human: bool):
  compact.content_margin_top = 2
  compact.content_margin_bottom = 2
  life_frame.add_theme_stylebox_override("panel", compact)
- UIStyle.label(status, " · Hand %d · Deck %d · Discard %d" % [p.hand.size(), p.deck.size(), p.discard.size()], 16)
+ UIStyle.label(box, "Hand %d · Deck %d · Discard %d" % [p.hand.size(), p.deck.size(), p.discard.size()], 16)
  var row = HBoxContainer.new()
  box.add_child(row)
  var fan = Control.new()
@@ -323,17 +350,17 @@ func seat_area(parent: Node, p, _human: bool):
  else:
   pile.add_child(card_widget(p.discard.back(), "opponent", 55))
  var opponent_name = seat_name(p.seat)
- UIStyle.button(pile, "Discard (%d)" % p.discard.size(), func(): view_cards("%s's discard pile" % opponent_name, p.discard))
+ UIStyle.button(pile, "Discard", func(): view_cards("%s's discard pile" % opponent_name, p.discard))
  var scroll = ScrollContainer.new()
  TouchInput.register_scroll(scroll)
  scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- scroll.custom_minimum_size.y = 137
+ scroll.custom_minimum_size.y = 110
  scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
  row.add_child(scroll)
  var board = HBoxContainer.new()
  scroll.add_child(board)
- for c in p.play_area: board.add_child(card_widget(c, "opponent", 100))
- for c in p.reserve: board.add_child(card_widget(c, "opponent_reserve", 100))
+ for c in p.play_area: board.add_child(card_widget(c, "opponent", 70))
+ for c in p.reserve: board.add_child(card_widget(c, "opponent_reserve", 70))
 func texture_for(id: String) -> Texture2D:
  if not textures.has(id): textures[id] = load("res://assets/cards/" + id + ".jpg")
  return textures[id]
@@ -368,7 +395,7 @@ func card_widget(c, zone: String, width: int) -> Control:
  TouchInput.register_card(button, func(): inspect_card(c))
  button.pressed.connect(func(): card_clicked(c, zone))
  button.gui_input.connect(func(event):
-  if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed: show_zoom(c))
+  if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed: inspect_card(c))
  button.mouse_entered.connect(func():
   if TouchInput.touch_mode: return
   hover_serial += 1
@@ -410,6 +437,9 @@ func card_widget(c, zone: String, width: int) -> Control:
   readout(cost, "hack", engine.effective_cost(human, c), 16)
  return box
 func card_clicked(c, zone: String):
+ if zone in ["market", "reserve", "permanent"]:
+  inspect_card(c, true)
+  return
  if not available(): return
  hide_zoom()
  if zone == "hand":
@@ -417,21 +447,7 @@ func card_clicked(c, zone: String):
   redraw()
   await engine.play_card(engine.state.players[0], c)
   acting = false
- elif zone in ["market", "reserve"]:
-  var p = engine.state.players[0]
-  var options: Array[String] = ["Inspect", "Cancel"]
-  if engine.can_buy(p, c): options.push_front("Buy — %d hacking" % engine.effective_cost(p, c))
-  if zone == "market" and engine.can_reserve(p, c): options.push_front("Reserve")
-  var selected: int = await decision(engine.db().get_card(c.id).name, options, [], 1, 1, false, false, c)
-  if not available(): return
-  if options[selected] == "Reserve": engine.reserve_card(p, c)
-  elif options[selected].begins_with("Buy"):
-   acting = true
-   await engine.buy_card(p, c)
-   acting = false
-  elif options[selected] == "Inspect":
-   if TouchInput.touch_mode: inspect_card(c)
-   else: show_zoom(c)
+
  redraw()
 func activate_card(c, index: int):
  if not available(): return
@@ -440,7 +456,9 @@ func activate_card(c, index: int):
  await engine.activate(engine.state.players[0], c, index)
  acting = false
  redraw()
-func play_all():
+func play_basics():
+ await play_all(true)
+func play_all(basics: bool = false):
  if not available(): return
  acting = true
  redraw()
@@ -448,13 +466,17 @@ func play_all():
  # Draws and reshuffles can return an already played card to hand. Re-read
  # the live hand after each resolution, with the same safety cap as bots.
  for action in BotPlayer.MAX_ACTIONS:
-  var playable = p.hand.filter(func(c): return engine.can_play(p, c))
+  var playable = p.hand.filter(func(c): return engine.can_play(p, c) and (not basics or c.id in ["Hacking", "Damage"]))
   if playable.is_empty(): break
   await engine.play_card(p, playable[0])
  acting = false
  redraw()
-func end_human_turn():
+func end_human_turn(automatic: bool = false):
  if not available(): return
+ if not automatic and Sfx.confirm_end_turn and not nothing_left():
+  var p = engine.state.players[0]
+  var n = p.hand.filter(func(c): return engine.can_play(p, c)).size()
+  if await decision("End your turn? You still have %d Hacking and %d playable cards." % [p.hacking, n], ["End turn", "Keep playing"], [], 1, 1, false) != 0: return
  acting = true
  redraw()
  await engine.end_turn(engine.state.players[0])
@@ -471,7 +493,7 @@ func drive_bot():
   await drive_reaction(engine.active())
  driving = false
  redraw()
-func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: int, multi: bool, searchable: bool = false, preview_card = null):
+func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: int, multi: bool, searchable: bool = false):
  hide_zoom()
  hover_serial += 1
  pending = true
@@ -485,11 +507,13 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  redraw()
  var overlay = UIStyle.panel()
  overlay.add_to_group("touch_modal")
+ # Above bot card spotlights (z 15) so a prompt during a bot turn is never hidden.
+ overlay.z_index = 20
  overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  add_child(overlay)
  var box = VBoxContainer.new()
  overlay.add_child(box)
- UIStyle.rich_label(box, escaped(prompt), 26)
+ var prompt_label = UIStyle.rich_label(box, escaped(prompt), 26)
  var search = LineEdit.new()
  search.placeholder_text = "Search all card names…"
  search.visible = searchable
@@ -513,17 +537,10 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  box.add_child(done)
  var rows = ceili(float(cards.size() if not cards.is_empty() else options.size()) / grid.columns)
  var dimensions = Vector2(grid.columns * 178, rows * 241 + 120) if not cards.is_empty() else Vector2(640, rows * 60 + 65)
- if preview_card != null:
-  dimensions = Vector2(860, maxf(310, dimensions.y))
-  var padding = StyleBoxEmpty.new()
-  padding.content_margin_left = 220
-  scroll.add_theme_stylebox_override("panel", padding)
-  var preview = UIStyle.picture("res://assets/cards/" + preview_card.id + ".jpg", Vector2(200, 274))
-  overlay.add_child(preview)
-  preview.set_as_top_level(true)
-  var place = func(): preview.global_position = box.global_position + Vector2(0, 42)
-  box.resized.connect(place)
-  box.item_rect_changed.connect(place)
+ # Give the wrapping prompt its real width up front; at width 0 it wraps per character and asks for a huge height.
+ prompt_label.custom_minimum_size.x = mini(int(dimensions.x), int(get_viewport_rect().size.x) - 120)
+ # Option buttons claim their height, so a two-line prompt grows the box instead of squeezing the buttons into a scroll.
+ if cards.is_empty(): scroll.custom_minimum_size.y = mini(rows * 60, 480)
  UIStyle.dialog(overlay, dimensions)
  UIStyle.primary(done)
  for i in range(cards.size() if not cards.is_empty() else options.size()):
@@ -543,7 +560,7 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
    TouchInput.register_card(b, func(): inspect_card(cards[i]))
    b.tooltip_text = engine.db().get_card(cards[i].id).name + "\nRight-click or long-press to inspect"
    b.gui_input.connect(func(event):
-    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed: show_zoom(cards[i]))
+    if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed: inspect_card(cards[i]))
    b.mouse_exited.connect(hide_zoom)
   else:
    b.custom_minimum_size.y = 56
@@ -557,6 +574,7 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
   b.pressed.connect(func():
    Sfx.play("button")
    if not multi: answered.emit(i); return
+   if max_n == 0 and not cards.is_empty(): inspect_card(cards[i]); return
    if i in selected: selected.erase(i)
    elif selected.size() < max_n: selected.append(i)
    else: b.button_pressed = false
@@ -638,7 +656,8 @@ func append_log(message: String):
   if "Seat %d" % i in message: seat = i
  var display = message
  for i in player_count: display = display.replace("Seat %d" % i, seat_name(i))
- for verbs in [["plays", "play"], ["buys", "buy"], ["takes", "take"], ["reserves", "reserve"], ["reveals", "reveal"]]:
+ if "eliminat" in message.to_lower(): show_notice(display, 7.0)
+ for verbs in [["plays", "play"], ["buys", "buy"], ["takes", "take"], ["reserves", "reserve"], ["reveals", "reveal"], ["goes", "go"], ["loses", "lose"], ["gains", "gain"], ["discards", "discard"], ["draws", "draw"]]:
   if Sfx.handle.is_empty() and message.begins_with("Seat 0 " + verbs[0] + " "):
    display = "You " + verbs[1] + " " + display.substr(("You " + verbs[0] + " ").length())
  var entry = "[color=#%s]%s[/color]\n" % [colors[seat] if seat >= 0 else "a1b1bb", "[color=#536c78]> [/color]" + link_cards(display)]
@@ -682,11 +701,7 @@ func word_character(character: String) -> bool:
 func show_log_card(id: String):
  id = id.uri_decode()
  if not CardDB.cards.has(id): return
- if TouchInput.touch_mode:
-  inspect_card({"id": id})
-  return
- show_zoom({"id": id})
- zoom.position = Vector2(maxf(0, log_view.global_position.x - 480), clampf(get_local_mouse_position().y - 300, 0, maxf(0, size.y - 635)))
+ inspect_card({"id": id})
 ## Fades out bot spotlights so they never hide the center row during the human's turn.
 func clear_spotlights(delay: float):
  for panel in spotlights.duplicate():
@@ -769,6 +784,7 @@ func restart():
  table.player_count = player_count
  table.difficulty = difficulty
  table.card_pool = engine.state.card_pool
+ table.starting_life = starting_life
  get_tree().root.add_child(table)
  get_tree().current_scene = table
  queue_free()
@@ -799,9 +815,9 @@ func menu():
  scroll.add_child(box)
  UIStyle.button(box, "Resume", close_menu).custom_minimum_size.y = 56
  UIStyle.label(box, "Options", 24)
- for setting in ["muted", "visual_effects", "auto_end_turn"]:
+ for setting in ["muted", "visual_effects", "auto_end_turn", "confirm_end_turn"]:
   var toggle = CheckButton.new()
-  toggle.text = {"muted": "Sound enabled", "visual_effects": "Visual effects", "auto_end_turn": "Auto-end turn"}[setting]
+  toggle.text = {"muted": "Sound enabled", "visual_effects": "Visual effects", "auto_end_turn": "Auto-end turn", "confirm_end_turn": "Confirm end turn"}[setting]
   toggle.custom_minimum_size.y = 56
   toggle.button_pressed = not Sfx.muted if setting == "muted" else Sfx.get(setting)
   box.add_child(toggle)
@@ -821,6 +837,7 @@ func menu():
  UIStyle.button(box, "Rules", func():
   close_menu()
   rules_overlay = RulesPage.open(self)).custom_minimum_size.y = 56
+ UIStyle.button(box, "Report a bug", report_bug)
  save_button = UIStyle.button(box, "Save game", func():
   if save_game(): save_status.text = "Game saved"
   else: save_status.text = "Could not save game")
@@ -855,7 +872,7 @@ func save_game() -> bool:
  if not can_save(): return false
  saving = true
  auto_end_elapsed = 0
- var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[0], "fast": fast, "log": "".join(log_entries), "log_entries": log_entries})
+ var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[0], "fast": fast, "log": "".join(log_entries), "log_entries": log_entries})
  saving = false
  return ok
 func auto_save():
@@ -900,7 +917,7 @@ func flash_readout(node: Control):
  node.modulate = Color(1.5, 1.5, 1.5)
  node.create_tween().tween_property(node, "modulate", Color.WHITE, 0.35)
 
-func inspect_card(c):
+func inspect_card(c, interactive: bool = false):
  hide_zoom()
  hover_serial += 1
  close_inspect()
@@ -910,33 +927,102 @@ func inspect_card(c):
  add_child(inspect_overlay)
  var dim = ColorRect.new()
  dim.color = Color(0, 0, 0, 0.7)
- dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  inspect_overlay.add_child(dim)
  UIStyle.viewport_cover(dim)
- var image = TextureRect.new()
- image.texture = texture_for(c.id)
- image.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
- image.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
- image.mouse_filter = Control.MOUSE_FILTER_IGNORE
- dim.add_child(image)
- image.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
- image.offset_top = 20
- image.offset_bottom = -65
- var hint = UIStyle.label(dim, "Tap anywhere to close", 22)
- hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
- hint.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
- hint.offset_top = -55
- hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ var panel = UIStyle.panel()
+ dim.add_child(panel)
+ panel.mouse_filter = Control.MOUSE_FILTER_STOP
+ # CanvasLayer separates the sheet from the table's inherited Control theme.
+ UIStyle.apply(panel)
+ var background = UIStyle.dialog_box()
+ background.bg_color.a = 1.0
+ panel.add_theme_stylebox_override("panel", background)
+ var row = HBoxContainer.new()
+ panel.add_child(row)
+ row.add_theme_constant_override("separation", 24)
+ var picture = UIStyle.picture("res://assets/cards/" + c.id + ".jpg", Vector2(360, 492))
+ picture.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+ row.add_child(picture)
+ var scroll = ScrollContainer.new()
+ scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ row.add_child(scroll)
+ TouchInput.register_scroll(scroll)
+ var box = VBoxContainer.new()
+ box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ box.add_theme_constant_override("separation", 12)
+ scroll.add_child(box)
+ var data = CardDB.cards[c.id]
+ UIStyle.label(box, data.name, 28).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ var chips = HFlowContainer.new()
+ box.add_child(chips)
+ sheet_chip(chips, "Base Set · PhreakNIC 26" if data.get("set", "2025") == "2025" else "Expansion 1 · PhreakNIC 27")
+ sheet_chip(chips, data.type_line)
+ var p = engine.state.players[0]
+ var cost = engine.effective_cost(p, c) if c is CardInstance else int(data.cost)
+ sheet_chip(chips, "Cost %d" % int(data.cost) + (" · %d for you" % cost if cost != int(data.cost) else ""))
+ var rules = UIStyle.rich_label(box, escaped(data.text), 22)
+ rules.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ rules.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ for id in CardDB.cards:
+  var name_text = str(CardDB.cards[id].name)
+  if id != c.id and name_text.to_lower() in str(data.text).to_lower():
+   var matched = (p.hand + p.played).any(func(partner): return partner.id == id)
+   var partner = UIStyle.label(box, ("★ " if matched else "Combo: ") + name_text, 18)
+   partner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+   if matched: partner.add_theme_color_override("font_color", UIStyle.GREEN)
+ if c is CardInstance and c in engine.permanents():
+  UIStyle.label(box, "ICE: %d · Owner: %s" % [c.counters, seat_name(c.owner)], 18)
+  if c.controller != c.owner: UIStyle.label(box, "Controller: " + seat_name(c.controller), 18)
+  if c.flags.get("used", false): UIStyle.label(box, "Used this turn", 18)
+ if interactive and available():
+  if c in engine.state.center_row or c in p.reserve:
+   var buy = UIStyle.button(box, "Buy — %d Hacking" % cost, sheet_buy.bind(c))
+   UIStyle.primary(buy)
+   buy.disabled = not engine.can_buy(p, c)
+   if engine.can_reserve(p, c): UIStyle.button(box, "Reserve", func(): close_inspect(); engine.reserve_card(p, c); redraw())
+   var can_reserve = engine.can_reserve(p, c)
+   var hint = ""
+   if cost > p.hacking: hint = "You need %d more Hacking" % (cost - p.hacking) + (", or reserve it to buy on a later turn" if can_reserve else "")
+   elif can_reserve: hint = "If you reserve, you can't buy or acquire anything else this turn"
+   if hint != "": UIStyle.label(box, hint, 16).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  if c in p.hand and engine.can_play(p, c): UIStyle.button(box, "Play", func(): close_inspect(); card_clicked(c, "hand"))
+  for ability in engine.activatable_abilities(p, c):
+   if ability.enabled: UIStyle.button(box, ability.label, sheet_activate.bind(c, ability.index))
+ UIStyle.button(box, "Close", close_inspect)
+ for control in box.get_children():
+  if control is Button:
+   control.custom_minimum_size.y = 56
+   control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+   control.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ var fit_sheet = func():
+  if not dim.is_inside_tree(): return
+  var view = dim.get_viewport_rect().size
+  var limit = view * 0.9
+  var width = minf(1100, limit.x)
+  var image_scale = minf(1.0, minf((limit.y - 84) / 492, (width - 108) * 0.4 / 360))
+  picture.custom_minimum_size = Vector2(360, 492) * maxf(0.1, image_scale)
+  scroll.custom_minimum_size.y = minf(box.get_combined_minimum_size().y, limit.y - 84)
+  panel.size = Vector2(width, maxf(picture.custom_minimum_size.y, scroll.custom_minimum_size.y) + 84)
+  panel.position = (view - panel.size) / 2
+ box.minimum_size_changed.connect(fit_sheet)
+ dim.resized.connect(fit_sheet)
+ fit_sheet.call_deferred()
  dim.gui_input.connect(func(event):
-  if (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.pressed):
+  if (event is InputEventScreenTouch or event is InputEventMouseButton):
    dim.accept_event()
-   # Keep the blocker through release, so the closing gesture cannot hit the table.
-   dim.set_meta("closing", true)
-   image.hide()
-   hint.hide()
-  elif dim.has_meta("closing") and ((event is InputEventScreenTouch and not event.pressed) or (event is InputEventMouseButton and not event.pressed)):
-   dim.accept_event()
-   close_inspect())
+   if event.pressed: dim.set_meta("closing", true)
+   elif dim.has_meta("closing"): close_inspect())
+func sheet_activate(c, index: int):
+ close_inspect()
+ await activate_card(c, index)
+func sheet_buy(c):
+ close_inspect()
+ if not available(): return
+ acting = true
+ await engine.buy_card(engine.state.players[0], c)
+ acting = false
+ redraw()
 func close_inspect():
  if is_instance_valid(inspect_overlay):
   remove_child(inspect_overlay)
@@ -989,11 +1075,11 @@ func _process(delta):
   auto_end_turn_number = engine.state.turn
   auto_end_elapsed = 0
   append_log("No moves left — ending turn")
- banner.text = "No moves left — ending turn"
+ show_notice("No moves left — ending turn")
  auto_end_elapsed += delta
  if auto_end_elapsed >= 1.2:
   auto_end_elapsed = 0
-  end_human_turn()
+  end_human_turn(true)
 
 # Keep both callbacks alive until their listeners have been removed.
 var page_window
@@ -1017,3 +1103,105 @@ func _exit_tree():
  visibility_callback = null
  pagehide_callback = null
  page_window = null
+
+var notice: Control
+var notice_text = ""
+func show_notice(message: String, duration: float = 4.0):
+ if message == notice_text and is_instance_valid(notice): return
+ if is_instance_valid(notice): notice.queue_free()
+ notice_text = message
+ # A boxed strip centred over the play area, so it stays readable over the opponent panels.
+ var strip = PanelContainer.new()
+ var style = UIStyle.box(Color(0.015, 0.035, 0.045, 0.94), UIStyle.AMBER, 8)
+ style.content_margin_left = 22
+ style.content_margin_right = 22
+ style.content_margin_top = 8
+ style.content_margin_bottom = 8
+ strip.add_theme_stylebox_override("panel", style)
+ strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ strip.z_index = 30
+ add_child(strip)
+ var text = UIStyle.label(strip, message, 22)
+ text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ text.add_theme_color_override("font_color", UIStyle.AMBER)
+ strip.modulate.a = 0.0
+ # Place it on the next frame, once the table and the strip have their real sizes (not yet true at game start).
+ var place = func():
+  if not is_instance_valid(strip): return
+  var play_width = size.x
+  if is_instance_valid(log_view) and log_view.is_visible_in_tree() and log_view.global_position.x - global_position.x > 400:
+   play_width = log_view.global_position.x - global_position.x
+  strip.position = Vector2(maxf(20.0, (play_width - strip.size.x) / 2.0), 58)
+  strip.modulate.a = 1.0
+ get_tree().process_frame.connect(place, CONNECT_ONE_SHOT)
+ notice = strip
+ var tween = strip.create_tween()
+ tween.tween_interval(duration)
+ tween.tween_property(notice, "modulate:a", 0.0, 0.5)
+ tween.tween_callback(notice.queue_free)
+func report_bug():
+ var details = "Seed: %s; Set: %s; Players: %d; Difficulties: %s; Turn: %d\n" % [engine.state.rng.seed, engine.state.card_pool, player_count, str(engine.state.players.map(func(p): return p.difficulty)), engine.state.turn]
+ details += "\n".join(log_view.get_parsed_text().strip_edges().split("\n").slice(-25))
+ load("res://scripts/ui/bug_report.gd").open(details)
+
+func prevention_choice(amount: int, sources: Array) -> Array:
+ pending = true
+ back_answer = null
+ var values: Array = []
+ var remaining = amount
+ var total = 0
+ for source in sources:
+  var n = mini(remaining, source.capacity)
+  values.append(n)
+  remaining -= n
+  total += source.capacity
+ var required = mini(amount, total)
+ var overlay = UIStyle.panel()
+ overlay.add_to_group("touch_modal")
+ # Above bot card spotlights (z 15) so a prompt during a bot turn is never hidden.
+ overlay.z_index = 20
+ add_child(overlay)
+ var box = VBoxContainer.new()
+ overlay.add_child(box)
+ UIStyle.label(box, "%d damage incoming from %s" % [amount, incoming_source], 26)
+ var labels: Array = []
+ var minus: Array = []
+ var plus: Array = []
+ for i in sources.size():
+  var source = sources[i]
+  var row = HBoxContainer.new()
+  box.add_child(row)
+  var source_name = CardDB.cards[source.card.id].name if source.card != null else source.get("name", "Prevention")
+  UIStyle.label(row, "%s · ICE / capacity %d" % [source_name, source.capacity], 20).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  minus.append(UIStyle.button(row, "−", func(): values[i] -= 1; prevention_updated.emit()))
+  labels.append(UIStyle.label(row, str(values[i]), 24))
+  plus.append(UIStyle.button(row, "+", func(): values[i] += 1; prevention_updated.emit()))
+  minus[i].custom_minimum_size = Vector2(56, 56)
+  plus[i].custom_minimum_size = Vector2(56, 56)
+ var summary = UIStyle.label(box, "", 22)
+ var confirm = UIStyle.button(box, "Confirm", func(): answered.emit(values.duplicate()))
+ var update = func():
+  var absorbed = 0
+  for n in values: absorbed += n
+  for i in sources.size():
+   labels[i].text = str(values[i])
+   minus[i].disabled = values[i] <= 0
+   plus[i].disabled = values[i] >= sources[i].capacity or absorbed >= required
+  summary.text = "Your life: no change" if amount == absorbed else "Your life: −%d" % (amount - absorbed)
+  confirm.disabled = absorbed != required
+ prevention_updated.connect(update)
+ update.call()
+ UIStyle.dialog(overlay, Vector2(950, 650))
+ var result = await answered
+ prevention_updated.disconnect(update)
+ overlay.queue_free()
+ pending = false
+ redraw()
+ return result
+signal prevention_updated
+
+func sheet_chip(parent: Control, text: String):
+ var chip = UIStyle.panel()
+ chip.add_theme_stylebox_override("panel", UIStyle.box(UIStyle.PANEL, UIStyle.CYAN, 0))
+ parent.add_child(chip)
+ UIStyle.label(chip, text, 16)

@@ -74,15 +74,14 @@ func run():
  for dimensions in [Vector2i(1920, 1080), Vector2i(2400, 1080)]:
   root.size = dimensions
   await settle()
-  table.decision("Buy", ["Reserve", "Buy", "Inspect", "Cancel"], [], 1, 1, false, false, reserved)
+  table.inspect_card(reserved, true)
   await settle()
-  var overlay = table.get_child(table.get_child_count() - 1)
-  verify(overlay.get_global_rect().is_equal_approx(Rect2(Vector2.ZERO, Vector2(dimensions))), "Decision backdrop covers viewport")
-  var box = overlay.get_child(0)
-  var rect = box.get_global_rect()
-  verify(rect.size.x < dimensions.x * 0.6 and rect.size.y < dimensions.y * 0.6, "Buy dialog fits content")
-  verify(rect.get_center().distance_to(Vector2(dimensions) / 2) < 3, "Buy dialog centered")
-  table.answered.emit(3)
+  var dim = table.inspect_overlay.get_child(0)
+  verify(dim.get_global_rect().is_equal_approx(Rect2(Vector2.ZERO, Vector2(dimensions))), "Sheet backdrop covers viewport")
+  var rect = dim.get_child(0).get_global_rect()
+  verify(rect.size.x < dimensions.x * 0.6 and rect.size.y < dimensions.y, "Card sheet fits content")
+  verify(rect.get_center().distance_to(Vector2(dimensions) / 2) < 3, "Card sheet centered")
+  table.close_inspect()
   await settle()
  for dimensions in [Vector2i(1920, 1200), Vector2i(1920, 1440)]:
   root.size = dimensions

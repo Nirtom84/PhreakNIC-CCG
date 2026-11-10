@@ -1,5 +1,5 @@
 extends Control
-const PLAYER_COUNTS = [2] # Add 3 and 4 here to enable additional seats.
+const PLAYER_COUNTS = [2, 3, 4]
 var rules_overlay: Control
 var difficulty: OptionButton
 var handle_input: LineEdit
@@ -117,9 +117,12 @@ func _ready():
  menu.add_child(count)
  var seats = HBoxContainer.new()
  players_box.add_child(seats)
- for n in [2, 3, 4]:
-  var seat = UIStyle.button(seats, str(n) + (" / SOON" if n > 2 else " / CONNECTED"), func(): count.select(n - 2))
-  seat.disabled = n > 2
+ var seat_group = ButtonGroup.new()
+ for n in PLAYER_COUNTS:
+  var seat = UIStyle.button(seats, str(n) + " players", func(): count.select(n - 2); count.item_selected.emit(n - 2))
+  seat.toggle_mode = true
+  seat.button_group = seat_group
+  seat.button_pressed = n == 2
   seat.custom_minimum_size.x = 96
   seat.add_theme_font_size_override("font_size", 14)
  var sets_box = VBoxContainer.new()
@@ -129,8 +132,8 @@ func _ready():
  sets_box.add_child(sets)
  var pool_group = ButtonGroup.new()
  for pool in ["2025", "2026"]:
-  var description = "Base game · 102 cards" if pool == "2025" else "Base + 2026 expansion · 150 cards"
-  var tile = UIStyle.button(sets, "PhreakNIC " + pool + "\n" + description, func(): Sfx.card_pool = pool; Sfx.save())
+  var description = "Base Set — PhreakNIC 26\n102 cards" if pool == "2025" else "Base Set + Expansion 1 — PhreakNIC 27\n150 cards"
+  var tile = UIStyle.button(sets, description, func(): Sfx.card_pool = pool; Sfx.save())
   tile.toggle_mode = true
   tile.button_group = pool_group
   tile.button_pressed = Sfx.card_pool == pool
@@ -138,6 +141,16 @@ func _ready():
   tile.add_theme_font_size_override("font_size", 16)
   tile.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, UIStyle.CYAN, 0))
   tile.add_theme_stylebox_override("pressed", UIStyle.box(UIStyle.PANEL.lightened(0.06), UIStyle.CYAN, 10))
+ var life_row = HBoxContainer.new()
+ menu.add_child(life_row)
+ UIStyle.label(life_row, "Starting life", 18)
+ var life = OptionButton.new()
+ life_row.add_child(life)
+ for n in [0, 20, 30, 40]:
+  life.add_item("Standard · 24" if n == 0 else str(n), n)
+  if n == Sfx.starting_life: life.select(life.item_count - 1)
+ count.item_selected.connect(func(_i): life.set_item_text(0, "Standard · %d" % (24 if count.get_selected_id() == 2 else 10 * count.get_selected_id())))
+ life.item_selected.connect(func(_i): Sfx.starting_life = life.get_selected_id(); Sfx.save())
  var actions = HBoxContainer.new()
  menu.add_child(actions)
  var saved = SaveGame.read()
@@ -147,13 +160,18 @@ func _ready():
    if not latest.is_empty(): launch(latest)).custom_minimum_size.y = 56
   var state = SaveGame.restore(saved.game)
   var age = maxi(0, int(Time.get_unix_time_from_system()) - int(saved.get("saved_at", 0)))
-  UIStyle.label(menu, "vs %s (%s) · %s · Turn %d · saved %d min ago" % [saved.table.seat_names[1], BotDifficulty.DISPLAY_NAMES[state.players[1].difficulty], "2025 base" if state.card_pool == "2025" else "2026 expansion", state.turn, age / 60], 18)
+  var saved_life = int(saved.table.get("starting_life", state.starting_life if state.starting_life != (24 if state.players.size() == 2 else 10 * state.players.size()) else 0))
+  var resume_label = UIStyle.label(menu, "vs %s (%s) · %s · Turn %d · saved %d min ago" % [saved.table.seat_names[1], BotDifficulty.DISPLAY_NAMES[state.players[1].difficulty], UIStyle.pool_label(state.card_pool) + (" · %d life" % saved_life if saved_life != 0 else ""), state.turn, age / 60], 18)
+  resume_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  for action in actions.get_children(): action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  var start_button = UIStyle.button(actions, "Start Game  →", start)
  start_button.custom_minimum_size.y = 58
  start_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  UIStyle.primary(start_button)
- UIStyle.button(menu, "Rules", rules)
+ var help_row = HBoxContainer.new()
+ menu.add_child(help_row)
+ UIStyle.button(help_row, "Rules", rules)
+ UIStyle.button(help_row, "Report a bug", func(): load("res://scripts/ui/bug_report.gd").open())
  var switches = HBoxContainer.new()
  menu.add_child(switches)
  var auto_end = CheckButton.new()
@@ -161,6 +179,11 @@ func _ready():
  auto_end.button_pressed = Sfx.auto_end_turn
  switches.add_child(auto_end)
  auto_end.toggled.connect(func(enabled): Sfx.auto_end_turn = enabled; Sfx.save())
+ var confirmation = CheckButton.new()
+ confirmation.text = "Confirm end turn"
+ confirmation.button_pressed = Sfx.confirm_end_turn
+ switches.add_child(confirmation)
+ confirmation.toggled.connect(func(enabled): Sfx.confirm_end_turn = enabled; Sfx.save())
  var sound = CheckButton.new()
  sound.text = "Sound enabled"
  sound.button_pressed = not Sfx.muted
@@ -194,6 +217,7 @@ func launch(resume: Dictionary = {}):
  table.player_count = count.get_selected_id()
  table.difficulty = difficulty.selected
  table.card_pool = Sfx.card_pool
+ table.starting_life = Sfx.starting_life
  get_tree().root.add_child(table)
  get_tree().current_scene = table
  queue_free()
@@ -263,11 +287,31 @@ func _process(_delta):
   picker_buttons.erase(path)
 func start():
  if SaveGame.read().is_empty(): launch(); return
- var dialog = ConfirmationDialog.new()
- dialog.dialog_text = "Start a new game? Your saved game will be replaced."
- dialog.ok_button_text = "Yes"
- dialog.cancel_button_text = "No"
- add_child(dialog)
- dialog.confirmed.connect(func(): SaveGame.remove(); launch())
- dialog.canceled.connect(dialog.queue_free)
- dialog.popup_centered(Vector2i(650, 200))
+ if await confirm("Start a new game? Your saved game will be replaced.", "Yes, new game", "Keep my save"):
+  SaveGame.remove()
+  launch()
+signal confirm_answered(value: bool)
+## A themed yes/no dialog with finger-sized buttons; Back/Escape answers no (it closes like the rules page).
+func confirm(prompt: String, yes_text: String, no_text: String) -> bool:
+ if is_instance_valid(rules_overlay): return false
+ var overlay = UIStyle.panel()
+ overlay.add_to_group("touch_modal")
+ add_child(overlay)
+ var box = VBoxContainer.new()
+ box.add_theme_constant_override("separation", 14)
+ overlay.add_child(box)
+ var text = UIStyle.label(box, prompt, 22)
+ text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ text.custom_minimum_size.x = 560
+ var yes = UIStyle.button(box, yes_text, func(): confirm_answered.emit(true))
+ UIStyle.primary(yes)
+ var no = UIStyle.button(box, no_text, func(): confirm_answered.emit(false))
+ for b in [yes, no]: b.custom_minimum_size.y = 56
+ UIStyle.dialog(overlay, Vector2(600, 210))
+ rules_overlay = overlay
+ overlay.tree_exiting.connect(func(): confirm_answered.emit(false), CONNECT_ONE_SHOT)
+ var answer: bool = await confirm_answered
+ if is_instance_valid(overlay):
+  rules_overlay = null
+  overlay.queue_free()
+ return answer

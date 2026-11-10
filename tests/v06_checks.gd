@@ -30,7 +30,7 @@ func run():
  var menu = load("res://scenes/menu.tscn").instantiate()
  root.add_child(menu)
  await process_frame
- find_button(menu, "PhreakNIC 2025").pressed.emit()
+ find_button(menu, "Base Set — PhreakNIC 26").pressed.emit()
  var config = ConfigFile.new()
  config.load("user://settings.cfg")
  verify(settings.card_pool == "2025" and config.get_value("game", "card_pool") == "2025", "Menu choice persists")
@@ -110,7 +110,7 @@ func run():
   verify(find_button(menu, "Resume game") != null, "Save present")
   var bottom = find_button(menu, "Quit").get_global_rect()
   verify(bottom.end.y <= dimensions.y and bottom.end.x <= dimensions.x, "Menu fits " + str(dimensions))
-  for prefix in ["PhreakNIC 2025", "PhreakNIC 2026", "Resume game"]:
+  for prefix in ["Base Set — PhreakNIC 26", "Base Set + Expansion 1 — PhreakNIC 27", "Resume game"]:
    var rect = find_button(menu, prefix).get_global_rect()
    verify(rect.position.x >= 0 and rect.position.y >= 0 and rect.end.x <= dimensions.x and rect.end.y <= dimensions.y, "Choice fits " + prefix + str(dimensions))
  menu.queue_free()

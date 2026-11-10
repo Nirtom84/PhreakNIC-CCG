@@ -1,5 +1,5 @@
 ## Renders the table after N auto-played human turns and saves a PNG (needs a display, not --headless).
-## Usage: godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- <out.png> [turns] [hand]
+## Usage: [PLAYERS=3] godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- <out.png> [turns] [hand]
 ## Pass "hand" to stop at the start of the last human turn with the hand still full.
 extends SceneTree
 var table
@@ -26,6 +26,8 @@ func run():
 	# Auto-end would end the last turn during the wait below and catch the bot mid-turn; switch it off for this run only (not saved).
 	root.get_node("Sfx").auto_end_turn = false
 	table = load("res://scenes/table.tscn").instantiate()
+	# Optional PLAYERS=3 or 4 environment variable for multi-bot screenshots.
+	if OS.get_environment("PLAYERS") != "": table.player_count = int(OS.get_environment("PLAYERS"))
 	root.add_child(table)
 	table.fast = true
 	answer()
