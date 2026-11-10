@@ -25,6 +25,7 @@ static func label(parent: Node, text: String, size: int = 18) -> Label:
 static func button(parent: Node, text: String, action: Callable) -> Button:
  var node = Button.new()
  node.text = text
+ node.pressed.connect(func(): Sfx.play("button"))
  node.pressed.connect(action)
  parent.add_child(node)
  return node
@@ -46,3 +47,10 @@ static func rich_label(parent: Node, text: String, font_size: int = 18) -> RichT
  node.text = icon_text(text)
  parent.add_child(node)
  return node
+
+static func rules_bbcode(source: String) -> String:
+ var lines = PackedStringArray()
+ for line in source.split("\n"):
+  if line.begins_with("- "): line = "[indent]• " + line.substr(2) + "[/indent]"
+  lines.append(line)
+ return icon_text("\n".join(lines).replace("[h1]", "[font_size=32][b]").replace("[/h1]", "[/b][/font_size]").replace("[h2]", "[font_size=24][color=#efc878][b]").replace("[/h2]", "[/b][/color][/font_size]"))

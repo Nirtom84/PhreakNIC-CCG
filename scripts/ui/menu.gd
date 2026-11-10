@@ -20,6 +20,11 @@ func _ready():
  menu.add_theme_constant_override("separation", 24)
  row.add_child(menu)
  UIStyle.label(menu, "PhreakNIC CCG", 48)
+ var credit = UIStyle.label(menu, "Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR)", 18)
+ credit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ var version = UIStyle.label(self, "v" + str(ProjectSettings.get_setting("application/config/version", "")), 16)
+ version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+ version.position -= Vector2(110, 40)
  UIStyle.label(menu, "> CONNECT / SHUFFLE / HACK", 22)
  UIStyle.label(menu, "Opponent difficulty")
  difficulty = OptionButton.new()
@@ -37,6 +42,18 @@ func _ready():
  menu.add_child(count)
  UIStyle.button(menu, "Start Game", start)
  UIStyle.button(menu, "Rules", rules)
+ var sound = CheckButton.new()
+ sound.text = "Sound enabled"
+ sound.button_pressed = not Sfx.muted
+ menu.add_child(sound)
+ sound.toggled.connect(func(enabled): Sfx.muted = not enabled; Sfx.save())
+ var volume = HSlider.new()
+ volume.max_value = 1.0
+ volume.step = 0.01
+ volume.value = Sfx.volume
+ volume.tooltip_text = "Sound volume"
+ menu.add_child(volume)
+ volume.value_changed.connect(func(value): Sfx.volume = value; Sfx.save())
  UIStyle.button(menu, "Quit", func(): get_tree().quit())
 func start():
  var table = load("res://scenes/table.tscn").instantiate()
@@ -46,24 +63,15 @@ func start():
  get_tree().current_scene = table
  queue_free()
 func rules():
- var popup = Window.new()
- popup.title = "Original rules • Front / Back"
- popup.size = Vector2i(1050, 900)
- popup.transient = true
- popup.exclusive = true
- add_child(popup)
+ var overlay = PanelContainer.new()
+ overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ add_child(overlay)
  var box = VBoxContainer.new()
- box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
- popup.add_child(box)
- var scroll = ScrollContainer.new()
- scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
- box.add_child(scroll)
- var picture = UIStyle.picture("res://assets/rules/front.jpg", Vector2(1000, 1370))
- scroll.add_child(picture)
- var buttons = HBoxContainer.new()
- box.add_child(buttons)
- for side in ["front", "back"]:
-  UIStyle.button(buttons, side.capitalize(), func(): picture.texture = load("res://assets/rules/" + side + ".jpg"); scroll.scroll_vertical = 0)
- UIStyle.button(buttons, "Close", popup.queue_free)
- popup.close_requested.connect(popup.queue_free)
- popup.popup_centered()
+ overlay.add_child(box)
+ var text = RichTextLabel.new()
+ text.bbcode_enabled = true
+ text.size_flags_vertical = Control.SIZE_EXPAND_FILL
+ text.add_theme_color_override("default_color", Color("a8e6ad"))
+ text.text = UIStyle.rules_bbcode(FileAccess.get_file_as_string("res://data/rules.txt"))
+ box.add_child(text)
+ UIStyle.button(box, "Back", overlay.queue_free)

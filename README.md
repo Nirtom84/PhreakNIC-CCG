@@ -1,6 +1,8 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.02**.
+
+Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
 ![Mid-game](docs/screenshot_midgame.png)
 
@@ -22,7 +24,7 @@ Hover or right-click any card to zoom.
 2 players today; the engine already supports 2–4 seats (3–4 player tables are disabled in the menu for now).
 
 ## Rules
-The official rules are on the in-game Rules screen (the two rules cards). Gaps the cards don't cover are
+The official rules are on the in-game Rules screen (scrollable written rules). Gaps the cards don't cover are
 documented in [RULES_NOTES.md](RULES_NOTES.md). Design and architecture: [DESIGN.md](DESIGN.md).
 
 ## Project layout
@@ -31,6 +33,9 @@ documented in [RULES_NOTES.md](RULES_NOTES.md). Design and architecture: [DESIGN
 - `scripts/core/` — rules engine (`rules.gd`), one effect handler per card (`effects.gd`)
 - `scripts/ai/` — bots and difficulty levels
 - `scripts/ui/`, `scenes/` — menu and game table
+
+## Sound
+Retro sounds have menu volume/mute controls and a table mute button. Regenerate the WAV files from the project root with `python3 tools/make_sounds.py`.
 
 ## Tests
 ```bash

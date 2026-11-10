@@ -2,6 +2,7 @@ class_name GameEngine
 extends Node
 signal state_changed
 signal log_message(text)
+signal ice_counter_removed(card)
 signal card_moved(card, from_zone, to_zone)
 signal damage_dealt(source_player, target_player, amount)
 signal turn_started(player)
@@ -60,9 +61,11 @@ func played_name(p, name: String, contains: bool = false) -> bool:
 func draw(p, count: int):
 	for i in count:
 		if p.deck.is_empty():
+			var shuffled = p.discard.duplicate()
 			p.deck.append_array(p.discard)
 			p.discard.clear()
 			state.shuffle(p.deck)
+			for card in shuffled: card_moved.emit(card, "discard", "deck")
 		if p.deck.is_empty(): break
 		move(p.deck.back(), p.hand, "hand")
 func refill(slot: int):
@@ -287,6 +290,7 @@ func end_turn(p):
 	state.active_seat = next_seat if next_seat >= 0 else p.seat
 	if not state.finished: await start_turn()
 func counter_removed(card):
+	ice_counter_removed.emit(card)
 	if card.counters > 0 or card not in permanents(): return
 	var id = card.effect_id()
 	var p = state.players[card.controller]

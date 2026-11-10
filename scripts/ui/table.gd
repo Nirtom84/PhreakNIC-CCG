@@ -19,7 +19,9 @@ var zoom: PanelContainer
 var life_labels: Dictionary = {}
 var textures: Dictionary = {}
 var hover_serial: int = 0
-var action_notice: Label
+var spotlights: Array[Control] = []
+var card_names: Array = []
+var previous_hack: Dictionary = {}
 var moved_uids: Dictionary = {}
 func _ready():
  UIStyle.apply(self)
@@ -41,6 +43,10 @@ func _ready():
  banner = UIStyle.label(toolbar, "Connecting…", 28)
  banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  UIStyle.button(toolbar, "Speed: normal", func(): fast = not fast; toolbar.get_child(1).text = "Speed: fast" if fast else "Speed: normal")
+ var mute = UIStyle.button(toolbar, "Sound: off" if Sfx.muted else "Sound: on", func():
+  Sfx.muted = not Sfx.muted
+  Sfx.save())
+ mute.pressed.connect(func(): mute.text = "Sound: off" if Sfx.muted else "Sound: on")
  UIStyle.button(toolbar, "Menu", menu)
  body = VBoxContainer.new()
  body.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -54,6 +60,10 @@ func _ready():
  log_view.custom_minimum_size.x = 320
  log_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
  log_view.scroll_following = true
+ log_view.meta_underlined = true
+ log_view.meta_hover_started.connect(func(id): show_log_card(str(id)))
+ log_view.meta_hover_ended.connect(func(_id): hide_zoom())
+ log_view.meta_clicked.connect(func(id): show_log_card(str(id)))
  side.add_child(log_view)
  UIStyle.label(side, "Hover / right-click to inspect", 14)
  engine = GameEngine.new()
@@ -61,13 +71,18 @@ func _ready():
  var choices: Array = [scripted_decider if scripted_decider != null else HumanDecider.new(self)]
  var levels: Array = [-1]
  for i in range(1, player_count): levels.append(difficulty)
+ for id in CardDB.cards:
+  card_names.append({"id": id, "name": str(CardDB.cards[id].name)})
+ card_names.sort_custom(func(a, b): return a.name.length() > b.name.length())
  engine.log_message.connect(append_log)
  engine.setup(levels, seed_value if seed_value != 0 else int(Time.get_unix_time_from_system()), choices)
  engine.state_changed.connect(redraw)
 
+ engine.ice_counter_removed.connect(func(_card): Sfx.play("ice"))
  engine.damage_dealt.connect(damage)
  engine.card_moved.connect(moved)
  engine.turn_started.connect(func(p):
+  Sfx.play("turn_start")
   append_log("TURN %d · Seat %d connected" % [engine.state.turn, p.seat])
   redraw())
  engine.game_over.connect(game_over)
@@ -389,9 +404,13 @@ var previous_life: Dictionary = {}
 func damage(_source, _target, _amount):
  pass # State changes also cover healing; track both through one path.
 func track_life():
+ for player in engine.state.players:
+  if player.hacking > int(previous_hack.get(player.seat, player.hacking)): Sfx.play("hack")
+  previous_hack[player.seat] = player.hacking
  for p in engine.state.players:
   var before = previous_life.get(p.seat, p.life)
   if before != p.life:
+   Sfx.play("damage" if p.life < before else "life_gain")
    float_life.call_deferred(p.seat, p.life - before)
   previous_life[p.seat] = p.life
 func float_life(seat: int, amount: int):
@@ -432,26 +451,84 @@ func append_log(message: String):
  for i in player_count: display = display.replace("Seat %d" % i, "You" if i == 0 else "Bot %d" % i)
  for verbs in [["plays", "play"], ["buys", "buy"], ["takes", "take"], ["reserves", "reserve"], ["reveals", "reveal"]]:
   display = display.replace("You " + verbs[0] + " ", "You " + verbs[1] + " ")
- log_view.append_text("[color=#%s]%s[/color]\n\n" % [colors[seat] if seat >= 0 else "a1b1bb", UIStyle.icon_text(display)])
- if seat > 0 and (" plays " in message or " buys " in message or " reserves " in message):
-  if is_instance_valid(action_notice): action_notice.queue_free()
-  var notice = Label.new()
-  action_notice = notice
-  notice.text = display
-  notice.add_theme_font_size_override("font_size", 18)
-  notice.position = Vector2(450, 22)
-  notice.z_index = 20
-  add_child(notice)
-  var tween = create_tween()
-  tween.tween_interval(1.5)
-  tween.tween_property(notice, "modulate:a", 0.0, 0.2)
-  tween.finished.connect(notice.queue_free)
+ log_view.append_text("[color=#%s]%s[/color]\n\n" % [colors[seat] if seat >= 0 else "a1b1bb", link_cards(display)])
+ for action in ["plays", "buys", "reserves"]:
+  if " " + action + " " not in message: continue
+  Sfx.play({"plays": "card_play", "buys": "buy", "reserves": "reserve"}[action])
+  if seat > 0:
+   var name_part = message.split(" " + action + " ", true, 1)[1]
+   for card in card_names:
+    if name_part == card.name or name_part.begins_with(card.name + " for "):
+     spotlight(card.id, "Bot %d %s %s" % [seat, {"plays": "played", "buys": "bought", "reserves": "reserved"}[action], card.name])
+     break
+func escaped(text: String) -> String:
+ return text.replace("[", "[lb]")
+func link_cards(message: String) -> String:
+ var result = ""
+ var offset = 0
+ while offset < message.length():
+  var match_card = null
+  for card in card_names:
+   if message.substr(offset).begins_with(card.name):
+    var end = offset + card.name.length()
+    if (offset == 0 or not word_character(message[offset - 1])) and (end == message.length() or not word_character(message[end])):
+     match_card = card
+     break
+  if match_card != null:
+   result += "[url=%s][color=#efc878]%s[/color][/url]" % [match_card.id, escaped(match_card.name)]
+   offset += match_card.name.length()
+  else:
+   result += escaped(message[offset])
+   offset += 1
+ return UIStyle.icon_text(result)
+func word_character(character: String) -> bool:
+ return character.to_lower() != character.to_upper() or character in "0123456789_"
+func show_log_card(id: String):
+ if not CardDB.cards.has(id): return
+ show_zoom({"id": id})
+ zoom.position = Vector2(maxf(0, log_view.global_position.x - 480), clampf(get_local_mouse_position().y - 300, 0, maxf(0, size.y - 635)))
+func spotlight(id: String, caption: String):
+ # Four side-by-side slots over the center row; wait for a free slot so cards never overlap.
+ var slot = -1
+ while slot < 0:
+  var used = spotlights.map(func(s): return s.get_meta("slot"))
+  for i in 4:
+   if i not in used:
+    slot = i
+    break
+  if slot < 0: await get_tree().create_timer(0.1).timeout
+ var panel = PanelContainer.new()
+ panel.set_meta("slot", slot)
+ panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ panel.z_index = 15
+ panel.position = Vector2(30 + slot * 360, 215)
+ var box = VBoxContainer.new()
+ box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ panel.add_child(box)
+ var image = UIStyle.picture("res://assets/cards/" + id + ".jpg", Vector2(330, 450))
+ image.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ box.add_child(image)
+ var label = UIStyle.label(box, caption, 16)
+ label.custom_minimum_size.x = 330
+ label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ add_child(panel)
+ spotlights.append(panel)
+ panel.modulate.a = 0
+ var tween = panel.create_tween()
+ tween.tween_property(panel, "modulate:a", 1.0, 0.2)
+ tween.tween_interval(4.6)
+ tween.tween_property(panel, "modulate:a", 0.0, 0.2)
+ tween.tween_callback(func(): spotlights.erase(panel); panel.queue_free())
 func moved(_card, _from, _to):
  moved_uids[_card.uid] = true
+ if _to == "hand" and _from == "deck": Sfx.play("card_draw")
+ if _from == "discard" and _to == "deck": Sfx.play("shuffle")
  if not is_instance_valid(banner): return
  banner.modulate = Color("e9c778")
  create_tween().tween_property(banner, "modulate", Color.WHITE, 0.25)
 func game_over(winner):
+ Sfx.play("win" if winner != null and winner.seat == 0 else "lose")
  show_result.call_deferred(winner)
 func show_result(winner):
  var panel = PanelContainer.new()

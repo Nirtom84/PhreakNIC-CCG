@@ -1,0 +1,39 @@
+[h1]FOTTR TCG: PhreakNIC Game Rules[/h1]
+
+[h2]Setup[/h2]
+- Each player shuffles a personal starting deck of [b]8 Hacker[/b] cards and [b]2 Attack[/b] cards.
+- Each player starts with [b]10 life for every player in the game[/b] (20 life in a 2-player game).
+- Shuffle all of the other cards together. This is the [b]Center Deck[/b].
+- Deal the top 5 cards of the Center Deck face up. This row is the [b]Center Row[/b].
+- Each player draws 5 cards from their deck as a starting hand.
+
+[h2]Your Turn[/h2]
+- Play any number of cards from your hand, in any order. Action cards go to your discard pile right after they are played.
+- [b]Permanent[/b] cards stay in play in your area until something removes them.
+- [b]Damage[/b] {D} reduces the life of [b]all other players[/b] by the amount dealt.
+- [b]Hacking[/b] {H} is spent to buy cards from the Center Row. A card's cost is the number in its upper-left corner. Cards you buy go to your discard pile.
+- Whenever a card leaves the Center Row, it is replaced right away with the top card of the Center Deck.
+- At the end of your turn, discard any cards left in your hand and draw 5 new cards. Unspent hacking is lost. Play passes to the next player.
+
+[h2]Drawing, Life and Winning[/h2]
+- If you need to draw a card and your deck is empty, shuffle your discard pile to form a new deck.
+- A player with zero life is out of the game.
+- The last player still alive wins.
+
+[h2]Reserving a Card[/h2]
+- Instead of buying or otherwise acquiring anything on your turn, you may [b]reserve[/b] one card: take it from the Center Row and set it sideways in your play area.
+- Only you may buy a card you reserved. It stays in your area until you buy it.
+- A reserved card has not been bought and does nothing until it is. It is not "in play".
+- Reserving a card does not count as buying or acquiring a card.
+
+[h2]Additional Rules[/h2]
+- If several cards would prevent damage to you, you choose which one prevents each point of damage.
+- Losing life is the same as taking damage, and cards that prevent damage also prevent loss of life.
+- [b]ICE counters[/b]: when you would take damage, each point removes one counter from your location instead. Damage beyond the counters left goes through to your life.
+
+[h2]Playing This Version[/h2]
+- Click a card in your hand to play it, or press [b]Play All[/b].
+- Click a Center Row card to buy or reserve it. Click your reserved card to buy it.
+- Permanents with abilities show buttons under them.
+- Hover over or right-click any card to read it full size. Hover over card names in the Network Log to see the card.
+- Rulings for situations the printed rules don't cover are listed in RULES_NOTES.md.

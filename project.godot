@@ -2,11 +2,13 @@
 config_version=5
 
 [application]
+config/version="0.02"
 config/name="PhreakNIC CCG"
 run/main_scene="res://scenes/menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 
 [autoload]
+Sfx="*res://scripts/ui/sfx.gd"
 CardDB="*res://scripts/core/card_db.gd"
 
 [display]
