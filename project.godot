@@ -6,6 +6,8 @@ config/version="0.04"
 config/name="PhreakNIC CCG"
 run/main_scene="res://scenes/menu.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
+config/icon="res://assets/icon/icon.png"
+config/windows_native_icon="res://assets/icon/icon.ico"
 
 [autoload]
 Sfx="*res://scripts/ui/sfx.gd"
@@ -16,7 +18,9 @@ window/size/viewport_width=1920
 window/size/viewport_height=1080
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+window/handheld/orientation=4
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true

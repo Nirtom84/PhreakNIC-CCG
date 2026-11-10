@@ -41,6 +41,17 @@ documented in [RULES_NOTES.md](RULES_NOTES.md). Design and architecture: [DESIGN
 ## Sound
 Retro sounds have menu volume/mute controls and a table mute button. Regenerate the WAV files from the project root with `python3 tools/make_sounds.py`.
 
+## Building Linux, Windows and Android versions
+```bash
+tools/build_all.sh            # all three, into build/
+tools/build_all.sh android    # or just one: linux | windows | android
+```
+- **Linux**: `build/linux/PhreakNIC-CCG-v<version>.x86_64` — a single file, run it directly.
+- **Windows**: `build/windows/PhreakNIC-CCG-v<version>.exe` — a single file, double-click it.
+- **Android**: `build/android/PhreakNIC-CCG-v<version>-debug.apk` — install with `adb install` or by copying it to the phone (allow "install unknown apps"). It is signed with the standard debug key; publishing on Google Play needs a release keystore.
+
+One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/share/godot/export_templates/4.7.1.stable/`, JDK 17 (`~/.local/opt/jdk-17`), and the Android SDK in `~/Android/Sdk` with `platform-tools`, `build-tools;36.1.0` and `platforms;android-36`. Export settings live in `export_presets.cfg`.
+
 ## Tests
 ```bash
 godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games, 2-4 players
