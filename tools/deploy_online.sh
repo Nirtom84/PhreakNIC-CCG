@@ -21,4 +21,6 @@ if [[ "$mode" == "--dev" ]]; then
 	npx --yes wrangler@4 dev --env dev
 else
 	npx --yes wrangler@4 deploy
+	# wrangler logs Docker into Cloudflare's registry and Docker stores that unencrypted; don't leave it behind.
+	docker logout registry.cloudflare.com >/dev/null 2>&1 || true
 fi

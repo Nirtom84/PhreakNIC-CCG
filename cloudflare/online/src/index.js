@@ -166,7 +166,9 @@ export class Room extends DurableObject {
       const gen=++this.generation;
       try {
         if(attempt){await this.ctx.container.destroy('restart');await new Promise(r=>setTimeout(r,1000*2**attempt));}
+        console.log('room',this.r.code,'attempt',attempt,'container running:',this.ctx.container.running);
         if(!this.ctx.container.running)await this.ctx.container.start({image:this.ctx.container.images.base,instance:'lite',enableInternet:false,env:{}});
+        console.log('room',this.r.code,'container started');
         this.ctx.container.setInactivityTimeout(IDLE);this.watch();
         const port=this.ctx.container.getTcpPort(8080), deadline=Date.now()+30000;
         let healthy=false;
@@ -175,6 +177,7 @@ export class Room extends DurableObject {
           await new Promise(r=>setTimeout(r,delay));
         }
         if(!healthy)throw new Error('health timeout');
+        console.log('room',this.r.code,'container healthy');
         const res=await port.fetch(new Request('http://container/link',{headers:{Upgrade:'websocket'}}));
         const ws=res.webSocket;if(!ws)throw new Error('link upgrade');this.link=ws;
         await new Promise((resolve,reject)=>{
@@ -192,7 +195,7 @@ export class Room extends DurableObject {
         else this.linkSend({t:'setup',room:this.r.code,seats:this.r.seats.map(({name,hero,bot,difficulty,token})=>({name,hero,bot,difficulty,token:bot?'':token})),card_pool:this.r.card_pool,starting_life:this.r.starting_life,seed:this.r.seed});
         for(let seat=0;seat<this.r.seats.length;seat++)if(this.connected(seat))this.linkSend({t:'connect',seat,version:this.r.version});
         this.broadcast({t:'server',status:'ok'});return;
-      }catch {++this.generation;this.link?.close();this.link=null;}
+      }catch(e){console.error('room',this.r.code,'attempt',attempt,'failed:',e&&e.stack||e);++this.generation;this.link?.close();this.link=null;}
     }
     ++this.generation;await this.ctx.container.destroy('retry limit');this.broadcast({t:'server',status:'unavailable'});
   }

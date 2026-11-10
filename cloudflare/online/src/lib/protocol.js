@@ -33,7 +33,9 @@ export function text(value, field, max, printable=false) {
 }
 export function identity(v) {
   if (!v || typeof v !== 'object' || Array.isArray(v)) fail('body');
-  return {name:text(v.name,'name',16), hero:text(v.hero,'hero',64),version:text(v.version,'version',32,true)};
+  // Hero is optional: players with a typed handle have none (the game shows the FOTTR logo).
+  const hero = v.hero === undefined || v.hero === null || v.hero === '' ? '' : text(v.hero,'hero',64);
+  return {name:text(v.name,'name',16), hero, version:text(v.version,'version',32,true)};
 }
 export function settings(v, partial=false) {
   const out = {};
