@@ -1,0 +1,23 @@
+// Worker for https://phreaknic-ccg.net (the web version of the game).
+// Deploy with tools/deploy_site.sh, which uploads index.wasm to R2 and sets WASM_KEY for the version.
+{
+  "name": "phreaknic-ccg-site",
+  "main": "src/index.js",
+  "compatibility_date": "2026-11-01",
+  "assets": {
+    // The Godot web export; deploy_site.sh writes an .assetsignore there so index.wasm is not uploaded as an asset.
+    "directory": "../../build/web",
+    "binding": "ASSETS"
+  },
+  "r2_buckets": [
+    { "binding": "GAME_FILES", "bucket_name": "phreaknic-ccg-files" }
+  ],
+  "vars": {
+    // Overridden at deploy time with --var WASM_KEY:web/<version>/index.wasm
+    "WASM_KEY": "web/dev/index.wasm"
+  },
+  "routes": [
+    { "pattern": "phreaknic-ccg.net", "custom_domain": true },
+    { "pattern": "www.phreaknic-ccg.net", "custom_domain": true }
+  ]
+}

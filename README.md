@@ -73,6 +73,7 @@ tools/build_all.sh android    # or just one: linux | windows | android | web
 tools/build_all.sh release    # zip the builds under stable names in build/release/ for a GitHub Release
 ```
 - **Web**: `tools/build_all.sh web` produces a static site in `build/web/`; serve it over HTTP(S), rather than opening `file://`.
+- **phreaknic-ccg.net**: `tools/deploy_site.sh` publishes `build/web/` to the Cloudflare Worker in `cloudflare/site/`. Because Cloudflare caps static files at 25 MiB, the ~40 MB engine file goes to an R2 bucket and the Worker streams it. The script needs a Cloudflare API token in `CLOUDFLARE_API_TOKEN` or in `~/.config/phreaknic/cloudflare.env` (never in the repo).
 - **GitHub Pages**: `tools/deploy_pages.sh` publishes `build/web/` to the `gh-pages` branch, which GitHub serves at https://nirtom84.github.io/PhreakNIC-CCG/. The branch is replaced on every deploy, so old web builds don't pile up in the repo's history.
 - **Linux**: `build/linux/PhreakNIC-CCG-v<version>.x86_64` — a single file, run it directly.
 - **Windows**: `build/windows/PhreakNIC-CCG-v<version>.exe` — a single file, double-click it.
