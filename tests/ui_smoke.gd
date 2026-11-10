@@ -35,6 +35,10 @@ func respond(table):
     done.pressed.emit()
    elif grid.get_child_count() > 0: grid.get_child(0).pressed.emit()
 func run():
+ root.size = Vector2i(1920, 1080)
+ var settings = root.get_node("Sfx")
+ var previous_handle = settings.handle
+ settings.handle = "bitwize"
  for count in [2, 3, 4]:
   var table = load("res://scenes/table.tscn").instantiate()
   table.player_count = count
@@ -44,6 +48,30 @@ func run():
   respond(table)
   await process_frame
   verify(table.engine.state.players.size() == count, "Generic table seats")
+  if count == 2:
+   var regions = table.body.get_child(0).get_children()
+   var remote = regions[0].get_global_rect()
+   var center = regions[1].get_global_rect()
+   var rig = regions[2].get_global_rect()
+   var status = regions[3].get_global_rect()
+   var hand = regions[4].get_global_rect()
+   verify(remote.end.y <= center.position.y - 10, "Opponent strip clears center tab")
+   verify(center.end.y <= rig.position.y - 10, "Center costs clear rig tab")
+   verify(maxf(rig.end.y, status.end.y) <= hand.position.y - 10, "Rig and actions clear hand tab")
+   verify(hand.end.y <= 1080, "Hand fits 1080p viewport")
+  verify(table.seat_name(0) == "bitwize", "Human handle names the seat")
+  for bot_name in table.seat_names.slice(1):
+   verify(bot_name.to_lower() != "bitwize", "Bot names exclude the human handle")
+  table.append_log("Seat 0 plays Hacker")
+  verify("bitwize plays Hacker" in table.log_view.get_parsed_text(), "Handle uses third-person log verbs")
+  table.append_log("Seat 0 plays [Restaurant Name] Restaurant")
+  verify("bitwize plays [Restaurant Name] Restaurant" in table.log_view.get_parsed_text(), "Bracketed card names render literally")
+  var before_reveal = table.log_view.text
+  table.engine.reveal(table.engine.state.players[0], [])
+  verify(table.log_view.text == before_reveal, "Empty reveals are silent")
+  var restaurant_id = "[Restaurant Name] Restaurant"
+  verify(table.link_cards(restaurant_id).count("[url=") == 1, "Bracketed card name is one link")
+  verify(restaurant_id.uri_encode() in table.link_cards(restaurant_id), "Link metadata safely encodes brackets")
   var human = HumanDecider.new(table)
   var p = table.engine.state.players[0]
   var options: Array[String] = ["One", "Two"]
@@ -71,5 +99,6 @@ func run():
   verify(table.engine.state.turn >= 10 or table.engine.state.finished, "Full turns advance")
   table.queue_free()
   await process_frame
+ settings.handle = previous_handle
  print("UI smoke: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)

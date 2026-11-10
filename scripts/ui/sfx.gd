@@ -1,7 +1,12 @@
 extends Node
 ## Shared, bounded sound pool. Headless runs never create audio players.
+signal visuals_changed(enabled)
+var visual_effects: bool = true
 var volume: float = 0.65
 var muted: bool = false
+var handle: String = ""
+func clean_handle(value: String) -> String:
+ return value.replace("[", "").replace("]", "").strip_edges().left(16)
 var pool: Array[AudioStreamPlayer] = []
 var streams: Dictionary = {}
 var last_play: Dictionary = {}
@@ -9,7 +14,9 @@ func _ready():
  var config = ConfigFile.new()
  if config.load("user://settings.cfg") == OK:
   volume = clampf(float(config.get_value("sound", "volume", 0.65)), 0.0, 1.0)
+  handle = clean_handle(str(config.get_value("player", "handle", "")))
   muted = bool(config.get_value("sound", "muted", false))
+  visual_effects = bool(config.get_value("visual", "effects", true))
  if DisplayServer.get_name() == "headless": return
  for i in 8:
   var player = AudioStreamPlayer.new()
@@ -18,6 +25,10 @@ func _ready():
 func save():
  var config = ConfigFile.new()
  config.load("user://settings.cfg")
+ handle = clean_handle(handle)
+ config.set_value("player", "handle", handle)
+ config.set_value("visual", "effects", visual_effects)
+ visuals_changed.emit(visual_effects)
  config.set_value("sound", "volume", volume)
  config.set_value("sound", "muted", muted)
  config.save("user://settings.cfg")

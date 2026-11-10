@@ -416,4 +416,5 @@ func transfer_to_discard(p, card) -> bool:
 	return true
 
 func reveal(p, cards: Array):
-	say("Seat %d reveals: %s" % [p.seat, str(cards.map(func(c): return db().get_card(c.id).name))])
+	if not cards.is_empty():
+		say("Seat %d reveals %s" % [p.seat, ", ".join(cards.map(func(c): return db().get_card(c.id).name))])

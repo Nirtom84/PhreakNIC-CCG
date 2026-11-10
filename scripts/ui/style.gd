@@ -1,25 +1,133 @@
 class_name UIStyle
 extends RefCounted
 const BACK = "res://assets/cards/phreaknic_fottr_tcg_card_back.jpg"
+const BACKGROUND = Color("05090d")
+const PANEL = Color(0.031, 0.071, 0.094, 0.82)
+const CYAN = Color("29e6ff")
+const AMBER = Color("f2c14e")
+const RED = Color("ff3b3b")
+const GREEN = Color("6dff9a")
+const MUTED = Color("9fb3bd")
+const TEXT = Color("d9f2ea")
+const HUD = preload("res://scripts/ui/hud_panel.gd")
+static var display_font: FontVariation
+static func heading() -> Font:
+ if display_font == null:
+  display_font = FontVariation.new()
+  display_font.base_font = load("res://assets/fonts/NotoSansMono-CondensedBlack.ttf")
+  display_font.spacing_glyph = 1
+ return display_font
+static func box(fill: Color = PANEL, accent: Color = CYAN, glow: int = 8) -> StyleBoxFlat:
+ var b = StyleBoxFlat.new()
+ b.bg_color = fill
+ b.border_color = Color(accent, 0.45)
+ b.set_border_width_all(1)
+ b.set_corner_radius_all(4)
+ b.set_content_margin_all(10)
+ b.shadow_color = Color(accent, 0.25)
+ b.shadow_size = glow
+ return b
+static func panel(title: String = "") -> PanelContainer:
+ var p = HUD.new()
+ p.title = title
+ return p
+static func background(parent: Control) -> ColorRect:
+ var bg = ColorRect.new()
+ bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ var material = ShaderMaterial.new()
+ material.shader = load("res://assets/shaders/network.gdshader")
+ material.set_shader_parameter("effects", Sfx.visual_effects)
+ bg.material = material
+ parent.add_child(bg)
+ Sfx.visuals_changed.connect(func(enabled): material.set_shader_parameter("effects", enabled))
+ return bg
+static func primary(b: Button):
+ b.add_theme_stylebox_override("normal", box(AMBER.darkened(0.12), AMBER))
+ b.add_theme_stylebox_override("hover", box(AMBER, AMBER, 12))
+ b.add_theme_color_override("font_color", BACKGROUND)
+ b.add_theme_color_override("font_hover_color", BACKGROUND)
+static func pulse(node: Control, tint: Color = Color(1.0, 0.86, 0.62)):
+ if not Sfx.visual_effects: return
+ var t = node.create_tween().set_loops()
+ t.tween_property(node, "self_modulate", tint, 0.8)
+ t.tween_property(node, "self_modulate", Color.WHITE, 0.8)
+static func dialog(p: PanelContainer):
+ var shade = box(Color(0, 0, 0, 0.6), Color.TRANSPARENT, 0)
+ shade.content_margin_left = 180
+ shade.content_margin_right = 180
+ shade.content_margin_top = 120
+ shade.content_margin_bottom = 120
+ p.add_theme_stylebox_override("panel", shade)
+ # Paint behind the existing VBox so automation child indices remain stable.
+ var content = p.get_child(0)
+ content.draw.connect(func(): content.draw_style_box(box(), Rect2(Vector2(-20,-20), content.size + Vector2(40,40))))
+ content.resized.connect(content.queue_redraw)
+ if Sfx.visual_effects:
+  content.modulate.a = 0
+  content.scale = Vector2(0.97,0.97)
+  var tween = p.create_tween().set_parallel(true)
+  tween.tween_property(content, "modulate:a", 1.0, 0.16)
+  tween.tween_property(content, "scale", Vector2.ONE, 0.16)
+static func glitch(label: Label):
+ if not Sfx.visual_effects: return
+ label.add_theme_color_override("font_shadow_color", Color(RED, 0.6))
+ var t = label.create_tween().set_loops()
+ t.tween_interval(4.0)
+ t.tween_callback(func(): label.add_theme_constant_override("shadow_offset_x", -5); label.position.x += 3)
+ t.tween_interval(0.05)
+ t.tween_callback(func(): label.add_theme_constant_override("shadow_offset_x", 4); label.position.x -= 6)
+ t.tween_interval(0.05)
+ t.tween_callback(func(): label.add_theme_constant_override("shadow_offset_x", 0); label.position.x += 3)
+static func dialog_box() -> StyleBoxFlat:
+ var b = box(Color(0.015, 0.035, 0.045, 0.97), CYAN, 12)
+ b.set_content_margin_all(42)
+ return b
 static func apply(control: Control):
  var theme = Theme.new()
- theme.default_font = SystemFont.new()
- theme.default_font.font_names = PackedStringArray(["DejaVu Sans Mono", "monospace"])
+ theme.default_font = load("res://assets/fonts/JetBrainsMonoNerdFontMono-Regular.ttf")
  theme.default_font_size = 18
- for kind in ["Button", "PanelContainer", "PopupPanel", "LineEdit"]:
-  var box = StyleBoxFlat.new()
-  box.bg_color = Color("111c20")
-  box.border_color = Color("677247")
-  box.set_border_width_all(2)
-  box.set_content_margin_all(9)
-  theme.set_stylebox("normal" if kind == "Button" else "panel", kind, box)
- theme.set_color("font_color", "Label", Color("a8e6ad"))
- theme.set_color("font_color", "Button", Color("e9c778"))
+ for kind in ["Label", "RichTextLabel", "LineEdit", "CheckButton", "OptionButton"]:
+  theme.set_color("font_color", kind, TEXT)
+ theme.set_color("default_color", "RichTextLabel", TEXT)
+ theme.set_font("bold_font", "RichTextLabel", load("res://assets/fonts/JetBrainsMonoNerdFontMono-Bold.ttf"))
+ theme.set_constant("line_separation", "RichTextLabel", 7)
+ for kind in ["PanelContainer", "PopupPanel"]: theme.set_stylebox("panel", kind, box())
+ for kind in ["Button", "OptionButton", "CheckButton"]:
+  theme.set_font("font", kind, heading())
+  theme.set_color("font_color", kind, AMBER)
+  theme.set_color("font_hover_color", kind, TEXT)
+  theme.set_color("font_pressed_color", kind, TEXT)
+  theme.set_color("font_disabled_color", kind, Color(MUTED, 0.4))
+  theme.set_stylebox("normal", kind, box(PANEL, AMBER, 0))
+  theme.set_stylebox("hover", kind, box(Color("253027"), AMBER, 10))
+  theme.set_stylebox("pressed", kind, box(BACKGROUND, CYAN, 2))
+  theme.set_stylebox("disabled", kind, box(Color(0.04,0.06,0.07,0.4), Color(MUTED,0.4), 0))
+  theme.set_stylebox("focus", kind, box(Color.TRANSPARENT, CYAN, 3))
+ theme.set_stylebox("normal", "LineEdit", box(BACKGROUND))
+ theme.set_stylebox("focus", "LineEdit", box(BACKGROUND, AMBER))
+ theme.set_color("font_placeholder_color", "LineEdit", MUTED)
+ theme.set_color("caret_color", "LineEdit", CYAN)
+ theme.set_stylebox("panel", "PopupMenu", box(BACKGROUND))
+ theme.set_stylebox("hover", "PopupMenu", box(PANEL, AMBER))
+ for kind in ["VScrollBar", "HScrollBar", "HSlider"]:
+  var track = box(BACKGROUND, Color.TRANSPARENT, 0)
+  track.set_content_margin_all(3)
+  theme.set_stylebox("scroll", kind, track)
+  theme.set_stylebox("slider", kind, track)
+  for state in ["grabber", "grabber_highlight", "grabber_pressed", "grabber_area", "grabber_area_highlight"]:
+   var handle = box(Color(CYAN,0.55), CYAN, 0)
+   handle.set_content_margin_all(3)
+   theme.set_stylebox(state, kind, handle)
+ for state in ["checked", "checked_disabled"]: theme.set_icon(state, "CheckButton", load("res://assets/ui/toggle_on.svg"))
+ for state in ["unchecked", "unchecked_disabled"]: theme.set_icon(state, "CheckButton", load("res://assets/ui/toggle_off.svg"))
+ for state in ["grabber", "grabber_highlight", "grabber_disabled"]: theme.set_icon(state, "HSlider", load("res://assets/ui/slider_grip.svg"))
  control.theme = theme
 static func label(parent: Node, text: String, size: int = 18) -> Label:
  var node = Label.new()
  node.text = text
  node.add_theme_font_size_override("font_size", size)
+ if size >= 22: node.add_theme_font_override("font", heading())
  parent.add_child(node)
  return node
 static func button(parent: Node, text: String, action: Callable) -> Button:
@@ -53,4 +161,10 @@ static func rules_bbcode(source: String) -> String:
  for line in source.split("\n"):
   if line.begins_with("- "): line = "[indent]• " + line.substr(2) + "[/indent]"
   lines.append(line)
- return icon_text("\n".join(lines).replace("[h1]", "[font_size=32][b]").replace("[/h1]", "[/b][/font_size]").replace("[h2]", "[font_size=24][color=#efc878][b]").replace("[/h2]", "[/b][/color][/font_size]"))
+ return icon_text("\n".join(lines).replace("[h1]", "[font=res://assets/fonts/NotoSansMono-CondensedBlack.ttf][font_size=32][color=#29e6ff][b]").replace("[/h1]", "[/b][/color][/font_size][/font]").replace("[h2]", "[font=res://assets/fonts/NotoSansMono-CondensedBlack.ttf][font_size=24][color=#f2c14e][b]").replace("[/h2]", "[/b][/color][/font_size][/font]"))
+
+static func escape_bbcode(text: String) -> String:
+ var result = ""
+ for character in text:
+  result += "[lb]" if character == "[" else ("[rb]" if character == "]" else character)
+ return result
