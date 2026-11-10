@@ -12,7 +12,7 @@ All browser requests must originate from `https://phreaknic-ccg.net`, `https://w
 - `POST /rooms/CODE/join`: `{name,hero,version}` → `{seat,token}`. Claims the first empty human seat. Started/full rooms return 409. Version mismatch returns HTTP 409 `{error:"version",need:"0.09"}`.
 - `GET /ws/room/CODE?token=SECRET`: WebSocket upgrade. Codes are uppercase, four unambiguous symbols. Store the 128-bit hex token privately for reconnection; never put token-bearing URLs in logs or analytics. Multiple sockets may reconnect to one seat; disconnect reaches Godot when its last socket closes.
 
-HTTP errors use `{error:reason}`. Creation is limited to 10 attempts per IP per hour, joins to 30; rate rejection is 429. HTTP bodies and client WebSocket messages are capped at 64 KiB. Excess client messages above 30/second are dropped; oversized or binary frames close the socket.
+HTTP errors use `{error:reason}`. Creation is limited to 60 attempts per IP per hour and joins to 300 (generous, because everyone on a convention's Wi-Fi shares one public IP); rate rejection is 429. HTTP bodies and client WebSocket messages are capped at 64 KiB. Excess client messages above 30/second are dropped; oversized or binary frames close the socket.
 
 ## Lobby and game WebSocket protocol
 

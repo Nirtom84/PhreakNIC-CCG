@@ -57,7 +57,8 @@ export class Lobby extends DurableObject {
   upsert(c,s,expires) {this.sql.exec('INSERT INTO rooms(code,summary,expires) VALUES(?,?,?) ON CONFLICT(code) DO UPDATE SET summary=excluded.summary, expires=excluded.expires',c,s?JSON.stringify(s):null,expires);}
   remove(c) {this.sql.exec('DELETE FROM rooms WHERE code=?',c);}
   allow(ip,kind) {
-    this.clean();const now=Date.now(), limit=kind==='create'?10:30;
+    // Generous per-address limits: everyone on a con's Wi-Fi shares one public IP.
+    this.clean();const now=Date.now(), limit=kind==='create'?60:300;
     const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0];
     if(r&&r.count>=limit)return false;
     this.sql.exec('INSERT INTO limits VALUES(?,?,?,1) ON CONFLICT(ip,kind) DO UPDATE SET count=count+1',ip,kind,now);return true;
