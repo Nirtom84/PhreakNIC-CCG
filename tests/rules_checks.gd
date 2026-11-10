@@ -1,0 +1,229 @@
+class_name RulesChecks
+extends RefCounted
+## Focused scenarios use existing instances, so conservation includes the fixtures.
+var test
+var e
+class FixedDecider extends Decider:
+	var requested_id: String = ""
+	var yes: bool = true
+	var selected_option: int = 0
+	func confirm(_p, _prompt: String) -> bool: return yes
+	func choose_option(_p, _prompt: String, _choices: Array[String]) -> int: return selected_option
+	func choose_cards(_p, _prompt: String, cards: Array, min_n: int, max_n: int) -> Array:
+		for c in cards:
+			if c.id == requested_id: return [c]
+		return cards.slice(0, min_n if min_n > 0 else mini(1, max_n))
+class AsyncDecider extends FixedDecider:
+	var tree
+	var engine
+	var suite
+	func choose_option(player, _prompt: String, _choices: Array[String]) -> int:
+		suite.verify(engine.busy, "Engine locks actions while human dialog awaits")
+		var other = player.hand[0] if not player.hand.is_empty() else null
+		if other != null: suite.verify(not await engine.play_card(player, other), "Human dialog blocks reentrant play")
+		await tree.process_frame
+		return 1
+func _init(suite): test = suite
+func fixture(count: int = 2):
+	if e != null:
+		test.verify(e.state.conservation_ok(), "Focused fixture conservation")
+		e.free()
+	e = GameEngine.new()
+	test.root.add_child(e)
+	var levels: Array = []
+	var deciders: Array = []
+	for i in count:
+		levels.append(2)
+		deciders.append(FixedDecider.new())
+	e.setup(levels, 991, deciders)
+	# Clear random Rickroll and provide ample life without changing card identities.
+	for c in e.state.center_row.duplicate():
+		if c != null and c.id == "Rickroll": e.move(c, e.state.center_deck, "center_deck")
+	for p in e.state.players: p.life = 100
+	await e.start_turn(0)
+func card(id: String, zone: String = "hand", seat: int = 0):
+	for c in e.state.all_cards():
+		if c.id == id:
+			var p = e.state.players[seat]
+			e.gain_owner(c, p)
+			e.move(c, p.get(zone), zone)
+			return c
+	return null
+func check(condition: bool, message: String): test.verify(condition, message)
+func run():
+	await fixture()
+	var p = e.active()
+	var q = e.state.players[1]
+	check(e.state.initial_count == 170, "2-player setup has 150 center + 20 starters")
+	check(e.db().has_subtype("Rick Astley", "Hero"), "Hero word matching")
+	check(e.db().named("What is Truth", "Anything") and e.db().name_contains("What is Truth", "nirtom"), "Truth has every name")
+	var first = card("5ud0")
+	var second = card("Bitwize")
+	await e.play_card(p, first)
+	check(q.life == 100, "Trio waits for partner")
+	await e.play_card(p, second)
+	check(q.life == 98, "Both trio abilities fire in either order")
+	await e.effects.combos(p)
+	check(q.life == 98, "Trio only fires once per played instance")
+	var ice = card("Carpeted Pool")
+	await e.play_card(p, ice)
+	var attack = card("Damage", "hand", 1)
+	await e.damage(q, p, 5, attack, true)
+	check(p.life == 98 and q.life == 97 and ice in p.discard, "ICE overflow and final-counter retaliation")
+	var protection = card("Military-Grade Card Encapsulation")
+	await e.play_card(p, protection)
+	await e.damage(q, p, 5, attack, true)
+	check(p.life == 98, "Encapsulation prevents all damage")
+	var alternative_guard = card("The Phreaknic Network")
+	await e.play_card(p, alternative_guard)
+	e.dec(p).requested_id = "The Phreaknic Network"
+	await e.damage(q, p, 1, attack, true)
+	check(alternative_guard in p.discard and protection in p.play_area, "Controller chooses between full prevention sources")
+	e.dec(p).requested_id = ""
+	await e.start_turn(0)
+	check(protection in p.discard, "Encapsulation expires at start")
+	var net = card("The Phreaknic Network")
+	await e.play_card(p, net)
+	await e.damage(q, p, 2, attack, true)
+	await e.damage(q, p, 3, attack, false)
+	check(p.life == 98 and net in p.discard, "Network prevents rest-of-turn life loss")
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	var stolen = card("Botnet", "play_area", 1)
+	e.take_control(stolen, p)
+	check(stolen.owner == 1 and stolen.controller == 0, "Control does not change ownership")
+	e.discard(stolen)
+	check(stolen in q.discard, "Stolen permanent returns to owner")
+	var table = card("Tableskirts")
+	await e.play_card(p, table)
+	await e.activate(p, table, 0)
+	var pool = p.hacking
+	check(not await e.activate(p, table, 0) and p.hacking == pool, "Once per turn cannot activate twice")
+	var reserved = e.state.center_row[0]
+	check(e.reserve_card(p, reserved), "Reserve before acquisition")
+	p.hacking = 50
+	check(not e.can_buy(p, reserved), "Reserve blocks subsequent buys")
+	await e.play_card(p, card("Tips and tricks for Windows OS and Office365"))
+	check(e.can_buy(p, reserved), "Tips permits reserve and buy")
+	await e.buy_card(p, reserved)
+	check(reserved not in p.reserve, "Buy reserved card")
+	await fixture()
+	p = e.active()
+	card("Makeshift Lectern", "play_area")
+	e.effects.reduce(p, "Hero", 2)
+	var discount = card("Brimstone", "reserve")
+	check(e.effective_cost(p, discount) == 0, "Cost reductions stack and clamp at zero")
+	await e.play_card(p, card("Even More Logo"))
+	var nsa = card("_NSAKey, Juiced")
+	check(not e.can_play(p, nsa), "Even More Logo mutually excludes NSAKEY")
+	await fixture()
+	p = e.active()
+	var free_source = card("Clarion Inn Staff")
+	await e.play_card(p, free_source)
+	var clarion = card("The Clarion Inn", "reserve")
+	check(e.effective_cost(p, clarion) == 0, "Staff free-buy token")
+	await e.buy_card(p, clarion)
+	var coffee = card("Clarion Inn Morning Coffee", "reserve")
+	check(e.effective_cost(p, coffee) == 4, "Free-buy token consumed once")
+	var grass = card("Touch Grass")
+	await e.play_card(p, grass)
+	p.hacking = 50
+	check(not e.can_buy(p, coffee), "Grass blocks purchases")
+	await e.end_turn(p)
+	check(grass in p.play_area, "Grass remains through played turn")
+	await e.start_turn(0)
+	await e.end_turn(p)
+	check(grass in e.state.removed, "Grass expires after next turn")
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	var roll = card("Rickroll")
+	await e.play_card(p, roll)
+	var bought = e.state.center_row[0]
+	var deck_size = e.state.center_deck.size()
+	p.hacking = 100
+	await e.buy_card(p, bought)
+	check(roll in e.state.center_row and bought not in e.state.center_row and e.state.center_deck.size() == deck_size, "Rickroll replaces purchase without extra refill")
+	await e.start_turn(1)
+	check(roll.owner == 1 and q.turn_flags.get("bought", 0) == 1, "Start-of-turn mandatory Rickroll buy")
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	var copy = card("Etch-a-Sketch Skillz")
+	var original = card("Drunk Riddler", "discard", 1)
+	e.dec(p).requested_id = "Drunk Riddler"
+	await e.play_card(p, copy)
+	check(original in q.discard and copy in e.state.removed and q.life == 97, "Copy leaves source intact and self-removal affects copying card")
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	var book = card("The Book", "play_area")
+	var action = card("Hacking")
+	e.dec(p).requested_id = "Hacking"
+	await e.start_turn(0)
+	check(not book.attached.is_empty() and book.attached[0].id == "Hacking" and p.hacking >= 1, "Book attaches and plays action")
+	action = book.attached[0]
+	e.discard(book)
+	check(action in p.discard and book.attached.is_empty(), "Book releases attachments")
+	var org = card("pTFS", "play_area")
+	var hero = card("Venaul", "reserve")
+	p.hacking = 10
+	await e.buy_card(p, hero)
+	check(hero in org.attached, "pTFS stores purchased hero")
+	await e.start_turn(0)
+	check(hero in p.hand and org.attached.is_empty(), "pTFS releases heroes at start")
+	await fixture(3)
+	p = e.active()
+	q = e.state.players[1]
+	var third = e.state.players[2]
+	var reaction = card("TOCTOU", "hand", 1)
+	p.hacking = 7
+	p.turn_flags.marker = 42
+	var resumed: Array = []
+	e.turn_driver = func(who):
+		resumed.append(who.seat)
+		await e.end_turn(who)
+	await e.damage(p, q, 101)
+	check(q.alive and q.life == 1 and reaction in e.state.removed, "TOCTOU prevents elimination")
+	check(resumed == [1] and e.active() == p and p.hacking == 7 and p.turn_flags.marker == 42, "TOCTOU resumes paused turn resources")
+	var time = card("Time Travel")
+	await e.play_card(p, time)
+	await e.activate(p, time)
+	await e.end_turn(p)
+	check(e.active() == p and time in e.state.removed, "Time Travel schedules extra turn")
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	p.life = 1
+	q.life = 1
+	await e.play_card(p, card("r0nk"))
+	check(e.state.finished and e.state.winner == null and not p.alive and not q.alive, "Simultaneous self-and-opponent death is draw")
+	await fixture()
+	p = e.active()
+	var async_decider = AsyncDecider.new()
+	async_decider.tree = test
+	async_decider.engine = e
+	async_decider.suite = test
+	e.deciders[0] = async_decider
+	p.is_bot = false
+	var before_life = e.state.players[1].life
+	await e.play_card(p, card("heartsh8ped"))
+	check(e.state.players[1].life == before_life - 1 and not e.busy, "Async human choice resumes effect")
+	await fixture()
+	p = e.active()
+	var juice = card("The Juice", "play_area")
+	juice.counters = 4
+	await e.start_turn(0)
+	check(not p.alive and e.state.finished, "Fifth Juice counter loses")
+	await fixture()
+	p = e.active()
+	var cart = card("Lowes Shopping Cart", "play_area")
+	cart.counters = 24
+	p.hacking = 1
+	await e.activate(p, cart)
+	check(e.state.finished and e.state.winner == p, "25th Cart counter wins")
+	check(e.state.conservation_ok(), "Final focused fixture conservation")
+	e.free()
+	e = null
+	print("Focused rules scenarios complete")

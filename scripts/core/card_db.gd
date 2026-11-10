@@ -1,0 +1,17 @@
+extends Node
+## Immutable printed card definitions; instances keep only their stable id.
+var cards: Dictionary = {}
+func _ready():
+	for data in JSON.parse_string(FileAccess.get_file_as_string("res://data/cards.json")):
+		cards[data.id] = data
+func get_card(id: String) -> Dictionary:
+	return cards.get(id, {})
+func has_subtype(id: String, subtype: String) -> bool:
+	var words = str(get_card(id).get("subtypes", "")).to_lower().split(" ")
+	for word in subtype.to_lower().split(" "):
+		if word not in words: return false
+	return true
+func named(id: String, name: String) -> bool:
+	return id == "What is Truth" or str(get_card(id).get("name", "")).to_lower() == name.to_lower()
+func name_contains(id: String, part: String) -> bool:
+	return id == "What is Truth" or part.to_lower() in str(get_card(id).get("name", "")).to_lower()
