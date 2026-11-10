@@ -1,0 +1,51 @@
+name: Bug report
+description: Something broke, looked wrong or behaved strangely in the game.
+labels: ["bug", "alpha"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for alpha testing PhreakNIC CCG! The version number is shown in the bottom-right corner of the main menu.
+  - type: input
+    id: version
+    attributes:
+      label: Game version
+      placeholder: "0.05"
+    validations:
+      required: true
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      options:
+        - Windows
+        - Linux
+        - Android
+        - Running from source (Godot editor)
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device / OS version
+      placeholder: "Pixel 7, Android 14 / Windows 11 / Fedora 41"
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce (if you know them)
+      placeholder: |
+        1. Start a game against Phreak
+        2. Buy Botnet on turn 3
+        3. ...
+  - type: textarea
+    id: log
+    attributes:
+      label: Network log or screenshot
+      description: Copy the relevant lines from the in-game Network Log, or drag a screenshot here.

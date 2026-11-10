@@ -1,0 +1,36 @@
+name: Card or rules problem
+description: A card doesn't do what its text says, or a rule is handled differently from the paper game.
+labels: ["rules", "alpha"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Some situations the printed rules don't cover are decided in [RULES_NOTES.md](https://github.com/Nirtom84/PhreakNIC-CCG/blob/main/RULES_NOTES.md). Please check there first. If you disagree with a ruling, that's useful to hear too.
+  - type: input
+    id: card
+    attributes:
+      label: Card name(s)
+      placeholder: "Botnet, Rickroll"
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Game version
+      placeholder: "0.05"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What should happen
+      description: How the card or rule works in the paper game.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What the game did
+      description: The relevant Network Log lines help a lot.
+    validations:
+      required: true

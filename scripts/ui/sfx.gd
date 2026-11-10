@@ -5,6 +5,8 @@ var visual_effects: bool = true
 var volume: float = 0.65
 var muted: bool = false
 var handle: String = ""
+var hero_id: String = ""
+var auto_end_turn: bool = true
 func clean_handle(value: String) -> String:
  return value.replace("[", "").replace("]", "").strip_edges().left(16)
 var pool: Array[AudioStreamPlayer] = []
@@ -15,6 +17,9 @@ func _ready():
  if config.load("user://settings.cfg") == OK:
   volume = clampf(float(config.get_value("sound", "volume", 0.65)), 0.0, 1.0)
   handle = clean_handle(str(config.get_value("player", "handle", "")))
+  hero_id = str(config.get_value("player", "hero_id", ""))
+  if not hero_id.is_empty(): handle = str(config.get_value("player", "handle", ""))
+  auto_end_turn = bool(config.get_value("game", "auto_end_turn", true))
   muted = bool(config.get_value("sound", "muted", false))
   visual_effects = bool(config.get_value("visual", "effects", true))
  if DisplayServer.get_name() == "headless": return
@@ -25,8 +30,10 @@ func _ready():
 func save():
  var config = ConfigFile.new()
  config.load("user://settings.cfg")
- handle = clean_handle(handle)
+ handle = str(CardDB.cards[hero_id].name) if CardDB.cards.has(hero_id) else clean_handle(handle)
  config.set_value("player", "handle", handle)
+ config.set_value("player", "hero_id", hero_id)
+ config.set_value("game", "auto_end_turn", auto_end_turn)
  config.set_value("visual", "effects", visual_effects)
  visuals_changed.emit(visual_effects)
  config.set_value("sound", "volume", volume)

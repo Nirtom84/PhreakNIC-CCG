@@ -52,23 +52,54 @@ static func pulse(node: Control, tint: Color = Color(1.0, 0.86, 0.62)):
  var t = node.create_tween().set_loops()
  t.tween_property(node, "self_modulate", tint, 0.8)
  t.tween_property(node, "self_modulate", Color.WHITE, 0.8)
-static func dialog(p: PanelContainer):
- var shade = box(Color(0, 0, 0, 0.6), Color.TRANSPARENT, 0)
- shade.content_margin_left = 180
- shade.content_margin_right = 180
- shade.content_margin_top = 120
- shade.content_margin_bottom = 120
- p.add_theme_stylebox_override("panel", shade)
- # Paint behind the existing VBox so automation child indices remain stable.
+static func dialog(p: PanelContainer, dimensions: Vector2 = Vector2(640, 400)):
  var content = p.get_child(0)
+ var layout = func():
+  var view = p.get_viewport_rect().size
+  var extent = dimensions.min(view - Vector2(80, 80))
+  var shade = box(Color(0, 0, 0, 0.7), Color.TRANSPARENT, 0)
+  shade.content_margin_left = (view.x - extent.x) / 2
+  shade.content_margin_right = shade.content_margin_left
+  shade.content_margin_top = (view.y - extent.y) / 2
+  shade.content_margin_bottom = shade.content_margin_top
+  p.add_theme_stylebox_override("panel", shade)
+ p.get_viewport().size_changed.connect(layout)
+ p.tree_exiting.connect(func(): p.get_viewport().size_changed.disconnect(layout), CONNECT_ONE_SHOT)
+ layout.call()
  content.draw.connect(func(): content.draw_style_box(box(), Rect2(Vector2(-20,-20), content.size + Vector2(40,40))))
  content.resized.connect(content.queue_redraw)
- if Sfx.visual_effects:
-  content.modulate.a = 0
-  content.scale = Vector2(0.97,0.97)
-  var tween = p.create_tween().set_parallel(true)
-  tween.tween_property(content, "modulate:a", 1.0, 0.16)
-  tween.tween_property(content, "scale", Vector2.ONE, 0.16)
+
+const AVATAR_CROP = Rect2(90, 62, 420, 420)
+static func avatar(card_id: String, width: int = 64) -> Control:
+ var frame = PanelContainer.new()
+ var border = box(BACKGROUND, CYAN, 0)
+ border.set_content_margin_all(2)
+ frame.add_theme_stylebox_override("panel", border)
+ var image = picture("res://assets/icon/icon.png", Vector2(width, width))
+ if CardDB.cards.has(card_id):
+  var atlas = AtlasTexture.new()
+  atlas.atlas = load("res://assets/cards/" + card_id + ".jpg")
+  atlas.region = AVATAR_CROP
+  image.texture = atlas
+ frame.add_child(image)
+ return frame
+static func heroes() -> Array:
+ var result: Array = []
+ var names: Array = []
+ for id in CardDB.cards:
+  var card = CardDB.cards[id]
+  if not card.get("starter", false) and CardDB.has_subtype(id, "Hero") and card.name not in names:
+   names.append(card.name)
+   result.append(id)
+ result.sort_custom(func(a, b): return str(CardDB.cards[a].name) < str(CardDB.cards[b].name))
+ return result
+static func viewport_cover(control: Control):
+ control.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+ var fit = func(): control.size = control.get_viewport_rect().size
+ control.get_viewport().size_changed.connect(fit)
+ control.tree_exiting.connect(func(): control.get_viewport().size_changed.disconnect(fit), CONNECT_ONE_SHOT)
+ fit.call()
+
 static func glitch(label: Label):
  if not Sfx.visual_effects: return
  label.add_theme_color_override("font_shadow_color", Color(RED, 0.6))

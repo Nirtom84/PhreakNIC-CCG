@@ -10,13 +10,27 @@ Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
 _Screenshots are from the current version and are refreshed with every release._
 
-## Play
+## Download & play (alpha)
+The game is in **alpha testing**. Grab the latest build from the [Releases page](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest):
+
+| Platform | Download | How to run |
+|---|---|---|
+| Windows 10/11 (64-bit) | [PhreakNIC-CCG-windows.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-windows.zip) | Unzip and double-click the `.exe`. The app isn't code-signed yet, so Windows SmartScreen may warn you: choose **More info → Run anyway**. |
+| Linux (x86_64) | [PhreakNIC-CCG-linux.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-linux.zip) | Unzip and run the `.x86_64` file. If it won't start, make it executable: `chmod +x PhreakNIC-CCG-*.x86_64`. |
+| Android 7.0+ (64-bit) | [PhreakNIC-CCG-android.apk](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-android.apk) | Open the file on your phone and allow your browser or file manager to install unknown apps. Plays in landscape. |
+
+Pick an opponent and start. Click a hand card to play it, click a center-row card to buy or reserve it,
+click your reserved card to buy it, use the buttons on your permanents for their abilities, then **End Turn**.
+Hover or right-click any card to zoom. On a touch screen: tap to play or buy, press and hold any card to read it, drag to scroll.
+
+### Found a bug?
+Please [open an issue](https://github.com/Nirtom84/PhreakNIC-CCG/issues/new/choose) and pick **Bug report** or **Card or rules problem**. Include the version from the bottom-right corner of the main menu, your platform, and the Network Log lines or a screenshot if you can.
+
+### Run from source
+Install [Godot 4.7](https://godotengine.org/download) and run from the project folder:
 ```bash
 godot4.7.1 --path .
 ```
-Pick an opponent and start. Click a hand card to play it, click a center-row card to buy or reserve it,
-click your reserved card to buy it, use the buttons on your permanents for their abilities, then **End Turn**.
-Hover or right-click any card to zoom.
 
 ### Bot difficulty
 | Level | Plays like |

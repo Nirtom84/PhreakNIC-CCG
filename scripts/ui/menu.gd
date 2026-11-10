@@ -2,6 +2,8 @@ extends Control
 const PLAYER_COUNTS = [2] # Add 3 and 4 here to enable additional seats.
 var rules_overlay: Control
 var difficulty: OptionButton
+var handle_input: LineEdit
+var avatar_preview: Control
 var count: OptionButton
 func _ready():
  UIStyle.apply(self)
@@ -50,17 +52,25 @@ func _ready():
   terminal.visible_characters = 0
   create_tween().tween_property(terminal, "visible_characters", terminal.text.length(), 1.3)
  UIStyle.label(menu, "// YOUR HANDLE", 18)
- var handle_input = LineEdit.new()
+ var handle_row = HBoxContainer.new()
+ menu.add_child(handle_row)
+ avatar_preview = UIStyle.avatar(Sfx.hero_id)
+ handle_row.add_child(avatar_preview)
+ handle_input = LineEdit.new()
+ handle_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  handle_input.placeholder_text = "You"
- handle_input.max_length = 16
+ handle_input.max_length = 0 # Hero printed names can be longer than custom handles.
  handle_input.text = Sfx.handle
- menu.add_child(handle_input)
+ handle_row.add_child(handle_input)
+ UIStyle.button(handle_row, "Pick a Hero", pick_hero)
  handle_input.text_changed.connect(func(value):
   var caret = handle_input.caret_column
   var filtered = value.replace("[", "").replace("]", "")
   if filtered != value:
    handle_input.text = filtered
    handle_input.caret_column = mini(caret, filtered.length())
+  Sfx.hero_id = ""
+  refresh_avatar()
   Sfx.handle = Sfx.clean_handle(filtered)
   Sfx.save())
  handle_input.focus_exited.connect(func(): handle_input.text = Sfx.handle)
@@ -100,15 +110,22 @@ func _ready():
  start_button.custom_minimum_size.y = 58
  UIStyle.primary(start_button)
  UIStyle.button(menu, "Rules", rules)
+ var switches = HBoxContainer.new()
+ menu.add_child(switches)
+ var auto_end = CheckButton.new()
+ auto_end.text = "Auto-end turn"
+ auto_end.button_pressed = Sfx.auto_end_turn
+ switches.add_child(auto_end)
+ auto_end.toggled.connect(func(enabled): Sfx.auto_end_turn = enabled; Sfx.save())
  var sound = CheckButton.new()
  sound.text = "Sound enabled"
  sound.button_pressed = not Sfx.muted
- menu.add_child(sound)
+ switches.add_child(sound)
  sound.toggled.connect(func(enabled): Sfx.muted = not enabled; Sfx.save())
  var effects = CheckButton.new()
  effects.text = "Visual effects"
  effects.button_pressed = Sfx.visual_effects
- menu.add_child(effects)
+ switches.add_child(effects)
  effects.toggled.connect(func(enabled): Sfx.visual_effects = enabled; Sfx.save(); get_tree().reload_current_scene())
  var volume = HSlider.new()
  volume.max_value = 1.0
@@ -142,10 +159,7 @@ func rules():
  add_child(overlay)
  var box = VBoxContainer.new()
  overlay.add_child(box)
- var padding = UIStyle.dialog_box()
- padding.content_margin_left = maxf(42, (size.x - 1100) / 2)
- padding.content_margin_right = padding.content_margin_left
- overlay.add_theme_stylebox_override("panel", padding)
+ UIStyle.dialog(overlay, Vector2(1100, 900))
  var text = RichTextLabel.new()
  text.bbcode_enabled = true
  text.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -162,3 +176,42 @@ func _unhandled_key_input(event):
 func go_back():
  if is_instance_valid(rules_overlay): rules_overlay.queue_free()
  else: get_tree().quit()
+
+func refresh_avatar():
+ var replacement = UIStyle.avatar(Sfx.hero_id)
+ avatar_preview.get_child(0).texture = replacement.get_child(0).texture
+ replacement.free()
+func select_hero(id: String):
+ Sfx.hero_id = id
+ Sfx.handle = str(CardDB.cards[id].name)
+ handle_input.text = Sfx.handle
+ Sfx.save()
+ refresh_avatar()
+func pick_hero():
+ if is_instance_valid(rules_overlay): return
+ var overlay = PanelContainer.new()
+ rules_overlay = overlay
+ overlay.add_to_group("touch_modal")
+ add_child(overlay)
+ overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ var box = VBoxContainer.new()
+ overlay.add_child(box)
+ UIStyle.label(box, "Pick a Hero", 26)
+ var scroll = ScrollContainer.new()
+ scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+ box.add_child(scroll)
+ TouchInput.register_scroll(scroll)
+ var grid = GridContainer.new()
+ grid.columns = 6
+ scroll.add_child(grid)
+ for id in UIStyle.heroes():
+  var button = UIStyle.button(grid, str(CardDB.cards[id].name), func(): select_hero(id); overlay.queue_free())
+  button.icon = load("res://assets/cards/" + id + ".jpg")
+  button.expand_icon = true
+  button.custom_minimum_size = Vector2(170, 260)
+  button.clip_text = true
+  button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+  button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+  button.add_theme_constant_override("icon_max_width", 160)
+ UIStyle.button(box, "Back", overlay.queue_free)
+ UIStyle.dialog(overlay, Vector2(1100, 900))

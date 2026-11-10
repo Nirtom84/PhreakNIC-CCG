@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the Linux, Windows and Android versions into build/.
 # Needs: Godot 4.7.1 export templates, JDK 17 and the Android SDK (see README "Building").
-# Usage: tools/build_all.sh [linux|windows|android ...]   (no arguments = all three)
+# Usage: tools/build_all.sh [linux|windows|android|release ...]   (no arguments = all three, then release)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -10,7 +10,7 @@ export JAVA_HOME="${JAVA_HOME:-$HOME/.local/opt/jdk-17}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 VERSION="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)"
 targets=("$@")
-[ ${#targets[@]} -eq 0 ] && targets=(linux windows android)
+[ ${#targets[@]} -eq 0 ] && targets=(linux windows android release)
 
 "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 
@@ -26,7 +26,15 @@ for target in "${targets[@]}"; do
 			mkdir -p build/android
 			# Debug-signed APK (installs by sideloading). A Play Store release needs a release keystore.
 			"$GODOT" --headless --path . --export-debug "Android" "build/android/PhreakNIC-CCG-v$VERSION-debug.apk" ;;
-		*) echo "Unknown target: $target (use linux, windows or android)" >&2; exit 1 ;;
+		release)
+			# Packages the builds made above under stable names for GitHub Release assets,
+			# so README links to releases/latest/download/<name> keep working.
+			mkdir -p build/release
+			rm -f build/release/*
+			(cd build/linux && zip -q -9 "../release/PhreakNIC-CCG-linux.zip" "PhreakNIC-CCG-v$VERSION.x86_64")
+			(cd build/windows && zip -q -9 "../release/PhreakNIC-CCG-windows.zip" "PhreakNIC-CCG-v$VERSION.exe")
+			cp "build/android/PhreakNIC-CCG-v$VERSION-debug.apk" "build/release/PhreakNIC-CCG-android.apk" ;;
+		*) echo "Unknown target: $target (use linux, windows, android or release)" >&2; exit 1 ;;
 	esac
 done
 ls -la build/*/
