@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Builds the Linux, Windows, Android and Web versions into build/.
 # Needs: Godot 4.7.1 export templates, JDK 17 and the Android SDK (see README "Building").
-# Usage: tools/build_all.sh [linux|windows|android|web|release ...]   (no arguments = all four, then release)
+# Usage: tools/build_all.sh [linux|windows|android|web|server|release ...]   (no arguments = all four, then release)
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -21,6 +21,9 @@ for target in "${targets[@]}"; do
 		linux)
 			mkdir -p build/linux
 			"$GODOT" --headless --path . --export-release "Linux" "build/linux/PhreakNIC-CCG-v$VERSION.x86_64" ;;
+		server)
+			mkdir -p build/server
+			"$GODOT" --headless --path . --export-release "Server" build/server/phreaknic-server.x86_64 ;;
 		windows)
 			mkdir -p build/windows
 			"$GODOT" --headless --path . --export-release "Windows" "build/windows/PhreakNIC-CCG-v$VERSION.exe" ;;
@@ -39,7 +42,7 @@ for target in "${targets[@]}"; do
 			(cd build/linux && zip -q -9 "../release/PhreakNIC-CCG-linux.zip" "PhreakNIC-CCG-v$VERSION.x86_64")
 			(cd build/windows && zip -q -9 "../release/PhreakNIC-CCG-windows.zip" "PhreakNIC-CCG-v$VERSION.exe")
 			cp "build/android/PhreakNIC-CCG-v$VERSION-debug.apk" "build/release/PhreakNIC-CCG-android.apk" ;;
-		*) echo "Unknown target: $target (use linux, windows, android, web or release)" >&2; exit 1 ;;
+		*) echo "Unknown target: $target (use linux, windows, android, web, server or release)" >&2; exit 1 ;;
 	esac
 done
 ls -la build/*/

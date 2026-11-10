@@ -137,10 +137,12 @@ prints win rates by difficulty (Elite should beat Script Kiddie clearly), card c
 Call `setup(seats, card_pool, starting_life, seed)`, attach transports, and await
 `start()`. Seat dictionaries contain `name`, `hero`, `bot`, and numeric `difficulty`
 (0 Script Kiddie, 1 Phreak, 2 Elite). Only the server uses the seeded game RNG.
-`tokens[seat]` is a cryptographically random credential to distribute through a
-future trusted lobby; tokens are never included in player messages. A room runs
-in process today; WebSockets, hosting, lobby credentials, and table UI integration
-are future work.
+`tokens[seat]` is a cryptographically random credential for direct/loopback use;
+the trusted room link installs the seat tokens supplied by its Room. Tokens are
+never included in player messages. Production rooms are Cloudflare Durable
+Objects, each owning one headless Godot container. Players connect only to the
+Room, which authenticates seat tokens and multiplexes their messages over one
+trusted room link. Table UI integration remains separate from these transports.
 
 `NetTransport` exposes `send(Dictionary)`, `received(Dictionary)`, `closed`, and
 `close()`. `LoopbackTransport.pair()` returns connected endpoints, JSON round trips
@@ -241,10 +243,85 @@ is serialized. `restore(snapshot)` validates the SaveGame, catalog and version,
 restores RNG and object identities, rebuilds deciders, and resumes at that safe
 point without starting the turn twice. If a container dies during an action,
 recovery returns to the last completed safe checkpoint. Storage/durability belongs
-to the future host. Clients reconnect with their persisted tokens. Snapshots
+to the Room Durable Object. Clients reconnect with their persisted tokens. Snapshots
 contain private decks/RNG/tokens and must be kept server-side.
 
 Run `tests/net_checks.gd` headlessly with temporary `XDG_DATA_HOME` (and temporary
 `XDG_CONFIG_HOME` for editor operations). It exercises JSON loopback games,
 redaction, illegal actions, every decider method, timeouts, takeover/reconnect,
 private draws, reaction turns, and snapshot/restore with card conservation.
+
+### Room link and dedicated server
+
+Run the exported container with:
+
+```sh
+build/server/phreaknic-server.x86_64 --headless -- --server --port 8080
+```
+
+`--server` in `OS.get_cmdline_user_args()` switches the menu to
+`scenes/server.tscn` before constructing the menu. Normal startup is unchanged.
+`scripts/net/server.gd` selects port 8080, overridden by `PORT`, then by
+`--port N` after `--`. `LinkServer` listens on `0.0.0.0`. Plain HTTP
+`GET /health` returns `HTTP/1.1 200 OK` with body `ok` once listening. The Room
+opens `ws://container:8080/link`; there is only one room link. A newly accepted
+link closes the previous link and disconnects its virtual seats without resetting
+the game. The Room sends `connect` again for currently connected players.
+Listening, link up/down, setup/restore and game over each log a line to stdout.
+
+GDScript TCP streams cannot peek or unread a parsed request. `LinkServer` parses
+the HTTP headers, handles health/404 itself, and relays `/link` through a private
+loopback TCP bridge, replaying the headers to `WebSocketPeer.accept_stream()`.
+Godot owns the WebSocket handshake, text framing, fragmentation and control frames;
+no custom WebSocket codec is used. The bridge accepts only loopback connections
+and never exposes another public port. HTTP handshakes have a 10-second timeout
+and 16 KiB header limit. Link buffers accommodate authoritative snapshots.
+
+All link messages are JSON text, one dictionary per frame, with a `t` field.
+Integral JSON values are normalized recursively. The container trusts the link:
+the Room alone authenticates player sockets and supplies the authenticated seat.
+
+| Room → container | Fields and behavior |
+| --- | --- |
+| `setup` | `room`, `seats: [{name, hero, bot, difficulty, token}]`, `card_pool`, `starting_life`, `seed`; creates and starts a new authoritative game. Human seats have `bot: false` and a token; bots have an empty token. |
+| `restore` | `room`, `snapshot`; calls `GameServer.restore` on the last stored authoritative checkpoint. |
+| `connect` | `seat`, `version`; creates a virtual NetTransport and submits hello with the stored seat token. A version mismatch sends that seat `error` with `reason: "version"`, `need: <server version>`. |
+| `disconnect` | `seat`; closes its virtual transport, starting existing disconnect/takeover timers. |
+| `from` | `seat`, `msg`; forwards only `action` or `answer` from that authenticated seat. |
+| `ping` | no other fields; replies `pong`. |
+
+| Container → Room | Fields and behavior |
+| --- | --- |
+| `ready` | `version`; once per accepted link. |
+| `to` | `seat`, `msg`; private GameServer welcome/view/prompt/prompt_done/log/event/game_over/error for that seat only. |
+| `snapshot` | `data`; full authoritative save after each completed action at a safe point. The Room replaces its stored snapshot; never forward this message to players. |
+| `over` | `winner`; winning seat or -1 for a draw. |
+| `pong` | no other fields. |
+
+Link loss leaves the GameServer processing: bots continue and disconnected humans
+are taken over after the existing 120-second timeout. Restore rebuilds the same
+seat tokens from the checkpoint and resumes without starting the turn again.
+If a container dies during an action, the Room restores its last safe snapshot
+and reconnects players.
+
+`WebSocketTransport` is the client NetTransport. Call `connect_to(url)` and
+`poll()` from the owning Node's `_process`, then attach the NetClient after its
+`connected` signal. It sends JSON text and emits normalized `received`, one
+`closed` per connection, and exposes `error`, `close_code`, and `close_reason`.
+Use `wss://` with a valid hostname/certificate for browser production exports;
+it uses Godot's browser WebSocket implementation without custom headers.
+
+The additional `Server` Linux export preset is dedicated-server, x86_64, with
+embedded PCK at `build/server/phreaknic-server.x86_64`. It retains the Linux
+include/exclude filters and additionally excludes `cloudflare/*`. Resource
+stripping uses Godot's dedicated-server defaults, retaining scripts and data.
+`tools/build_all.sh server` exports it with `--export-release`; the default target
+list is unchanged. Export templates must be installed in the selected XDG data
+home (a symlink to the installed templates is sufficient).
+
+Run `tests/link_checks.gd` headlessly with temporary `XDG_DATA_HOME`. It simulates
+the Room over a real localhost WebSocket, multiplexes scripted NetClients,
+checks HTTP health, private views/events, snapshots, mid-game container restore,
+version errors, replacement links and takeover without clients. When the exported
+binary exists it also launches it as a subprocess and probes `/health`. A sandbox
+that denies TCP socket creation reports the network suite as skipped.

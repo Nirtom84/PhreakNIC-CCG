@@ -10,6 +10,9 @@ var hero_icons: Dictionary = {}
 var loading_icons: Array[String] = []
 var picker_buttons: Dictionary = {}
 func _ready():
+ if "--server" in OS.get_cmdline_user_args():
+  get_tree().change_scene_to_file.call_deferred("res://scenes/server.tscn")
+  return
  get_tree().auto_accept_quit = true
  for id in UIStyle.heroes():
   var path = "res://assets/cards/" + id + ".jpg"
