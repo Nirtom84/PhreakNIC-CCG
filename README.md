@@ -4,7 +4,11 @@ A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
-![Mid-game](docs/screenshot_midgame.png)
+![Mid-game table](docs/screenshot_midgame.png)
+
+![Main menu](docs/screenshot_menu.png)
+
+_Screenshots are from the current version and are refreshed with every release._
 
 ## Play
 ```bash
