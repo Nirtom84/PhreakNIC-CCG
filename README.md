@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.12**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.13**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
