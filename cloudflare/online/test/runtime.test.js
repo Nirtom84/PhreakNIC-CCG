@@ -54,7 +54,7 @@ test('site caches full WASM by version and conditional hits avoid R2',async()=>{
 });
 test('site serves index.pck from R2 when PCK_KEY is set, else from static assets',async()=>{
  const original=globalThis.caches;globalThis.caches={default:{match:async()=>undefined,put:async()=>{}}};const keys=[];const env={WASM_KEY:'web/v/index.wasm',PCK_KEY:'web/v/index.pck',GAME_FILES:{get:async k=>{keys.push(k);return {body:'pck',httpEtag:'"p1"'};}},ASSETS:{fetch:async()=>new Response('asset')}},ctx={waitUntil:()=>{}};
- try{let res=await site.fetch(new Request('https://site/index.pck'),env,ctx);assert.equal(await res.text(),'pck');assert.equal(res.headers.get('content-type'),'application/octet-stream');assert.deepEqual(keys,['web/v/index.pck']);
+ try{let res=await site.fetch(new Request('https://site/index.pck'),env,ctx);assert.equal(await res.text(),'pck');assert.equal(res.headers.get('cache-control'),'no-cache');assert.equal(res.headers.get('content-type'),'application/octet-stream');assert.deepEqual(keys,['web/v/index.pck']);
  delete env.PCK_KEY;res=await site.fetch(new Request('https://site/index.pck'),env,ctx);assert.equal(await res.text(),'asset');}finally{globalThis.caches=original;}
 });
 test('site WASM HEAD metadata is reused for 304 and changes with version',async()=>{

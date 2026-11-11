@@ -44,10 +44,10 @@ const handlers={
       const cache=caches.default,key=new Request(new URL('/'+KEY,url.origin)),cached=await cache.match(key);
       let etag=cached?.headers.get('etag')||etags.get(KEY);
       const matches=value=>request.headers.get('if-none-match')?.split(',').some(t=>t.trim()==='*'||t.trim().replace(/^W\//,'')===value);
-      if(etag&&matches(etag))return new Response(null,{status:304,headers:{etag,'cache-control':'public, max-age=86400'}});
-      if(cached){const out=new Response(request.method==='HEAD'?null:cached.body,cached);if(url.pathname===name)out.headers.set('cache-control','public, max-age=86400');return out;}
+      if(etag&&matches(etag))return new Response(null,{status:304,headers:{etag,'cache-control':'no-cache'}});
+      if(cached){const out=new Response(request.method==='HEAD'?null:cached.body,cached);if(url.pathname===name)out.headers.set('cache-control','no-cache');return out;}
       const versioned=url.pathname!==name;
-      const headers=new Headers({'content-type':type,'cache-control':versioned?'public, max-age=31536000, immutable':'public, max-age=86400'});
+      const headers=new Headers({'content-type':type,'cache-control':versioned?'public, max-age=31536000, immutable':'no-cache'});
       if(request.method==='HEAD') {
         const object=await env.GAME_FILES.head(KEY);if(!object)return new Response('Game file not found',{status:404});
         etag=object.httpEtag;etags.set(KEY,etag);headers.set('etag',etag);return new Response(null,{status:matches(etag)?304:200,headers});
