@@ -12,7 +12,7 @@ func setup(count: int, pool: String, difficulties: Array, resumed = false):
  bot_difficulties = difficulties.duplicate()
  since_resume = resumed
  for i in count:
-  seats.append({"turns": 0, "damage_dealt": 0, "damage_taken": 0, "life_gained": 0, "cards_played": 0, "cards_bought": 0, "hacking_spent": 0, "cards_removed": 0, "biggest_hit": 0, "played": {}, "most_played_id": "", "priciest_id": "", "priciest_cost": -1, "final_life": 0, "final_deck_size": 0})
+  seats.append({"turns": 0, "damage_dealt": 0, "damage_taken": 0, "life_gained": 0, "cards_played": 0, "cards_bought": 0, "hacking_spent": 0, "cards_removed": 0, "biggest_hit": 0, "bought": {}, "played": {}, "most_played_id": "", "priciest_id": "", "priciest_cost": -1, "final_life": 0, "final_deck_size": 0})
 func turn(seat: int):
  if seat >= 0 and seat < seats.size(): seats[seat].turns += 1
 func damage(source: int, target: int, amount: int):
@@ -43,6 +43,7 @@ func star_card(seat: int) -> String:
 func bought(seat: int, id: String, cost: int):
  if seat < 0 or seat >= seats.size(): return
  var s = seats[seat]
+ s.bought[id] = int(s.bought.get(id, 0)) + 1
  s.cards_bought += 1
  s.hacking_spent += maxi(0, cost)
  if cost > s.priciest_cost:
@@ -76,13 +77,13 @@ static func from_dict(data: Dictionary):
  for i in result.seats.size():
   if not data.seats[i] is Dictionary: return null
   for key in result.seats[i]:
-   var value = data.seats[i].get(key)
+   var value = data.seats[i].get(key, {} if key == "bought" else null)
    var expected = result.seats[i][key]
    if expected is int:
     if not (value is int or value is float) or not is_finite(float(value)) or float(value) != floor(float(value)) or value < (-1 if key == "priciest_cost" else 0): return null
     value = int(value)
    elif typeof(value) != typeof(expected): return null
-   if key == "played":
+   if key in ["played", "bought"]:
     for id in value:
      if not id is String or not (value[id] is int or value[id] is float) or value[id] < 0 or not is_finite(float(value[id])) or float(value[id]) != floor(float(value[id])): return null
      value[id] = int(value[id])

@@ -1,5 +1,13 @@
 # Changelog
 
+## v0.17 — Lifetime stats
+**Your stats**
+- The game now keeps your record on your device: games, wins, win rate, best streak and time played, split into games against bots, online against players and online against bots, with breakdowns by bot difficulty, card set and table size.
+- It also tracks your favourite Hero, your signature card, your most-bought card, and records such as biggest hit and fastest win.
+- Open it with **Stats** on the main menu, or **Lifetime stats** on the end-game summary. Tutorial games and unfinished games are not counted.
+- **Share your record:** save a stats card image or share it the same way as the end-game card (copy text, X, Bluesky, Reddit, Facebook, Discord, or the share sheet in phone browsers).
+- Stats are stored on this device only, with a **Reset stats** button. No account or sign-in.
+
 ## v0.16 — Bot pace and turn recap
 **See what the bots did**
 - Opponents' plays now show as one row: the newest card large, earlier cards as thumbnails beside it. Nothing is skipped on long turns any more (before, only four cards fitted and the rest were dropped).

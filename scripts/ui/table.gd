@@ -1,4 +1,7 @@
 extends Control
+var lifetime_recorded = false
+var lifetime_test_enabled = false
+var lifetime_key = ""
 signal answered(value)
 var online_session: OnlineSession
 var human_seat = 0
@@ -199,6 +202,7 @@ func _ready():
    previous_hack[p.seat] = p.hacking
   last_autosave_turn = engine.state.turn
   sync_options()
+ lifetime_key = str(resume_data.get("table", {}).get("lifetime_key", "%s:%s" % [game_seed, Time.get_unix_time_from_system()]))
  match_stats.setup(player_count, card_pool, engine.state.players.map(func(p): return p.difficulty), not resume_data.is_empty())
  if not resume_data.is_empty() and resume_data.table.has("match_stats"):
   var restored_stats = match_stats.from_dict(resume_data.table.match_stats)
@@ -1286,7 +1290,22 @@ func game_over(winner):
  if online_session == null and not tutorial_mode: SaveGame.remove()
  Sfx.play("win" if winner != null and winner.seat == human_seat else "lose")
  show_result.call_deferred(winner)
+func record_lifetime():
+ if tutorial_mode or lifetime_recorded or not match_stats.finished: return
+ if DisplayServer.get_name() == "headless" and not lifetime_test_enabled: return
+ lifetime_recorded = true
+ var mode = "local"
+ if online_session != null:
+  mode = "online_bots"
+  for p in engine.state.players:
+   if p.seat != human_seat and not p.is_bot: mode = "online_humans"
+ var key = lifetime_key
+ if online_session != null:
+  var room = online_session.room
+  key = "online:%s:%s" % [room.get("code", ""), room.get("started_at", room.get("seed", get_instance_id()))]
+ load("res://scripts/ui/lifetime_stats.gd").new().record(match_stats, human_seat, seat_heroes[human_seat], mode, key)
 func show_result(winner):
+ record_lifetime()
  var dim = ColorRect.new()
  dim.z_index = 49
  dim.color = Color(0,0,0,0.6)
@@ -1357,6 +1376,7 @@ func show_result(winner):
  var highlights = UIStyle.label(box, "Biggest hit: %d · Turns: %d · Duration: %d:%02d\nStar card: %s\nPriciest buy: %s (%d Hacking)" % [stat.biggest_hit, stat.turns, int(match_stats.duration) / 60, int(match_stats.duration) % 60, stats_card_name(match_stats.star_card(human_seat)), stats_card_name(stat.priciest_id), maxi(0, stat.priciest_cost)], 22)
  highlights.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  UIStyle.button(box, "View final deck", func(): view_cards("Your final deck", final_deck()))
+ UIStyle.button(box, "Lifetime stats", func(): load("res://scripts/ui/stats_screen.gd").open(self))
  if not tutorial_mode:
   var sharing = load("res://scripts/ui/result_share.gd").new()
   add_child(sharing)
@@ -1497,7 +1517,7 @@ func save_game() -> bool:
  if not can_save(): return false
  saving = true
  auto_end_elapsed = 0
- var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[human_seat], "bot_pace": bot_pace, "log": "".join(log_entries), "log_entries": log_entries, "match_stats": match_stats.to_dict()})
+ var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[human_seat], "bot_pace": bot_pace, "log": "".join(log_entries), "log_entries": log_entries, "lifetime_key": lifetime_key, "match_stats": match_stats.to_dict()})
  saving = false
  return ok
 func auto_save():

@@ -200,6 +200,7 @@ func _ready():
  menu.add_child(help_row)
  UIStyle.button(help_row, "Tutorial", launch_tutorial)
  UIStyle.button(help_row, "Rules", rules)
+ UIStyle.button(help_row, "Stats", func(): load("res://scripts/ui/stats_screen.gd").open(self))
  UIStyle.button(help_row, "Report a bug", func(): load("res://scripts/ui/bug_report.gd").open())
  var switches = HBoxContainer.new()
  menu.add_child(switches)
