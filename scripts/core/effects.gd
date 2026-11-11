@@ -515,12 +515,15 @@ func _effect_hotel_roof_chair_toss(p, c):
 ## I've got the Logs
 func _effect_i_ve_got_the_logs(p, c):
 	var id = await e.dec(p).name_a_card(p, "Name a card")
-	var hit = false
+	var revealers = []
 	for q in e.opponents(p):
 		e.reveal(q, q.hand)
-		if q.hand.any(func(x): return e.db().named(x.id, e.db().get_card(id).get("name", id))): hit = true
-	if hit:
-		await e.deal(p, e.db().get_card(id).get("cost", 0), c)
+		if q.hand.any(func(x): return e.db().named(x.id, e.db().get_card(id).get("name", id))): revealers.append(q)
+	if not revealers.is_empty():
+		# Designer ruling 2026-11-10 (#7, #14): only opponents who revealed the named card take {D}, one hit each.
+		var cost = e.db().get_card(id).get("cost", 0)
+		for q in revealers:
+			if p.alive and q.alive and cost > 0: await e.damage(p, q, cost, c, true)
 		e.remove(c)
 	else: e.draw(p, 1)
 
@@ -1046,7 +1049,7 @@ func bought(p, c, from_row: bool):
 	# Destination choices are local to this purchase, including nested reactions.
 	var destination = {"chosen": false}
 	if c.id in ["Fore04", "G4nd4lf", "JousterL", "hfuller", "mog", "Nuvious", "proudF00F", "Venaul"]:
-		pending.append({"name": e.db().get_card(c.id).name, "resolve": bought_self.bind(p, c)})
+		pending.append({"name": e.db().get_card(c.id).name, "resolve": bought_self.bind(p, c, destination)})
 	if e.db().has_subtype(c.id, "Hero"):
 		for permanent in p.play_area:
 			if permanent.effect_id() in ["The Fellowship of the Token Ring", "pTFS"]:
@@ -1056,13 +1059,17 @@ func bought(p, c, from_row: bool):
 			if permanent.effect_id() == "Powered On Taser Maintenance" and permanent.controller != p.seat:
 				pending.append({"card": permanent, "resolve": e.damage.bind(e.state.players[permanent.controller], p, 1, permanent)})
 	await e.resolve_triggers(pending)
-func bought_self(p, c):
+func bought_self(p, c, destination: Dictionary = {}):
 	if c.id in ["hfuller", "proudF00F"]:
 		for q in e.state.players:
 			if q.alive: e.reveal(q, q.hand)
 	match c.id:
 		"Fore04":
-			if await e.dec(p).confirm(p, "Put bought card on deck?"): e.move(c, p.deck, "deck")
+			# Designer ruling 2026-11-10 (#10): with Fellowship/pTFS too, exactly one destination applies.
+			if destination.get("chosen", false): return
+			if await e.dec(p).confirm(p, "Put bought card on deck?"):
+				e.move(c, p.deck, "deck")
+				destination.chosen = true
 		"G4nd4lf", "JousterL":
 			var choices = p.discard.filter(func(x): return x != c)
 			for x in await e.choose(p, "Put discard on deck", choices, 0, 1): e.move(x, p.deck, "deck")

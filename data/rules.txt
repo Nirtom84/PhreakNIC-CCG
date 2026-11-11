@@ -30,9 +30,13 @@
 
 [h2]Additional Rules[/h2]
 - If several cards would prevent damage to you, you choose how to split each point among them, including ICE and cards that prevent all damage. You must use available prevention before losing life.
+- Extra turns (Time Travel, TOCTOU Photo-Finish) are full turns: repeat every beginning-of-turn effect.
+- Acquiring (including O.P.R.A.H. Center Deck draws) counts against reserving and Zenthere, but does not trigger buy effects.
+- In copied text, any self-reference (printed name or "this card") means Etch-a-Sketch Skillz.
+- Competing bought-Hero destinations (Fore04, Fellowship, pTFS): the controller chooses exactly one.
 - When effects happen at the same time, the active player chooses their order. This includes start-of-turn effects and buying Rickroll. A buying prohibition blocks that buy.
 - The card printed [b]_NASKEY[/b] counts as [b]_NSAKEY[/b] for card-name checks.
-- Losing life is the same as taking damage, and cards that prevent damage also prevent loss of life.
+- Losing life is the same as taking damage, including mandatory ICE absorption; you cannot choose to lose life instead.
 - [b]ICE counters[/b]: when you would take damage, each point removes one counter from your location instead. Damage beyond the counters left goes through to your life.
 
 [h2]Playing This Version[/h2]

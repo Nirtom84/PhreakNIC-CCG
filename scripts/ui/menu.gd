@@ -63,6 +63,10 @@ func _ready():
  var version = UIStyle.label(self, "v" + str(ProjectSettings.get_setting("application/config/version", "")), 16)
  version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
  version.position -= Vector2(110, 40)
+ var digitized = UIStyle.label(self, "Digitized by Nirtom & Claude", 16)
+ digitized.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+ digitized.position += Vector2(110, -40)
+ digitized.modulate.a = 0.75
  var terminal = UIStyle.label(menu, "> CONNECT / SHUFFLE / HACK ▌", 22)
  terminal.add_theme_color_override("font_color", UIStyle.GREEN)
  if Sfx.visual_effects:

@@ -7,7 +7,12 @@ class FixedDecider extends Decider:
 	var requested_id: String = ""
 	var yes: bool = true
 	var selected_option: int = 0
-	func confirm(_p, _prompt: String) -> bool: return yes
+	var named_id: String = "Hacking"
+	var confirmations: Array[String] = []
+	func name_a_card(_p, _prompt: String) -> String: return named_id
+	func confirm(_p, prompt: String) -> bool:
+		confirmations.append(prompt)
+		return yes
 	func choose_option(_p, _prompt: String, _choices: Array[String]) -> int: return selected_option
 	func choose_cards(_p, _prompt: String, cards: Array, min_n: int, max_n: int) -> Array:
 		for c in cards:
@@ -173,6 +178,50 @@ func run():
 	check(hero in org.attached, "pTFS stores purchased hero")
 	await e.start_turn(0)
 	check(hero in p.hand and org.attached.is_empty(), "pTFS releases heroes at start")
+	# Logs: count targeted hits, including two physical copies of the same name.
+	for holders in [1, 2, 0]:
+		await fixture(3)
+		p = e.active()
+		q = e.state.players[1]
+		e.dec(p).named_id = "Botnet"
+		if holders >= 1: card("Botnet", "hand", 1)
+		if holders == 2: card("Botnet1", "hand", 2)
+		var logs = card("I've got the Logs")
+		var hand_size = p.hand.size()
+		var hits: Array = []
+		e.damage_incoming.connect(func(_source, target, amount, source_card):
+			if source_card == logs: hits.append([target.seat, amount]))
+		check(await e.play_card(p, logs), "Logs plays with %d revealers" % holders)
+		var cost = int(e.db().get_card("Botnet").cost)
+		check(q.life == 100 - (cost if holders >= 1 else 0) and e.state.players[2].life == 100 - (cost if holders == 2 else 0), "Logs damages only its %d revealers once" % holders)
+		check(hits == ([[1, cost], [2, cost]] if holders == 2 else ([[1, cost]] if holders == 1 else [])), "Logs emits one separate hit per revealer")
+		check((logs in e.state.removed) == (holders > 0), "Logs removed exactly when someone reveals")
+		check(p.hand.size() == hand_size - (1 if holders > 0 else 0) and (holders > 0 or logs in p.discard), "Logs whiff draws one and stays in game")
+	await fixture(3)
+	p = e.active()
+	q = e.state.players[1]
+	e.dec(p).named_id = "Jenny"
+	card("What is Truth", "hand", 1)
+	var truth_logs = card("I've got the Logs")
+	await e.play_card(p, truth_logs)
+	check(q.life == 100 - int(e.db().get_card("Jenny").cost) and e.state.players[2].life == 100 and truth_logs in e.state.removed, "Truth always reveals the named card to Logs")
+	# Choose either simultaneous trigger first; saying yes must cause only one redirect.
+	for order in [0, 1]:
+		await fixture()
+		p = e.active()
+		card("The Fellowship of the Token Ring", "play_area")
+		var fore = card("Fore04", "reserve")
+		e.dec(p).selected_option = order
+		e.dec(p).confirmations.clear()
+		var moves: Array = []
+		e.card_moved.connect(func(moved, origin, destination):
+			if moved == fore: moves.append([origin, destination]))
+		p.hacking = 100
+		check(await e.buy_card(p, fore), "Fore04 buys with Fellowship")
+		check((fore in p.hand) != (fore in p.deck), "Fore04 ends in exactly one destination")
+		check((fore in p.deck) == (order == 0) and fore not in p.discard, "Controller selects Fore04 destination by trigger order")
+		check(e.dec(p).confirmations == (["Put bought card on deck?"] if order == 0 else ["Put bought hero in hand?"]), "Second destination prompt suppressed")
+		check(moves.size() == 2, "Fore04 moves once into discard and redirects only once")
 	await fixture(3)
 	p = e.active()
 	q = e.state.players[1]

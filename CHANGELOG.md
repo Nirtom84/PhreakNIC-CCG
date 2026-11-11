@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.14 — Designer rulings
+**Rules update** from the card game's designers (2026-11-10, 18 rulings; full text in `reference/rulings-2026-11-10.md`)
+- **I've got the Logs:** only opponents who reveal the named card take damage (its printed cost), one separate hit each. Before, every opponent took the damage if anyone revealed it. Logs is still removed from the game if anyone reveals the card, and you still draw a card if no one does.
+- **Fore04 + The Fellowship of the Token Ring / pTFS:** buying Fore04 now offers exactly one destination for it (top of deck, hand, or onto pTFS), chosen by you.
+- The other 16 rulings confirm how the game already plays; they are now written into the rules (extra turns repeat start-of-turn effects, O.P.R.A.H. counts as acquiring, ICE absorbs all life loss, and more).
+
+**Main menu**
+- Credit line: "Digitized by Nirtom & Claude".
+
 ## v0.13 — Mog Variant
 **New card set: Mog Variant · PhreakNIC 27**
 - A third card set, alongside the 2025 base game and the 2026 expansion: the 2026 card pool with 48 cards swapped for their Mog Variant versions (Touch Mog, Mog Wonka, The Big Mogger, Who is Mog? and more), with new art and flavor text. Choose it on the main menu or when creating an online game.

@@ -70,7 +70,7 @@ The game is for 2–4 players. *[confirmed]*
 
 ## Life, damage, prevention
 
-- Losing life is treated as taking damage; anything that prevents damage prevents life loss.
+- Losing life is treated as taking damage; anything that prevents damage prevents life loss. ICE counters must absorb life loss just like damage; you cannot choose to lose life instead.
 - If multiple sources would prevent damage, their controller chooses which one prevents each point.
 - **ICE counters** (Locations): "when you would take damage, remove that many counters instead." Prevention is point by point: damage beyond the remaining counters goes through to your life (or to another prevention source). *[confirmed]*
 - A player at 0 life is out. Last player alive wins.
@@ -78,6 +78,7 @@ The game is for 2–4 players. *[confirmed]*
 
 ## Timing
 
+- Extra turns (Time Travel, TOCTOU Photo-Finish) are full turns and re-run every "beginning of your turn" effect.
 - When two effects trigger at the same time, the player whose turn it is chooses the order.
 - "Once per turn" and "as often as you like" abilities on permanents can only be used **on the controller's own turn**. *[confirmed]*
 - Start-of-turn discards happen before you can use the card: if Tableskirts or Unattended Phone is discarded at the start of your turn, you get no {H} from it that turn.
@@ -87,7 +88,7 @@ The game is for 2–4 players. *[confirmed]*
 ## Buying vs. acquiring
 
 - Buying = paying a card's cost (possibly 0 via "for free") to take it. Buying is one form of acquiring.
-- "Acquire" (benthephreak, itsamenathan, Treasure Hunters, etc.) = gain a card without buying. Acquired cards go to your discard pile.
+- "Acquire" (benthephreak, itsamenathan, Treasure Hunters, O.P.R.A.H., etc.) = gain a card without buying. Acquired cards go to your discard pile unless an effect says otherwise.
 - Acquiring does **not** trigger "When you buy this card" or "whenever a player buys" effects, and is still allowed while buying is forbidden (Grass, PhreakMyst). *[confirmed]*
 - "Buy … for free" **is** a buy and does trigger buy effects.
 
@@ -139,7 +140,7 @@ These came out of a second pass over all 152 cards.
 
 ### Card-level rulings *[defaults]*
 
-- **Ruling 9. Etch-a-Sketch Skillz** copies only the effect text of the chosen Action. "This card" in the copied text means Etch-a-Sketch Skillz. It doesn't take the copied card's name or type, and it ignores that card's play restrictions.
+- **Ruling 9. Etch-a-Sketch Skillz** copies only the effect text of the chosen Action. Any self-reference in the copied text (the printed name or "this card") means Etch-a-Sketch Skillz. It doesn't take the copied card's name or type, and it ignores that card's play restrictions.
 - **Ruling 10. Costs in card text** ("costs 4 or less", "costs that amount", "equal to that card's cost") use the printed cost and ignore discounts.
 - **Ruling 11. Oprah Wonka.** "The player to your left" is the next living player in turn order. A pile may be empty. Shuffle your deck afterwards. With fewer than five cards in deck and discard combined, take them all.
 - **Ruling 12. Name matching** ignores case. "Named X" means the whole name is X; "X in its name" means the name contains X. What is Truth? passes every name test, including ones that hurt its owner (Rookie Numbers' "Mog" check, Even More Logo's "_NSAKEY" restriction).
@@ -156,3 +157,26 @@ These came out of a second pass over all 152 cards.
 - **Ruling 23. Altk3y** may take any player's permanent with "phone" in its name (Payphone, Unattended Phone).
 - **Ruling 24. First player** is chosen at random; turn order follows seat order.
 - **Ruling 25. Start-of-turn effects** (including the Rickroll buy) count as simultaneous, so the active player picks their order.
+
+## Rulings from the designers, 2026-11-10
+
+See the [full designer rulings](rulings-2026-11-10.md) for details.
+
+1. Extra turns re-run every beginning-of-turn effect.
+2. O.P.R.A.H.'s Center Deck draws count as acquiring.
+3. The Book must attach an Action if able; attached Actions replay each turn, staying attached when illegal to play that turn.
+4. Nuvious and Still Not Spock may discard an opponent's permanent in play.
+5. Botnet Takeover takes all Botnets in play, including opponents', into your discard pile.
+6. Self-references in copied text mean Etch-a-Sketch Skillz, including when removing itself.
+7. I've got the Logs damages only opponents who reveal the named card, for its printed cost.
+8. With MGCE and ICE, the defender chooses prevention and may preserve ICE counters.
+9. Treasure Hunters spends the chosen {H} even if no matching cost is found.
+10. Fore04, Fellowship and pTFS offer one bought-Hero destination, chosen by the controller.
+11. ICE-counter abilities are usable only on their controller's own turn.
+12. A stolen Juice keeps its counters; the new controller ticks it and loses on its fifth counter.
+13. Nashville 2600 discards your other permanents too and prevents everyone from playing permanents.
+14. Logs deals one separate hit per revealer; remove Logs if anyone reveals, otherwise draw one.
+15. ICE mandatorily absorbs all life loss just like damage.
+16. TOCTOU can break a simultaneous-elimination draw; interrupted extra turns can nest.
+17. Clarion Inn Air Conditioning also drains its controller on their own turn.
+18. What is Truth? always counts as revealing the card named by Logs.
