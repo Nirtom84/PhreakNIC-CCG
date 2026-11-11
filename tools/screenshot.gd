@@ -31,7 +31,7 @@ func run():
 	# Optional PLAYERS=3 or 4 environment variable for multi-bot screenshots.
 	if OS.get_environment("PLAYERS") != "": table.player_count = int(OS.get_environment("PLAYERS"))
 	root.add_child(table)
-	table.fast = true
+	table.bot_pace = 0
 	answer()
 	for f in 30: await process_frame
 	var turns := 0

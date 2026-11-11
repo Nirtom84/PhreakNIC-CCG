@@ -17,6 +17,7 @@ var seat_types: Array = []
 var public_choice: CheckButton
 var pool: OptionButton
 var life: OptionButton
+var bot_pace_choice: OptionButton
 var refresh_elapsed = 0.0
 var listing = false
 var submitting = false
@@ -135,6 +136,7 @@ func browser():
  pool.item_selected.connect(func(_n): CardDB.select_pool(CardDB.POOLS[pool.selected]); create_banned = Sfx.banned_cards(CardDB.POOLS[pool.selected]); bans_button.text = "Banned cards: %d" % create_banned.size())
  UIStyle.label(create, "Starting life", 18)
  life = option(create, ["Standard", "20", "30", "40"], [0,20,30,40].find(Sfx.starting_life))
+ bot_pace_choice = Sfx.pace_option(create, Sfx.bot_pace, func(_value): pass)
  UIStyle.primary(action(create, "Create game", create_game))
  var join_box = section(left, "// JOIN BY CODE")
  var join_row = HBoxContainer.new()
@@ -208,6 +210,7 @@ func create_game():
  body.card_pool = CardDB.POOLS[pool.selected]
  body.banned = create_banned.duplicate()
  body.starting_life = [0,20,30,40][life.selected]
+ body.bot_pace = Sfx.BOT_PACES[bot_pace_choice.selected]
  body.seats = [{"bot": false, "difficulty": 0}]
  for i in seat_count.selected + 1:
   var selected = seat_types[i].selected
@@ -285,7 +288,7 @@ func refresh_rooms():
   for seat in room.seats:
    seats.append("◈ " + BotDifficulty.DISPLAY_NAMES[int(seat.difficulty)] if seat.bot else ("● " + seat.name if not seat.name.is_empty() else "○ Open seat"))
   UIStyle.label(box, " · ".join(seats), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-  UIStyle.label(box, UIStyle.pool_label(room.card_pool) + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  UIStyle.label(box, UIStyle.pool_label(room.card_pool) + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life · bots " + Sfx.pace_label(room.get("bot_pace", 0.5), true).replace(" s", " s/card"), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 func enter(data: Dictionary):
  while hero_picker.close_top(): pass
  while ban_picker.close_top(): pass
@@ -330,6 +333,7 @@ func lobby(room: Dictionary):
   toast.show()
   get_tree().create_timer(2).timeout.connect(func(): if is_instance_valid(toast): toast.hide()))
  UIStyle.label(main, "Share this code with friends", 20)
+ UIStyle.label(main, UIStyle.pool_label(room.card_pool) + " · " + str(room.starting_life) + " life · bots " + Sfx.pace_label(room.get("bot_pace", 0.5), true).replace(" s", " s/card"), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  var host = int(room.host_seat) == int(session.credential.seat)
  for i in room.seats.size():
   var seat = room.seats[i]
@@ -368,6 +372,7 @@ func lobby(room: Dictionary):
   UIStyle.label(settings, "Starting life", 18)
   var lives = option(settings, ["Standard", "20", "30", "40"], [0,20,30,40].find(int(room.starting_life)))
   lives.item_selected.connect(func(n): session.lobby("settings", {"starting_life": [0,20,30,40][n]}))
+  Sfx.pace_option(settings, room.get("bot_pace", 0.5), func(value): session.lobby("settings", {"bot_pace": value}))
   var start = action(settings, "Start", func(): session.lobby("start"))
   UIStyle.primary(start)
   start.disabled = room.seats.any(func(seat): return not seat.bot and seat.name.is_empty())

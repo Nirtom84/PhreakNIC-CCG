@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.15**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.16**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -15,7 +15,8 @@ _Screenshots are from the current version and are refreshed with every release._
 - **Phones:** a phone layout switches on automatically (larger cards and buttons, the log as a drawer; tap a card, then **Play**). Change it under Settings → Layout.
 - **Not sure why a card won't play?** Tap it: the game says why.
 - **After a game:** a match summary with every player's stats, and a result card you can save as an image or share (X, Bluesky, Reddit, Facebook, Discord, or your phone's share sheet in a browser).
-- **Options:** bot speed (Normal / Fast / Instant), music and sound volume, and a "Visual effects" switch that turns off all animation.
+- **Watching the bots:** their plays show as a row of cards, and stay as a recap at the start of your turn until your first click. **Bot pace** sets how fast they play (Instant up to 5 seconds per card).
+- **Options:** bot pace, music and sound volume, and a "Visual effects" switch that turns off all animation.
 
 ## Play in your browser
 **[▶ Play PhreakNIC CCG now at phreaknic-ccg.net](https://phreaknic-ccg.net)**, or use the [GitHub Pages mirror](https://nirtom84.github.io/PhreakNIC-CCG/). Nothing to install. It runs in modern browsers on computers and phones; hold your phone sideways. It's tested in Chrome so far, and Firefox and Safari reports are welcome. The first visit downloads about 28 MB. Saves and settings are kept in that browser.
@@ -23,7 +24,7 @@ _Screenshots are from the current version and are refreshed with every release._
 ## Play online
 Choose **Play online** on the main menu to play other people on the official server:
 - **Open games:** browse the public games and join one with an open seat.
-- **Create game:** make a public or invite-only room for 2–4 players. Fill seats with friends or bots, and pick the card set and starting life.
+- **Create game:** make a public or invite-only room for 2–4 players. Fill seats with friends or bots, and pick the card set and starting life, and bot pace.
 - **Join by code:** type a friend's four-character code. In a browser, an invite link like `phreaknic-ccg.net/join/CODE` opens an identity panel; pick a Hero or enter a handle, then press Join as your name (or Join anyway).
 
 The server runs every game, so nobody can see cards they shouldn't. Your menu handle and Hero are used online.
@@ -116,6 +117,7 @@ godot4.7.1 --headless --path . -s tests/v06_checks.gd    # 2025 / 2026 card sets
 godot4.7.1 --headless --path . -s tests/v07_checks.gd    # browser version: hidden Quit/Exit, rotate prompt, save on leaving the page
 godot4.7.1 --headless --path . -s tests/v08_checks.gd    # card sheet, Play Basics, end-turn confirmation, 3-4 players, starting life, bug report
 godot4.7.1 --headless --path . -s tests/v15_checks.gd    # card movement, phone layout, match stats and sharing, tutorial, countdown, emotes
+godot4.7.1 --headless --path . -s tests/v16_checks.gd    # bot pace, turn recap, host-set online bot pace
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```
 

@@ -168,6 +168,8 @@ func _receive(message: Dictionary):
 			if not seat is Dictionary: return
 			if not seat.get("difficulty", 1) is int or seat.get("difficulty", 1) < 0 or seat.get("difficulty", 1) > 2: return
 			if not seat.get("bot", false) is bool: return
+		var pace = message.get("bot_pace", 0.5)
+		if not preload("res://scripts/core/bot_pace.gd").allowed(pace): return
 		for field in ["seed", "starting_life"]:
 			if message.has(field) and not message[field] is int: return
 		if not message.get("banned", []) is Array: return
@@ -179,7 +181,7 @@ func _receive(message: Dictionary):
 			_new_game()
 			room = str(message.get("room", ""))
 			game.room_label = room
-			if not game.setup(message.seats, str(message.get("card_pool", "2026")), int(message.get("starting_life", 0)), int(message.get("seed", 1)), message.get("banned", [])):
+			if not game.setup(message.seats, str(message.get("card_pool", "2026")), int(message.get("starting_life", 0)), int(message.get("seed", 1)), message.get("banned", []), float(message.get("bot_pace", 0.5))):
 				for seat in message.seats.size(): _send({"t": "to", "seat": seat, "msg": {"t": "error", "reason": "At least 40 center-deck cards must remain. Change the banned cards and create a new room."}})
 				_send({"t": "over", "winner": -1, "reason": "banned_minimum"})
 				return

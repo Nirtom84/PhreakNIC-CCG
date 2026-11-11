@@ -150,7 +150,7 @@ func ui():
  var table = load("res://scenes/table.tscn").instantiate()
  table.auto_drive = false
  table.seed_value = 41
- table.fast = true
+ table.bot_pace = 0
  root.add_child(table)
  current_scene = table
  await process_frame
@@ -190,9 +190,8 @@ func ui():
  auto_end.button_pressed = not auto_end.button_pressed
  verify(settings.auto_end_turn == auto_end.button_pressed, "Auto-end applies live")
  settings.auto_end_turn = false
- var speed = table.bot_speed
- table.toggle_speed()
- verify(table.bot_speed == (speed + 1) % 3 and settings.bot_speed == table.bot_speed and table.speed_button.text == "» " + ["Normal", "Fast", "Instant"][table.bot_speed], "Speed sync")
+ table.set_bot_pace(1.5)
+ verify(table.bot_pace == 1.5 and settings.bot_pace == 1.5 and table.speed_button.text == "» 1.5 s", "Pace sync")
  table.pending = true
  table.update_save_button()
  verify(table.save_button.disabled and not table.save_game(), "Dialog save refused and disabled")

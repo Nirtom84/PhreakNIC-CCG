@@ -160,3 +160,22 @@ test('emotes relay with the authenticated seat, silently drop flood and malforme
   const flood=sock();r.clients.set(flood,{seat:1});const before=sent.length;for(let j=0;j<400&&!flood.closed;j++)await r.message(flood,JSON.stringify({type:'emote',id:1}));assert.equal(flood.closed?.code,1008);assert(sent.length-before<=1);
  }finally{Date.now=original;}
 });
+
+test('only lobby host sets bot pace and descriptions include defaults',async()=>{
+ const r=makeRoom(),host=sock(),guest=sock();r.clients.set(host,{seat:0});r.clients.set(guest,{seat:1});
+ await assert.rejects(()=>r.message(guest,JSON.stringify({t:'lobby',action:'settings',bot_pace:5})),/host/);
+ await r.message(host,JSON.stringify({t:'lobby',action:'settings',bot_pace:1.5}));assert.equal(r.r.bot_pace,1.5);
+ await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'settings',bot_pace:'1'})),/bot_pace/);
+ let sent;r.broadcast=m=>sent=m;Room.prototype.broadcastRoom.call(r);assert.equal(sent.bot_pace,1.5);
+ delete r.r.bot_pace;Room.prototype.broadcastRoom.call(r);assert.equal(sent.bot_pace,0.5);
+});
+
+test('container setup includes configured pace and older rooms default to half a second',async()=>{
+ for(const pace of [undefined,0,5]){
+  const r=makeRoom(),sent=[];r.r.bot_pace=pace;
+  const ws={readyState:1,send(){},addEventListener(kind,callback){if(kind==='message')this.ready=callback;},accept(){this.ready({data:JSON.stringify({t:'ready'})});}};
+  r.ctx={waitUntil(){},container:{running:true,setInactivityTimeout(){},getTcpPort(){return {fetch:async request=>request.url.endsWith('/health')?{status:200}:{webSocket:ws}};}}};
+  r.env={LOBBY:binding({claim:async()=>null,bump:async()=>{}})};r.watch=()=>{};r.broadcast=()=>{};r.linkSend=m=>sent.push(m);
+  await r.recover();assert.equal(sent.find(m=>m.t==='setup').bot_pace,pace??0.5);
+ }
+});

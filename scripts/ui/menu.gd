@@ -241,7 +241,7 @@ func _ready():
   Sfx.save())
  UIStyle.music_controls(volume_row)
  UIStyle.layout_setting(volume_row)
- UIStyle.button(help_row, "Bot speed: " + ["Normal", "Fast", "Instant"][Sfx.bot_speed], func(): Sfx.bot_speed = (Sfx.bot_speed + 1) % 3; Sfx.save(); get_tree().reload_current_scene())
+ Sfx.pace_option(help_row, Sfx.bot_pace, func(value): Sfx.bot_pace = value; Sfx.save())
  UIStyle.button(menu, "Quit", func(): get_tree().quit()).visible = not UIStyle.is_web()
  if UIStyle.is_web():
   # Web version only: download the installable app, or browse every release.

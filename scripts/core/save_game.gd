@@ -213,7 +213,12 @@ static func read() -> Dictionary:
 		if not table.log_entries is Array: return {}
 		for entry in table.log_entries:
 			if not entry is String: return {}
-	if not table.get("log") is String or not table.get("fast") is bool: return {}
+	if not table.get("log") is String: return {}
+	if table.has("bot_pace"):
+		if not (table.bot_pace is int or table.bot_pace is float): return {}
+	elif table.has("bot_speed"):
+		if not (table.bot_speed is int or table.bot_speed is float) or not (table.bot_speed == 0 or table.bot_speed == 1 or table.bot_speed == 2): return {}
+	elif not table.get("fast") is bool: return {}
 	if not (table.get("player_count") is int or table.get("player_count") is float) or table.player_count != state.players.size(): return {}
 	if not table.get("difficulties") is Array or table.difficulties.size() != state.players.size(): return {}
 	for i in state.players.size():

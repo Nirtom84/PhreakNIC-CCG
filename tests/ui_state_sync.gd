@@ -141,7 +141,7 @@ func run():
   quit(1))
  for seed_id in [1, 17, 42, 137, 2026]:
   var table = load("res://scenes/table.tscn").instantiate()
-  table.fast = true
+  table.bot_pace = 0
   table.auto_drive = seed_id == 17
   table.seed_value = seed_id
   root.add_child(table)

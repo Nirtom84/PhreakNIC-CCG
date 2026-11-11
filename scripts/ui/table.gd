@@ -30,10 +30,9 @@ var banned: Array = []
 var ban_picker: Control
 var scripted_decider: Decider
 var auto_drive: bool = true
-var bot_speed: int = 0
-var fast: bool:
- get: return bot_speed == 2
- set(value): bot_speed = 2 if value else 0
+var bot_pace: float = -1.0
+var pace_popup: PopupPanel
+var last_bot_action_delay = 0.0
 var seed_value: int = 0
 var pending: bool = false
 # Answer the Back button / Escape gives the open dialog: its Cancel-like option, or null when Back should do nothing.
@@ -81,7 +80,7 @@ func _ready():
  CardDB.select_pool(card_pool)
  install_page_listeners()
  get_tree().auto_accept_quit = false
- bot_speed = (2 if fast else Sfx.bot_speed) if resume_data.is_empty() else int(resume_data.table.get("bot_speed", 2 if resume_data.table.get("fast", false) else 0))
+ bot_pace = (Sfx.bot_pace if bot_pace < 0 else Sfx.nearest(bot_pace)) if resume_data.is_empty() else Sfx.saved_pace(resume_data.table)
  UIStyle.rotate_prompt(self)
  UIStyle.apply(self)
  UIStyle.background(self)
@@ -109,7 +108,7 @@ func _ready():
  toolbar.add_child(turn_avatar)
  banner = UIStyle.label(toolbar, "Connecting…", 28)
  banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- speed_button = UIStyle.button(toolbar, "» " + ["Normal", "Fast", "Instant"][bot_speed], toggle_speed)
+ speed_button = UIStyle.button(toolbar, "» " + Sfx.pace_label(bot_pace, true), open_pace_popup)
  mute_button = UIStyle.button(toolbar, "♪ OFF" if Sfx.muted else "♪ ON", func():
   Sfx.muted = not Sfx.muted
   Sfx.save())
@@ -189,7 +188,7 @@ func _ready():
   difficulty = engine.state.players[1].difficulty
   seat_names.assign(resume_data.table.seat_names)
   seat_heroes.assign(resume_data.table.seat_heroes)
-  bot_speed = int(resume_data.table.get("bot_speed", 2 if resume_data.table.get("fast", false) else 0))
+  bot_pace = Sfx.saved_pace(resume_data.table)
   engine.deciders = choices
   for p in engine.state.players.slice(1): engine.deciders.append(BotDecider.new(engine, p.difficulty))
   log_entries = resume_data.table.get("log_entries", [resume_data.table.log]).slice(-400)
@@ -222,10 +221,12 @@ func _ready():
   for card in engine.state.center_row:
    if card != null and card.id == "Rickroll": opening_rickroll = card
   Sfx.play("your_turn" if p.seat == human_seat else "turn_start")
-  if p.seat == human_seat: clear_spotlights(1.5)
+  if p.seat == human_seat: begin_recap()
   append_log("TURN %d · Seat %d connected" % [engine.state.turn, p.seat])
   turn_band(p)
   redraw())
+ engine.turn_ended.connect(func(p):
+  if p.seat == human_seat: end_recap_turn())
  engine.game_over.connect(game_over)
  if resume_data.is_empty(): append_log("Network ready · %d players connected" % player_count)
  engine.turn_driver = drive_reaction
@@ -749,7 +750,7 @@ func reveal_staged_cards(staged: Array):
   var widget = reference.get_ref()
   if widget != null and not widget.has_meta("flight"): widget.modulate.a = 1
 func animate_moves(moves, old_rects, old_anchors, old_locations, next_locations):
- if bot_speed == 2 or not Sfx.visual_effects: return
+ if bot_pace == 0 or not Sfx.visual_effects: return
  var generation = rebuild_count
  var staged: Array = []
  for uid in moves:
@@ -759,7 +760,7 @@ func animate_moves(moves, old_rects, old_anchors, old_locations, next_locations)
    staged.append(weakref(widget))
    widget.modulate.a = 0
  await get_tree().process_frame
- if not is_inside_tree() or generation != rebuild_count or bot_speed == 2 or not Sfx.visual_effects:
+ if not is_inside_tree() or generation != rebuild_count or bot_pace == 0 or not Sfx.visual_effects:
   reveal_staged_cards(staged)
   return
  var new_rects = card_rects()
@@ -904,8 +905,11 @@ func end_human_turn(automatic: bool = false):
  redraw()
 func drive_reaction(p):
  var driver = BotPlayer.new(engine)
- driver.action_delay = [0.6, 0.15, 0.0][bot_speed]
- driver.yield_frame = bot_speed == 2
+ driver.pace_provider = func():
+  last_bot_action_delay = bot_pace
+  return bot_pace
+ # Only used for zero delay, including a change to Instant during this turn.
+ driver.yield_frame = true
  await driver.take_turn(p)
 func drive_bot():
  if driving or engine.busy or engine.state.finished or engine.reaction_depth > 0: return
@@ -915,6 +919,7 @@ func drive_bot():
  driving = false
  redraw()
 func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: int, multi: bool, searchable: bool = false):
+ dismiss_recap()
  hide_zoom()
  hover_serial += 1
  pending = true
@@ -929,7 +934,8 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  var overlay = UIStyle.panel()
  overlay.add_to_group("touch_modal")
  # Above bot card spotlights (z 15) so a prompt during a bot turn is never hidden.
- overlay.z_index = 20
+ # After the game the summary sits at 50; a dialog opened from it (View final deck) must draw above it.
+ overlay.z_index = 60 if online_over or (engine != null and engine.state != null and engine.state.finished) else 20
  overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  add_child(overlay)
  var box = VBoxContainer.new()
@@ -1138,53 +1144,119 @@ func show_log_card(id: String):
  id = id.uri_decode()
  if not CardDB.cards.has(id): return
  inspect_card({"id": id})
-## Fades out bot spotlights so they never hide the center row during the human's turn.
+## Fades the non-interactive opponent row and recap chip together.
 func clear_spotlights(delay: float):
- for panel in spotlights.duplicate():
+ spotlight_serial += 1
+ var fading = spotlights.duplicate()
+ if is_instance_valid(recap_chip): fading.append(recap_chip)
+ recap_chip = null
+ for panel in fading:
   if not is_instance_valid(panel): continue
+  spotlights.erase(panel)
+  if not Sfx.visual_effects:
+   panel.queue_free()
+   continue
   var tween = UIStyle.animation(panel)
   tween.tween_interval(delay)
-  tween.tween_property(panel, "modulate:a", 0.0, UIStyle.motion(0.3))
+  tween.tween_property(panel, "modulate:a", 0.0, UIStyle.motion(0.2))
   tween.tween_callback(func():
-   spotlights.erase(panel)
    if is_instance_valid(panel): panel.queue_free())
-func spotlight(id: String, caption: String):
- # Four side-by-side slots over the center row; wait for a free slot so cards never overlap.
- var slot = -1
- while slot < 0:
-  var used = spotlights.map(func(s): return s.get_meta("slot"))
-  for i in 4:
-   if i not in used:
-    slot = i
-    break
-  if slot < 0: await get_tree().create_timer(0.1).timeout
- # A queued spotlight that only gets a slot once the human's turn has begun is dropped.
- if not is_inside_tree() or (engine.active().seat == human_seat and not engine.state.finished): return
+const SPOTLIGHT_LARGE = Vector2(330, 450)
+const SPOTLIGHT_SMALL = Vector2(120, 164)
+const SPOTLIGHT_THUMBS = 9
+var spotlight_serial = 0
+## Shows what opponents play as one row over the center row: the newest card large with its caption,
+## earlier cards of the same stretch as thumbnails to its right (newest first). Nothing is queued or
+## dropped, so a long bot turn stays readable without opening the log.
+var recap_history: Array = []
+var recap_count = 0
+var recap_active = false
+var recap_names: Array[String] = []
+var recap_chip: Label
+var recap_elapsed = 0.0
+func dismiss_recap():
+ if not recap_active: return
+ recap_active = false
+ clear_spotlights(0)
+func end_recap_turn():
+ dismiss_recap()
+ clear_spotlights(0)
+ recap_count = 0
+ recap_names.clear()
+ recap_history.clear()
+func begin_recap():
+ if recap_count == 0: return
+ # Rebuild even if the opponent inactivity timeout already hid the live row.
+ for panel in spotlights: panel.queue_free()
+ spotlights.clear()
+ for entry in recap_history:
+  spotlights.append(make_spotlight_panel(entry.id, entry.caption))
+ spotlight_serial += 1
+ recap_active = true
+ recap_elapsed = 0
+ if is_instance_valid(recap_chip): recap_chip.queue_free()
+ recap_chip = UIStyle.label(self, (recap_names[0] + "'s turn" if recap_names.size() == 1 else "Since your turn") + ": %d cards · tap to dismiss" % recap_count, 16)
+ recap_chip.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, UIStyle.CYAN, 8))
+ recap_chip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ recap_chip.z_index = 15
+ # The caption sits just above the row so all the thumbnails fit beside the log.
+ recap_chip.position = Vector2(30, 215 - recap_chip.get_minimum_size().y - 6)
+ var left = 30
+ for i in spotlights.size():
+  var panel = spotlights[i]
+  panel.get_child(0).get_child(0).custom_minimum_size = SPOTLIGHT_SMALL
+  panel.get_child(0).get_child(1).hide()
+  panel.reset_size()
+  panel.position = Vector2(left + i * (SPOTLIGHT_SMALL.x + 12), 215)
+func make_spotlight_panel(id: String, caption: String) -> Control:
  var panel = PanelContainer.new()
- panel.set_meta("slot", slot)
  panel.mouse_filter = Control.MOUSE_FILTER_IGNORE
  panel.z_index = 15
- panel.position = Vector2(30 + slot * 360, 215)
  var box = VBoxContainer.new()
  box.mouse_filter = Control.MOUSE_FILTER_IGNORE
  panel.add_child(box)
- var image = UIStyle.picture(CardDB.image_path(id), Vector2(330, 450))
+ var image = UIStyle.picture(CardDB.image_path(id), SPOTLIGHT_LARGE)
  image.mouse_filter = Control.MOUSE_FILTER_IGNORE
  box.add_child(image)
  var label = UIStyle.label(box, caption, 16)
- label.custom_minimum_size.x = 330
+ label.custom_minimum_size.x = SPOTLIGHT_LARGE.x
  label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  label.mouse_filter = Control.MOUSE_FILTER_IGNORE
  add_child(panel)
- spotlights.append(panel)
+ panel.position = Vector2(30, 215)
+ return panel
+func spotlight_timeout() -> float:
+ return maxf(6.0, bot_pace * 2 + 4) if online_session == null else 6.0
+func spotlight(id: String, caption: String):
+ if not is_inside_tree() or (engine.active().seat == human_seat and not engine.state.finished): return
+ recap_count += 1
+ var opponent = caption.split(" played ")[0].split(" bought ")[0].split(" reserved ")[0]
+ if opponent not in recap_names: recap_names.append(opponent)
+ recap_history.push_front({"id": id, "caption": caption})
+ if recap_history.size() > SPOTLIGHT_THUMBS + 1: recap_history.pop_back()
+ var panel = make_spotlight_panel(id, caption)
+ spotlights.push_front(panel)
+ while spotlights.size() > SPOTLIGHT_THUMBS + 1:
+  var oldest = spotlights.pop_back()
+  if is_instance_valid(oldest): oldest.queue_free()
+ for i in range(1, spotlights.size()):
+  var older = spotlights[i]
+  if not is_instance_valid(older): continue
+  # Earlier cards shrink to thumbnails and slide along; their caption goes (the log has it).
+  older.z_index = 14
+  older.get_child(0).get_child(0).custom_minimum_size = SPOTLIGHT_SMALL
+  older.get_child(0).get_child(1).visible = false
+  older.reset_size()
+  var target = Vector2(30 + SPOTLIGHT_LARGE.x + 20 + (i - 1) * (SPOTLIGHT_SMALL.x + 12), 215)
+  if Sfx.visual_effects: UIStyle.animation(older).tween_property(older, "position", target, UIStyle.motion(0.18))
+  else: older.position = target
  panel.modulate.a = 0 if Sfx.visual_effects else 1
- var tween = UIStyle.animation(panel)
- tween.tween_property(panel, "modulate:a", 1.0, UIStyle.motion(0.2))
- tween.tween_interval(4.6)
- tween.tween_property(panel, "modulate:a", 0.0, UIStyle.motion(0.2))
- tween.tween_callback(func():
-  spotlights.erase(panel)
-  if is_instance_valid(panel): panel.queue_free())
+ if Sfx.visual_effects: UIStyle.animation(panel).tween_property(panel, "modulate:a", 1.0, UIStyle.motion(0.2))
+ # With no further plays for a while (an opponent thinking online), the row clears itself.
+ spotlight_serial += 1
+ var serial = spotlight_serial
+ await get_tree().create_timer(spotlight_timeout()).timeout
+ if is_inside_tree() and not recap_active and serial == spotlight_serial: clear_spotlights(0.0)
 func moved(_card, _from, _to):
  if _to == "removed": match_stats.removed(_card.owner)
  var seat = _card.owner
@@ -1377,7 +1449,7 @@ func menu():
  audio_row.add_child(volume)
  volume.value_changed.connect(func(value): Sfx.volume = value; Sfx.save())
  UIStyle.music_controls(audio_row)
- if online_session == null: UIStyle.button(box, "Bot speed: " + ["Normal", "Fast", "Instant"][bot_speed], func(): toggle_speed(); close_menu(); menu()).custom_minimum_size.y = 56
+ if online_session == null: Sfx.pace_option(box, bot_pace, set_bot_pace)
  UIStyle.button(box, "Rules", func():
   close_menu()
   rules_overlay = RulesPage.open(self)).custom_minimum_size.y = 56
@@ -1403,13 +1475,19 @@ func close_menu():
   game_menu.queue_free()
  game_menu = null
  auto_end_elapsed = 0
-func toggle_speed():
- bot_speed = (bot_speed + 1) % 3
- Sfx.bot_speed = bot_speed
+func set_bot_pace(value: float):
+ bot_pace = Sfx.nearest(value)
+ Sfx.bot_pace = bot_pace
  Sfx.save()
  sync_options()
+func open_pace_popup():
+ if is_instance_valid(pace_popup): pace_popup.queue_free()
+ pace_popup = PopupPanel.new()
+ add_child(pace_popup)
+ Sfx.pace_option(pace_popup, bot_pace, func(value): set_bot_pace(value); pace_popup.hide())
+ pace_popup.popup_centered()
 func sync_options():
- speed_button.text = "» " + ["Normal", "Fast", "Instant"][bot_speed]
+ speed_button.text = "» " + Sfx.pace_label(bot_pace, true)
  mute_button.text = "♪ OFF" if Sfx.muted else "♪ ON"
 func can_save_uncached() -> bool:
  if tutorial_mode: return false
@@ -1419,7 +1497,7 @@ func save_game() -> bool:
  if not can_save(): return false
  saving = true
  auto_end_elapsed = 0
- var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[human_seat], "bot_speed": bot_speed, "fast": fast, "log": "".join(log_entries), "log_entries": log_entries, "match_stats": match_stats.to_dict()})
+ var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[human_seat], "bot_pace": bot_pace, "log": "".join(log_entries), "log_entries": log_entries, "match_stats": match_stats.to_dict()})
  saving = false
  return ok
 func auto_save():
@@ -1612,6 +1690,7 @@ func go_back():
  else: menu()
 
 func _input(event):
+ if recap_active and (event is InputEventMouseButton or event is InputEventScreenTouch or event is InputEventKey) and event.pressed: dismiss_recap()
  if event is InputEventScreenTouch or event is InputEventScreenDrag or (event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION):
   hover_serial += 1
   hide_zoom()
@@ -1648,6 +1727,9 @@ func nothing_left() -> bool:
  refresh_action_cache()
  return cached_nothing
 func _process(delta):
+ if recap_active:
+  recap_elapsed += delta
+  if recap_elapsed >= 20: dismiss_recap()
  if engine != null and engine.state != null and not match_stats.finished: match_stats.duration += delta
  if engine == null or engine.state == null: return
  position_countdowns()
@@ -1735,6 +1817,7 @@ func report_bug():
  load("res://scripts/ui/bug_report.gd").open(details)
 
 func prevention_choice(amount: int, sources: Array) -> Array:
+ dismiss_recap()
  pending = true
  back_answer = null
  var values: Array = []
@@ -1803,6 +1886,7 @@ func online_action(kind: String, uid = null, index = null):
  online_session.client.send_action(kind, uid, index)
  redraw()
 func setup_online():
+ bot_pace = Sfx.nearest(online_session.room.get("bot_pace", 0.5))
  var client = online_session.client
  emote_ui = load("res://scripts/ui/emotes.gd").new()
  emote_ui.table = self
@@ -1936,8 +2020,10 @@ func online_event(data: Dictionary):
   "turn_started":
    match_stats.turn(int(data.seat))
    Sfx.play("your_turn" if data.seat == human_seat else "turn_start")
-   if data.seat == human_seat: clear_spotlights(1.5)
+   if data.seat == human_seat: begin_recap()
    turn_band(engine.state.players[data.seat])
+  "turn_ended":
+   if data.seat == human_seat: end_recap_turn()
   "draw": Sfx.play("card_draw")
   "ice_counter_removed": Sfx.play("ice")
   "played", "bought", "reserved":

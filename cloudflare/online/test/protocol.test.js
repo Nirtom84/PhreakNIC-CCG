@@ -16,7 +16,7 @@ test('names, seat fields, and settings reject malformed values',()=>{for(const n
 test('CORS permits only listed origins and HTTP loopback',()=>{for(const o of [null,'https://phreaknic-ccg.net','https://www.phreaknic-ccg.net','https://nirtom84.github.io','http://localhost:8080','http://127.0.0.1:1234'])assert(originAllowed(o));for(const o of ['null','https://evil.test','https://phreaknic-ccg.net.evil.test','http://localhost.evil.test:80','https://localhost:1234','http://localhost:8080/path'])assert(!originAllowed(o));});
 test('routes match methods and exact paths',()=>{assert.deepEqual(route('POST','/rooms/AB23/join'),{kind:'join',code:'AB23'});assert.equal(route('GET','/ws/room/AB23').kind,'ws');assert.equal(route('GET','/rooms').kind,'list');assert.equal(route('POST','/rooms').kind,'create');assert.equal(route('GET','/health').kind,'health');for(const [m,p]of [['GET','/rooms/AB23/join'],['POST','/ws/room/AB23'],['GET','/ws/room/ABO1'],['GET','/health/']])assert.equal(route(m,p),null);});
 test('game payload remains opaque and unchanged',()=>{const msg={t:'answer',nested:{secret:[null,1,'x']}};const r=wrap(2,msg);assert.deepEqual(r,{t:'from',seat:2,msg});assert.equal(r.msg,msg);});
-test('public summary includes avatars but omits tokens, snapshots and closed rooms',()=>{const r={...creation(input()),code:'AB23',created:123,started:false,over:false,snapshot:{secret:1}};assert.deepEqual(summary(r),{banned_count:0,code:'AB23',host:'Nirtom',seats:[{name:'Nirtom',hero:'nirtom',bot:false,difficulty:0},{name:'',hero:'',bot:false,difficulty:0}],open_seats:1,card_pool:'2026',starting_life:0,version:'0.09',created:123});assert(isOpen(r));for(const patch of [{public:false},{started:true},{over:true},{seats:[r.seats[0],{bot:true}]}])assert(!isOpen({...r,...patch}));});
+test('public summary includes avatars but omits tokens, snapshots and closed rooms',()=>{const r={...creation(input()),code:'AB23',created:123,started:false,over:false,snapshot:{secret:1}};assert.deepEqual(summary(r),{banned_count:0,code:'AB23',host:'Nirtom',seats:[{name:'Nirtom',hero:'nirtom',bot:false,difficulty:0},{name:'',hero:'',bot:false,difficulty:0}],open_seats:1,card_pool:'2026',starting_life:0,bot_pace:0.5,version:'0.09',created:123});assert(isOpen(r));for(const patch of [{public:false},{started:true},{over:true},{seats:[r.seats[0],{bot:true}]}])assert(!isOpen({...r,...patch}));});
 
 test('release version gate accepts matching or unconfigured versions',()=>{
  for(const required of [undefined,'']) for(const client of ['0.09','0.10']) assert.doesNotThrow(()=>checkVersion(client,required));
@@ -82,4 +82,11 @@ test('emotes accept only the eight integer presets and enforce sliding rate limi
  for(const m of [null,[],{type:'emote',id:0,seat:1},{type:'emote',id:0,extra:'x'.repeat(70000)}])assert(!validEmote(m));
  let stamps=[];for(let i=0;i<10;i++){const r=emoteRate(stamps,i*3000);assert(r.allowed);stamps=r.stamps;assert(!emoteRate(stamps,i*3000+2999).allowed);}
  assert(!emoteRate(stamps,30000).allowed);assert(emoteRate(stamps,60000).allowed);
+});
+
+test('bot pace validates exact numeric choices and defaults only absent creation fields',()=>{
+ for(const bot_pace of [0,0.25,0.5,1,1.5,2,3,5]){assert.equal(creation({...input(),bot_pace}).bot_pace,bot_pace);assert.deepEqual(settings({bot_pace},true),{bot_pace});}
+ for(const bot_pace of [-1,0.1,6,'0.5',true,null,NaN,Infinity])assert.throws(()=>settings({bot_pace},true));
+ assert.equal(creation(input()).bot_pace,0.5);assert.deepEqual(settings({},true),{});
+ assert.equal(summary({...creation(input()),bot_pace:undefined}).bot_pace,0.5);
 });

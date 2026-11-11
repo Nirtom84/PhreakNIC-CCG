@@ -148,7 +148,7 @@ export class Room extends DurableObject {
   connected(seat) {return [...this.clients.values()].some(c=>c.seat===seat);}
   send(ws,v) {try{ws.send(JSON.stringify(v));}catch{}}
   broadcast(v) {for(const ws of this.clients.keys())this.send(ws,v);}
-  broadcastRoom() {const r=this.r;this.broadcast({t:'room',banned:r.banned||[],code:r.code,seats:r.seats.map((s,i)=>({name:s.name,hero:s.hero,bot:s.bot,difficulty:s.difficulty,connected:this.connected(i)})),host_seat:r.host_seat,started:r.started,public:r.public,card_pool:r.card_pool,starting_life:r.starting_life});}
+  broadcastRoom() {const r=this.r;this.broadcast({t:'room',banned:r.banned||[],code:r.code,seats:r.seats.map((s,i)=>({name:s.name,hero:s.hero,bot:s.bot,difficulty:s.difficulty,connected:this.connected(i)})),host_seat:r.host_seat,started:r.started,public:r.public,card_pool:r.card_pool,starting_life:r.starting_life,bot_pace:r.bot_pace??0.5});}
   linkSend(v) {if(this.link?.readyState===1)this.link.send(JSON.stringify(v));}
   async fetch(req) {
     try {
@@ -275,7 +275,7 @@ export class Room extends DurableObject {
         });
         if(ws.readyState!==1||this.link!==ws)throw new Error('link lost');
         if(this.r.snapshot){await quiet(()=>lobby(this.env).bump(['server.restores']));this.linkSend({t:'restore',room:this.r.code,snapshot:this.r.snapshot});}
-        else this.linkSend({t:'setup',room:this.r.code,seats:this.r.seats.map(({name,hero,bot,difficulty,token})=>({name,hero,bot,difficulty,token:bot?'':token})),card_pool:this.r.card_pool,banned:this.r.banned||[],starting_life:this.r.starting_life,seed:this.r.seed});
+        else this.linkSend({t:'setup',room:this.r.code,seats:this.r.seats.map(({name,hero,bot,difficulty,token})=>({name,hero,bot,difficulty,token:bot?'':token})),card_pool:this.r.card_pool,banned:this.r.banned||[],starting_life:this.r.starting_life,bot_pace:this.r.bot_pace??0.5,seed:this.r.seed});
         for(let seat=0;seat<this.r.seats.length;seat++)if(this.connected(seat))this.linkSend({t:'connect',seat,version:this.r.version});
         this.broadcast({t:'server',status:'ok'});return;
       }catch(e){if(!this.r||this.sleeping||this.r.over||gen!==this.generation)return;console.error('room',this.r.code,'attempt',attempt,'failed:',e&&e.stack||e);++this.generation;this.link?.close();this.link=null;}

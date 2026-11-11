@@ -21,23 +21,23 @@ func run():
  var style = load("res://scripts/ui/style.gd")
  var script = load("res://scripts/ui/sfx.gd")
  var config = ConfigFile.new()
- verify(script.migrated_speed(config) == 0, "Default normal speed")
+ verify(script.migrated_pace(config) == 0.5, "Default pace")
  for old in [false, true]:
   config.set_value("game", "bot_fast", old)
-  verify(script.migrated_speed(config) == (2 if old else 0), "Legacy speed migration")
+  verify(script.migrated_pace(config) == (0.0 if old else 0.5), "Legacy speed migration")
  config.set_value("game", "bot_speed", 1)
- verify(script.migrated_speed(config) == 1, "New speed overrides legacy")
+ verify(script.migrated_pace(config) == 0.25, "Speed overrides legacy")
  for value in [-1, 3, "1", true]:
   config.set_value("game", "bot_speed", value)
-  verify(script.migrated_speed(config) == 2, "Invalid speed uses migration")
- for speed in 3:
-  settings.bot_speed = speed
+  verify(script.migrated_pace(config) == 0, "Invalid speed uses migration")
+ for speed in script.BOT_PACES:
+  settings.bot_pace = speed
   settings.music_volume = 0.23
   settings.music_muted = true
   settings.save()
   var restored = script.new()
   root.add_child(restored)
-  verify(restored.bot_speed == speed, "Speed persists")
+  verify(restored.bot_pace == speed, "Speed persists")
   verify(is_equal_approx(restored.music_volume, 0.23) and restored.music_muted, "Music persists")
   restored.free()
  for invalid in [-1, 2, "0.5", true, INF, NAN]:
@@ -84,7 +84,7 @@ func run():
  settings.auto_end_turn = false
  var table = load("res://scenes/table.tscn").instantiate()
  table.auto_drive = false
- table.fast = true
+ table.bot_pace = 0
  table.seed_value = 41
  root.add_child(table)
  await process_frame
@@ -99,13 +99,13 @@ func run():
  widget = table.card_widget(card, "hand", 100)
  verify(widget.find_child("LegalBadge", true, false) == null, "Unplayable card has no badge")
  widget.free()
- for speed in 3:
-  table.bot_speed = speed
+ for speed in script.BOT_PACES:
+  table.bot_pace = speed
   table.sync_options()
-  verify(table.speed_button.text == "» " + ["Normal", "Fast", "Instant"][speed], "Speed label")
+  verify(table.speed_button.text == "» " + settings.pace_label(speed, true), "Speed label")
  # Stage 2: exercise the deferred path even on the headless test runner.
  settings.visual_effects = true
- table.bot_speed = 0
+ table.bot_pace = 0.5
  table.redraw_now()
  await process_frame
  await process_frame
@@ -188,7 +188,7 @@ func run():
  await create_timer(0.8).timeout
  for mode in [0, 1]:
   settings.visual_effects = mode == 1
-  table.bot_speed = 2 if mode == 1 else 0
+  table.bot_pace = 0 if mode == 1 else 0.5
   var draw = human.deck.back()
   table.engine.move(draw, human.hand, "hand")
   table.redraw_now()
@@ -355,7 +355,7 @@ func collect_buttons(node: Node, result: Array):
 func stats_checks():
  var table = load("res://scenes/table.tscn").instantiate()
  table.auto_drive = false
- table.fast = true
+ table.bot_pace = 0
  table.seed_value = 51
  root.add_child(table)
  await process_frame
@@ -413,6 +413,14 @@ func stats_checks():
  deck_button.pressed.emit()
  await process_frame
  verify(table.pending, "Final deck opens existing card viewer")
+ # The viewer must draw above the summary; behind it, it still took every click and the screen looked frozen.
+ var summary_z = 0
+ var node = summary
+ while node != null and node != table:
+  if node is CanvasItem: summary_z = maxi(summary_z, node.z_index)
+  node = node.get_parent()
+ var viewer = table.get_children().filter(func(n): return n is PanelContainer and n.z_index > summary_z and n != summary and not n.is_ancestor_of(summary))
+ verify(not viewer.is_empty(), "Final deck viewer draws above the summary (summary z %d)" % summary_z)
  table.answered.emit(null)
  await process_frame
  await share_checks(table, engine.state.winner)
@@ -459,7 +467,7 @@ func tutorial_checks():
   var table = load("res://scenes/table.tscn").instantiate()
   table.tutorial_mode = true
   table.auto_drive = false
-  table.fast = true
+  table.bot_pace = 0
   root.add_child(table)
   await process_frame
   var engine = table.engine

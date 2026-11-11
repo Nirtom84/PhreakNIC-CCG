@@ -122,7 +122,7 @@ func run():
  var old_auto_end = settings.auto_end_turn
  settings.auto_end_turn = false
  opening.seed_value = 1
- opening.fast = true
+ opening.bot_pace = 0
  opening.starting_life = 31
  opening.scripted_decider = Decider.new()
  root.add_child(opening)

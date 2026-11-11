@@ -6,10 +6,25 @@ var volume: float = 0.65
 var muted: bool = false
 var handle: String = ""
 var hero_id: String = ""
-var bot_speed: int = 0
-var bot_fast: bool:
- get: return bot_speed == 2
- set(value): bot_speed = 2 if value else 0
+const BOT_PACES = BotPace.BOT_PACES
+var bot_pace: float = 0.5:
+ set(value): bot_pace = nearest(value)
+static func nearest(value) -> float: return BotPace.nearest(value)
+static func pace_label(value, short: bool = false) -> String: return BotPace.pace_label(value, short)
+static func saved_pace(data: Dictionary) -> float: return BotPace.saved_pace(data)
+func pace_option(parent: Node, value: float, changed: Callable) -> OptionButton:
+ var row = HBoxContainer.new()
+ parent.add_child(row)
+ UIStyle.label(row, "Bot pace", 18)
+ var choice = OptionButton.new()
+ choice.name = "BotPace"
+ choice.custom_minimum_size.y = 72 if UIStyle.compact() else 56
+ row.add_child(choice)
+ if UIStyle.compact(): choice.get_popup().add_theme_constant_override("v_separation", 56)
+ for pace in BOT_PACES: choice.add_item(pace_label(pace))
+ choice.select(BOT_PACES.find(nearest(value)))
+ choice.item_selected.connect(func(n): changed.call(BOT_PACES[n]))
+ return choice
 var music_volume: float = 0.35
 var music_muted: bool = false
 var music: AudioStreamPlayer
@@ -41,11 +56,11 @@ func _ready():
  if v is String and CardDB.cards.has(v):
   hero_id = v
   handle = str(CardDB.cards[v].name)
- for entry in [["game", "bot_fast"], ["game", "auto_end_turn"], ["game", "confirm_end_turn"], ["sound", "muted"], ["visual", "effects"]]:
+ for entry in [["game", "auto_end_turn"], ["game", "confirm_end_turn"], ["sound", "muted"], ["visual", "effects"]]:
   if not config.has_section_key(entry[0], entry[1]): continue
   v = config.get_value(entry[0], entry[1])
   if v is bool: set("visual_effects" if entry[1] == "effects" else entry[1], v)
- bot_speed = migrated_speed(config)
+ bot_pace = migrated_pace(config)
  v = config.get_value("sound", "music_volume", 0.35)
  music_volume = valid_volume(v, 0.35)
  v = config.get_value("sound", "music_muted", false)
@@ -74,7 +89,7 @@ func save():
  config.set_value("game", "auto_end_turn", auto_end_turn)
  config.set_value("game", "confirm_end_turn", confirm_end_turn)
  config.set_value("game", "starting_life", starting_life)
- config.set_value("game", "bot_speed", bot_speed)
+ config.set_value("game", "bot_pace", bot_pace)
  config.set_value("game", "card_pool", card_pool)
  for selected_pool in ["2025", "2026", "2026mog"]: config.set_value("game", "banned_" + selected_pool, banned_cards(selected_pool))
  config.set_value("visual", "effects", visual_effects)
@@ -103,11 +118,11 @@ func play(sound: String):
    player.play()
    return
 
-static func migrated_speed(config: ConfigFile) -> int:
- var value = config.get_value("game", "bot_speed", -1)
- if value is int and value >= 0 and value <= 2: return value
- var legacy = config.get_value("game", "bot_fast", false)
- return 2 if legacy is bool and legacy else 0
+static func migrated_pace(config: ConfigFile) -> float:
+ var data = {}
+ for key in ["bot_pace", "bot_speed", "bot_fast"]:
+  if config.has_section_key("game", key): data[key] = config.get_value("game", key)
+ return saved_pace(data)
 static func valid_volume(value, fallback: float) -> float:
  return float(value) if (value is int or value is float) and is_finite(float(value)) and value >= 0 and value <= 1 else fallback
 static func pitch_for(sound: String, sample: float) -> float:

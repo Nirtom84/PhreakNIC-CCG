@@ -92,7 +92,14 @@ func _answer_scripted(data: Dictionary):
 			options.assign(data.options)
 			if data.kind == "choose_option": value = await ai.choose_option(p, data.text, options)
 			else: value = await ai.choose_options(p, data.text, options, data.count)
-		"choose_cards": value = RemoteDecider.wire_answer(data.kind, await ai.choose_cards(p, data.text, data.cards.map(prompt_card), data.min, data.max))
+		"choose_cards":
+			# The bot decides from this client's mirror, which can lag the prompt (a start-of-turn prompt arrives
+			# before the new view). An out-of-range pick would be refused and leave the prompt to the 45 s fallback.
+			var offered = data.cards.map(prompt_card)
+			var picked = await ai.choose_cards(p, data.text, offered, data.min, data.max)
+			if picked.size() < data.min or picked.size() > data.max or picked.any(func(c): return c not in offered):
+				picked = offered.slice(0, data.min)
+			value = RemoteDecider.wire_answer(data.kind, picked)
 		"choose_player": value = RemoteDecider.wire_answer(data.kind, await ai.choose_player(p, data.text, data.players.map(func(i): return engine.state.players[i])))
 		"choose_number":
 			var allowed: Array[int] = []

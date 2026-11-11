@@ -115,7 +115,7 @@ func finish():
  verify(messages.any(func(m): return m.t == "over" and m.winner == (server.game.engine.state.winner.seat if server.game.engine.state.winner != null else -1)), "Over reports winner")
 func setup():
  over = false
- wire.send({"t": "setup", "room": "TEST", "seats": [{"name": "A", "hero": "nirtom", "bot": false, "difficulty": 0, "token": "a"}, {"name": "B", "hero": "r0nk", "bot": false, "difficulty": 0, "token": "b"}, {"name": "C", "bot": true, "difficulty": 2, "token": ""}], "card_pool": "2026", "starting_life": 12, "seed": 12})
+ wire.send({"t": "setup", "room": "TEST", "bot_pace": 0, "seats": [{"name": "A", "hero": "nirtom", "bot": false, "difficulty": 0, "token": "a"}, {"name": "B", "hero": "r0nk", "bot": false, "difficulty": 0, "token": "b"}, {"name": "C", "bot": true, "difficulty": 2, "token": ""}], "card_pool": "2026", "starting_life": 12, "seed": 12})
  verify(await until(func(): return not saved.is_empty()), "Initial safe snapshot received")
 func run():
  server = LinkServer.new()
@@ -177,6 +177,8 @@ func run():
  saved = {}
  await setup()
  await until(func(): return server.game != null and not saved.is_empty())
+ # Earlier games in this run may have used up the 120-lines-a-minute forwarding cap.
+ server.diag_count = 0
  server.game.diag("link diagnostic test")
  verify(await until(func(): return messages.any(func(m): return m.t == "diag" and "link diagnostic test" in m.text)), "Diagnostics forwarded over live link")
  var now = server.game.now()

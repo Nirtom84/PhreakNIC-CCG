@@ -4,6 +4,9 @@ signal snapshot(data: Dictionary)
 signal diagnostic(text: String)
 class Decision extends RefCounted:
 	signal done(value)
+const Pace = preload("res://scripts/core/bot_pace.gd")
+# Direct harnesses remain instant; rooms supply the default explicitly through LinkServer.
+var bot_pace: float = 0.0
 var setup_error = ""
 var engine: GameEngine
 var seats: Array = []
@@ -69,7 +72,8 @@ func value_shape(value) -> String:
 	return type_string(typeof(value))
 func version() -> String: return str(ProjectSettings.get_setting("application/config/version", ""))
 func now() -> float: return float(clock.call())
-func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, seed_value: int = 1, banned: Array = []) -> bool:
+func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, seed_value: int = 1, banned: Array = [], pace: float = 0.0) -> bool:
+	bot_pace = Pace.nearest(pace)
 	assert(config.size() >= 2 and config.size() <= 4)
 	setup_error = ""
 	if not get_node("/root/CardDB").bans_valid(banned, card_pool):
@@ -365,6 +369,7 @@ func _idle_tick():
 		engine.say(seats[p.seat].name + " was idle; a bot finished their turn")
 func _drive_reaction(p):
 	var driver = BotPlayer.new(engine)
+	driver.pace_provider = func(): return bot_pace
 	driver.action_completed = _checkpoint
 	await driver.take_turn(p)
 func _drive():
@@ -372,6 +377,7 @@ func _drive():
 	driving[depth] = true
 	var p = engine.active()
 	var driver = BotPlayer.new(engine)
+	driver.pace_provider = func(): return bot_pace
 	driver.action_completed = _checkpoint
 	driver.continue_turn = func(): return seats[p.seat].bot or _takeover(p.seat)
 	await driver.take_turn(p)
@@ -382,7 +388,7 @@ func _checkpoint():
 	if not pending.is_empty() or not locks.is_empty() or engine.busy or engine.reaction_depth != 0 or engine.simultaneous_depth != 0 or not engine.state.resolving.is_empty(): return
 	if not engine.state.finished and not SaveGame.safe(engine, engine.state.active_seat): return
 	engine.trim_log()
-	last_snapshot = {"version": version(), "content": SaveGame.content(), "game": SaveGame.snapshot(engine.state), "seats": seats.duplicate(true), "tokens": tokens.duplicate()}
+	last_snapshot = {"version": version(), "content": SaveGame.content(), "game": SaveGame.snapshot(engine.state), "seats": seats.duplicate(true), "tokens": tokens.duplicate(), "bot_pace": bot_pace}
 	snapshot.emit(last_snapshot.duplicate(true))
 func restore(data: Dictionary) -> bool:
 	if not SaveGame.bounded(data) or not data.get("version") is String or not data.get("content") is String or not data.get("game") is Dictionary: return false
@@ -396,6 +402,7 @@ func restore(data: Dictionary) -> bool:
 		if not data.seats[i].get("difficulty") is int or data.seats[i].difficulty < 0 or data.seats[i].difficulty > 2: return false
 		for key in ["name", "hero", "bot", "difficulty"]:
 			if not data.seats[i].has(key): return false
+	bot_pace = Pace.nearest(data.get("bot_pace", 0.5))
 	seats = data.seats.duplicate(true)
 	tokens = data.tokens.duplicate()
 	_install_engine()

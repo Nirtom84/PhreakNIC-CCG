@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.16 — Bot pace and turn recap
+**See what the bots did**
+- Opponents' plays now show as one row: the newest card large, earlier cards as thumbnails beside it. Nothing is skipped on long turns any more (before, only four cards fitted and the rest were dropped).
+- When your turn starts, the row stays as a recap ("Since your turn: 12 cards") until your first click, tap or key press.
+
+**Bot pace**
+- Bot speed is now a **Bot pace** dropdown: Instant, or 0.25 / 0.5 / 1 / 1.5 / 2 / 3 / 5 seconds per card. It is on the main menu, the in-game menu and the toolbar. Your old setting carries over (Normal → 0.5 s, Fast → 0.25 s).
+- **Online:** the host sets the bot pace for the room, when creating it or in the lobby. New rooms default to 0.5 seconds per card (online bots used to act instantly).
+
+**Fixes**
+- End-game summary: **View final deck** opened behind the summary and made the screen seem frozen. It now opens on top.
+- Automated tests: a scripted test player could leave a "choose a card" prompt unanswered, which made the network test suites fail at random.
+
 ## v0.15 — Feel, phones and sharing
 **Cards move**
 - Played, bought, drawn and discarded cards now slide from where they were to where they go, instead of fading in. Hidden cards travel face down.
