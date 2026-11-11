@@ -52,6 +52,11 @@ test('site caches full WASM by version and conditional hits avoid R2',async()=>{
  for(const req of [new Request('https://www.site/'),new Request('https://site/join/AB23'),new Request('https://site/index.wasm',{method:'POST'}),new Request('https://site/icon.png')]){res=await site.fetch(req,env,ctx);for(const name of ['content-security-policy','x-content-type-options','referrer-policy','strict-transport-security','permissions-policy'])assert(res.headers.has(name));}
  }finally{globalThis.caches=original;}
 });
+test('site serves index.pck from R2 when PCK_KEY is set, else from static assets',async()=>{
+ const original=globalThis.caches;globalThis.caches={default:{match:async()=>undefined,put:async()=>{}}};const keys=[];const env={WASM_KEY:'web/v/index.wasm',PCK_KEY:'web/v/index.pck',GAME_FILES:{get:async k=>{keys.push(k);return {body:'pck',httpEtag:'"p1"'};}},ASSETS:{fetch:async()=>new Response('asset')}},ctx={waitUntil:()=>{}};
+ try{let res=await site.fetch(new Request('https://site/index.pck'),env,ctx);assert.equal(await res.text(),'pck');assert.equal(res.headers.get('content-type'),'application/octet-stream');assert.deepEqual(keys,['web/v/index.pck']);
+ delete env.PCK_KEY;res=await site.fetch(new Request('https://site/index.pck'),env,ctx);assert.equal(await res.text(),'asset');}finally{globalThis.caches=original;}
+});
 test('site WASM HEAD metadata is reused for 304 and changes with version',async()=>{
  const original=globalThis.caches;globalThis.caches={default:{match:async()=>undefined}};let heads=0;const env={WASM_KEY:'web/head-test/index.wasm',GAME_FILES:{head:async()=>{heads++;return {httpEtag:'"head-etag"'};}}};
  try{assert.equal((await site.fetch(new Request('https://site/index.wasm',{method:'HEAD'}),env,{})).status,200);assert.equal((await site.fetch(new Request('https://site/index.wasm',{headers:{'If-None-Match':'W/"head-etag"'}}),env,{})).status,304);assert.equal(heads,1);env.WASM_KEY='web/head-next/index.wasm';await site.fetch(new Request('https://site/index.wasm',{method:'HEAD'}),env,{});assert.equal(heads,2);}finally{globalThis.caches=original;}

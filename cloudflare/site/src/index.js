@@ -34,30 +34,33 @@ const handlers={
       return Response.redirect(url.toString(), 302);
     }
 
-    if (url.pathname === "/index.wasm" || url.pathname === "/"+env.WASM_KEY) {
+    // Files over the static-asset limit, served from R2: the engine and (since v0.13) the game data pack.
+    const big=[['/index.wasm',env.WASM_KEY,'application/wasm'],['/index.pck',env.PCK_KEY,'application/octet-stream']].find(([name,k])=>k&&(url.pathname===name||url.pathname==='/'+k));
+    if (big) {
+      const [name,KEY,type]=big;
       if (request.method !== "GET" && request.method !== "HEAD") {
         return new Response("Method not allowed", { status: 405 });
       }
-      const cache=caches.default,key=new Request(new URL('/'+env.WASM_KEY,url.origin)),cached=await cache.match(key);
-      let etag=cached?.headers.get('etag')||etags.get(env.WASM_KEY);
+      const cache=caches.default,key=new Request(new URL('/'+KEY,url.origin)),cached=await cache.match(key);
+      let etag=cached?.headers.get('etag')||etags.get(KEY);
       const matches=value=>request.headers.get('if-none-match')?.split(',').some(t=>t.trim()==='*'||t.trim().replace(/^W\//,'')===value);
       if(etag&&matches(etag))return new Response(null,{status:304,headers:{etag,'cache-control':'public, max-age=86400'}});
-      if(cached){const out=new Response(request.method==='HEAD'?null:cached.body,cached);if(url.pathname==='/index.wasm')out.headers.set('cache-control','public, max-age=86400');return out;}
-      const versioned=url.pathname!=='/index.wasm';
-      const headers=new Headers({'content-type':'application/wasm','cache-control':versioned?'public, max-age=31536000, immutable':'public, max-age=86400'});
+      if(cached){const out=new Response(request.method==='HEAD'?null:cached.body,cached);if(url.pathname===name)out.headers.set('cache-control','public, max-age=86400');return out;}
+      const versioned=url.pathname!==name;
+      const headers=new Headers({'content-type':type,'cache-control':versioned?'public, max-age=31536000, immutable':'public, max-age=86400'});
       if(request.method==='HEAD') {
-        const object=await env.GAME_FILES.head(env.WASM_KEY);if(!object)return new Response('Game engine file not found',{status:404});
-        etag=object.httpEtag;etags.set(env.WASM_KEY,etag);headers.set('etag',etag);return new Response(null,{status:matches(etag)?304:200,headers});
+        const object=await env.GAME_FILES.head(KEY);if(!object)return new Response('Game file not found',{status:404});
+        etag=object.httpEtag;etags.set(KEY,etag);headers.set('etag',etag);return new Response(null,{status:matches(etag)?304:200,headers});
       }
-      const object=await env.GAME_FILES.get(env.WASM_KEY);
-      if(!object)return new Response('Game engine file not found',{status:404});
-      etag=object.httpEtag;etags.set(env.WASM_KEY,etag);headers.set('etag',etag);
+      const object=await env.GAME_FILES.get(KEY);
+      if(!object)return new Response('Game file not found',{status:404});
+      etag=object.httpEtag;etags.set(KEY,etag);headers.set('etag',etag);
       const response=new Response(object.body,{headers}),stored=response.clone();stored.headers.set('cache-control','public, max-age=31536000, immutable');
       ctx.waitUntil(cache.put(key,stored));
       if(matches(etag))return new Response(null,{status:304,headers});return response;
     }
 
-    // Everything else (index.html, index.js, index.pck, icons) is a static asset.
+    // Everything else (index.html, index.js, icons; index.pck when PCK_KEY is unset) is a static asset.
     const headers=new Headers(request.headers);if(url.pathname==='/'||url.pathname.endsWith('.html')){headers.delete('if-none-match');headers.delete('if-modified-since');}
     return env.ASSETS.fetch(new Request(request,{headers}));
   },

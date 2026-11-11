@@ -15,7 +15,7 @@
     { "binding": "GAME_FILES", "bucket_name": "phreaknic-ccg-files" }
   ],
   "vars": {
-    // Overridden at deploy time with --var WASM_KEY:web/<version>/index.wasm
+    // Overridden at deploy time with --var WASM_KEY:web/<version>/index.wasm; PCK_KEY (index.pck in R2) is set the same way.
     "WASM_KEY": "web/dev/index.wasm"
   },
   "routes": [

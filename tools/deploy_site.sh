@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Publishes the web build (build/web/) to https://phreaknic-ccg.net on Cloudflare.
-# - index.wasm (over the 25 MiB static-asset limit) goes to the R2 bucket phreaknic-ccg-files
-#   under web/<version>/index.wasm; the site Worker streams it from there.
+# - index.wasm and index.pck (over the 25 MiB static-asset limit) go to the R2 bucket phreaknic-ccg-files
+#   under web/<version>/; the site Worker streams them from there.
 # - Every other file is uploaded as a Workers static asset.
 # Needs CLOUDFLARE_API_TOKEN / CLOUDFLARE_ACCOUNT_ID in the environment, or a private loader at
 # ~/.config/phreaknic/cf-env.sh that exports them (never in this repo). Usage: tools/build_all.sh web && tools/deploy_site.sh
@@ -26,9 +26,10 @@ fi
 WRANGLER="$PWD/cloudflare/node_modules/.bin/wrangler"
 BUCKET="phreaknic-ccg-files"
 KEY="web/$VERSION/index.wasm"
+PCK_KEY="web/$VERSION/index.pck"
 
-# Keep the big engine file out of the static assets.
-printf 'index.wasm\n.assetsignore\n' > build/web/.assetsignore
+# Keep the big engine and data files out of the static assets.
+printf 'index.wasm\nindex.pck\n.assetsignore\n' > build/web/.assetsignore
 # Expand the path now: the script changes directory before it exits.
 assetsignore_path="$PWD/build/web/.assetsignore"
 trap 'rm -f -- "$assetsignore_path"; rm -rf -- "$DOCKER_CONFIG"' EXIT
@@ -36,5 +37,6 @@ trap 'rm -f -- "$assetsignore_path"; rm -rf -- "$DOCKER_CONFIG"' EXIT
 cd cloudflare/site
 "$WRANGLER" r2 bucket create "$BUCKET" 2>/dev/null || true   # no-op if it already exists
 "$WRANGLER" r2 object put "$BUCKET/$KEY" --file ../../build/web/index.wasm --content-type application/wasm --remote
-"$WRANGLER" deploy --var "WASM_KEY:$KEY"
+"$WRANGLER" r2 object put "$BUCKET/$PCK_KEY" --file ../../build/web/index.pck --content-type application/octet-stream --remote
+"$WRANGLER" deploy --var "WASM_KEY:$KEY" --var "PCK_KEY:$PCK_KEY"
 echo "Deployed v$VERSION to https://phreaknic-ccg.net"
