@@ -15,6 +15,8 @@ func take_turn(p):
 			if not engine.is_turn(p): break
 		actions += 1
 		var candidates = p.hand.filter(func(c): return engine.can_play(p, c))
+		if p.difficulty > 0:
+			candidates = candidates.filter(func(c): return not (c.id == "TOCTOU" and p.life <= 6))
 		var ai = engine.dec(p)
 		# Deck thinning activations happen before playing away the weakest cards.
 		var activated = false
@@ -90,6 +92,11 @@ func play_priority(p, c) -> float:
 	if data.kind == "Permanent": score += 45
 	if "remove a card" in str(data.text).to_lower() or c.id == "O.P.R.A.H.": score += 50
 	if c.id == "Nirtom Unleashed": score -= 90
+	if p.difficulty > 0:
+		# Spend effects wait until the hand has generated its Hacking.
+		if c.id in ["Jenny", "Non-Infringing Game Show", "Treasure Hunters", "Mogs Pancake Breakfast"]: score -= 150
+		if c.id == "Mog's Ice Cream" and p.hand.any(func(x): return x.id == "Rookie Numbers"): score -= 120
+		if c.id in ["hardwarez", "Pooping in the Dark", "tipsybacchus"]: score -= 100
 	if p.difficulty == 2:
 		if lethal_reachable(p): score += float(data.damage) * 100
 	return score

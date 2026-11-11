@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate} from './lib/protocol.js';
+import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave} from './lib/protocol.js';
 import {adminHTML,adminJS,adminHeaders} from './admin.js';
 const HOUR=3600000, IDLE=600000, DAY=24*HOUR;
 let listingCache;
@@ -112,10 +112,10 @@ export class Lobby extends DurableObject {
 export class Room extends DurableObject {
   constructor(ctx,env) {
     super(ctx,env);this.clients=new Map();this.rates=new Map();this.link=null;this.boot=null;this.generation=0;this.sleeping=false;
-    ctx.blockConcurrencyWhile(async()=>{this.r=await ctx.storage.get('room');if(this.r){this.r.emptySince ||= Date.now();await ctx.storage.put('room',this.r);await this.schedule();if(ctx.container.running){ctx.container.setInactivityTimeout(IDLE);this.watch();}}});
+    ctx.blockConcurrencyWhile(async()=>{this.r=await ctx.storage.get('room');if(this.r){this.r.emptySince ||= Date.now();if(!this.r.started)this.r.hostGoneAt ||= Date.now();await ctx.storage.put('room',this.r);await this.schedule();if(ctx.container.running){ctx.container.setInactivityTimeout(IDLE);this.watch();}}});
   }
   async stat(event,p,extra) {await quiet(()=>lobby(this.env).record(event,{code:this.r.code,created:this.r.created,public:this.r.public,seats:this.r.seats.map(({bot,difficulty})=>({bot,difficulty})),card_pool:this.r.card_pool,starting_life:this.r.starting_life,version:this.r.version},p,extra));}
-  async schedule() {await this.ctx.storage.setAlarm(Math.min(this.r.created+ROOM_LIFETIME,this.r.emptySince?this.r.emptySince+IDLE:Infinity,this.r.releasePending?Date.now()+60000:Infinity));}
+  async schedule() {await this.ctx.storage.setAlarm(Math.min(this.r.created+ROOM_LIFETIME,this.r.emptySince?this.r.emptySince+IDLE:Infinity,this.r.releasePending?Date.now()+60000:Infinity,!this.r.started&&this.r.hostGoneAt!=null?this.r.hostGoneAt+60000:Infinity));}
   async save(activity=false) {
     if(this.closing)return;
     if(activity)this.r.lastActivity=Date.now();
@@ -133,10 +133,10 @@ export class Room extends DurableObject {
   async createRoom(c,data) {
     if(this.r) fail('exists',409);
     // A code can be reused after an expired room was deleted while this instance stayed in memory: reset its lifecycle.
-    this.closing=false;this.sleeping=false;this.clients.clear();this.link=null;
+    this.closing=false;this.sleeping=false;this.starting=false;this.boot=null;this.stopping=null;this.savedAt=0;++this.generation;this.clients.clear();this.rates.clear();this.link=null;
     if(this.env.ONLINE_ENABLED==='0'){await lobby(this.env).bump(['refused.maintenance']);fail('maintenance',503);}
     const {platform:p,...config}=data;
-    this.r={...config,code:c,host_seat:0,started:false,over:false,created:Date.now(),lastActivity:Date.now(),emptySince:Date.now(),snapshot:null,seed:crypto.getRandomValues(new Uint32Array(1))[0]&0x7fffffff};
+    this.r={...config,code:c,host_seat:0,started:false,over:false,created:Date.now(),lastActivity:Date.now(),emptySince:Date.now(),hostGoneAt:Date.now(),snapshot:null,seed:crypto.getRandomValues(new Uint32Array(1))[0]&0x7fffffff};
     await this.stat('create',p);await this.save();return {code:c,seat:0,token:this.r.seats[0].token};
   }
   async join(data) {try{return await this.joinRoom(data);}catch(e){return {failure:{error:e.status?e.message:'internal',status:e.status||500,extra:e.extra||{}}};}}
@@ -148,17 +148,18 @@ export class Room extends DurableObject {
   connected(seat) {return [...this.clients.values()].some(c=>c.seat===seat);}
   send(ws,v) {try{ws.send(JSON.stringify(v));}catch{}}
   broadcast(v) {for(const ws of this.clients.keys())this.send(ws,v);}
-  broadcastRoom() {const r=this.r;this.broadcast({t:'room',code:r.code,seats:r.seats.map((s,i)=>({name:s.name,hero:s.hero,bot:s.bot,difficulty:s.difficulty,connected:this.connected(i)})),host_seat:r.host_seat,started:r.started,public:r.public,card_pool:r.card_pool,starting_life:r.starting_life});}
+  broadcastRoom() {const r=this.r;this.broadcast({t:'room',banned:r.banned||[],code:r.code,seats:r.seats.map((s,i)=>({name:s.name,hero:s.hero,bot:s.bot,difficulty:s.difficulty,connected:this.connected(i)})),host_seat:r.host_seat,started:r.started,public:r.public,card_pool:r.card_pool,starting_life:r.starting_life});}
   linkSend(v) {if(this.link?.readyState===1)this.link.send(JSON.stringify(v));}
   async fetch(req) {
     try {
       if(!originAllowed(req.headers.get('Origin')))fail('origin',403);
       if(req.headers.get('Upgrade')?.toLowerCase()!=='websocket')fail('upgrade',426);
+      if(this.r&&hostCloseDue(this.r))await this.closeByHost();
       if(this.closing||!this.r||roomExpired(this.r))fail('token',401);
       const t=new URL(req.url).searchParams.get('token');if(!validToken(t))fail('token',401);
       const seat=socketSeat(this.r,t);if(seat<0)fail('token',401);
       const pair=new WebSocketPair(), ws=pair[1];ws.accept();for(const [old,c]of this.clients)if(c.seat===seat){this.clients.delete(old);old.close(4000,'replaced');}this.clients.set(ws,{seat});
-      this.r.emptySince=null;await this.save();if(this.closing){this.clients.delete(ws);ws.close(1000,'expired');fail('token',401);}
+      this.r.emptySince=null;if(seat===this.r.host_seat)delete this.r.hostGoneAt;await this.save();if(this.closing){this.clients.delete(ws);ws.close(1000,'expired');fail('token',401);}
       ws.addEventListener('message',e=>this.ctx.waitUntil(this.message(ws,e.data).catch(e=>this.send(ws,{t:'error',reason:e.status?e.message:'server'}))));
       const close=()=>this.ctx.waitUntil(this.disconnected(ws));ws.addEventListener('close',close);ws.addEventListener('error',close);
       this.broadcastRoom();
@@ -168,7 +169,7 @@ export class Room extends DurableObject {
   }
   async disconnected(ws) {
     const c=this.clients.get(ws);if(!c||!this.r)return;this.clients.delete(ws);
-    if(!this.connected(c.seat))this.linkSend({t:'disconnect',seat:c.seat});
+    if(!this.connected(c.seat)){this.linkSend({t:'disconnect',seat:c.seat});if(!this.r.started&&c.seat===this.r.host_seat)this.r.hostGoneAt=Date.now();}
     if(!this.clients.size)this.r.emptySince=Date.now();await this.save();this.broadcastRoom();
   }
   async message(ws,data) {
@@ -186,6 +187,7 @@ export class Room extends DurableObject {
       return;
     }
     if(m.t!=='lobby')fail('lobby');if(this.starting)fail('busy',503);
+    if(m.action==='leave'&&hostLeave(this.r,c.seat)){await this.closeByHost();return;}
     if(m.action==='leave'&&c.seat!==0){
       this.r.seats[c.seat]={name:'',hero:'',bot:false,difficulty:0,token:''};
       for(const [s,v]of this.clients)if(v.seat===c.seat){this.clients.delete(s);s.close(1000,'left');}
@@ -207,7 +209,7 @@ export class Room extends DurableObject {
         if(!Number.isInteger(m.seat)||m.seat<=0||m.seat>=this.r.seats.length||this.r.seats.length<=2)fail('seat');
         for(const [s,v]of this.clients){if(v.seat===m.seat){this.clients.delete(s);s.close(1000,'removed');}else if(v.seat>m.seat)v.seat--;}
         this.r.seats.splice(m.seat,1);const rates=new Map();for(const [seat,rate]of this.rates)if(seat!==m.seat)rates.set(seat>m.seat?seat-1:seat,rate);this.rates=rates;
-      }else if(m.action==='settings')Object.assign(this.r,settings(m,true));else fail('action');
+      }else if(m.action==='settings'){const next=settings(m,true);if(next.card_pool&&next.card_pool!==this.r.card_pool)next.banned=[];Object.assign(this.r,next);}else fail('action');
     }
     await this.save(true);this.broadcastRoom();
   }
@@ -267,7 +269,7 @@ export class Room extends DurableObject {
         });
         if(ws.readyState!==1||this.link!==ws)throw new Error('link lost');
         if(this.r.snapshot){await quiet(()=>lobby(this.env).bump(['server.restores']));this.linkSend({t:'restore',room:this.r.code,snapshot:this.r.snapshot});}
-        else this.linkSend({t:'setup',room:this.r.code,seats:this.r.seats.map(({name,hero,bot,difficulty,token})=>({name,hero,bot,difficulty,token:bot?'':token})),card_pool:this.r.card_pool,starting_life:this.r.starting_life,seed:this.r.seed});
+        else this.linkSend({t:'setup',room:this.r.code,seats:this.r.seats.map(({name,hero,bot,difficulty,token})=>({name,hero,bot,difficulty,token:bot?'':token})),card_pool:this.r.card_pool,banned:this.r.banned||[],starting_life:this.r.starting_life,seed:this.r.seed});
         for(let seat=0;seat<this.r.seats.length;seat++)if(this.connected(seat))this.linkSend({t:'connect',seat,version:this.r.version});
         this.broadcast({t:'server',status:'ok'});return;
       }catch(e){if(!this.r||this.sleeping||this.r.over||gen!==this.generation)return;console.error('room',this.r.code,'attempt',attempt,'failed:',e&&e.stack||e);++this.generation;this.link?.close();this.link=null;}
@@ -280,8 +282,21 @@ export class Room extends DurableObject {
     else if(m.t==='snapshot'){this.r.snapshot=m.data;await this.ctx.storage.put('room',this.r);}
     else if(m.t==='over'&&!this.r.over){this.r.over=true;await this.stat('over',undefined,m);await this.stop('over');await this.save(true);this.broadcast(m.reason?{t:'over',winner:m.winner,reason:String(m.reason)}:{t:'over',winner:m.winner});}
   }
+  async closeByHost() {
+    if(this.closing||!this.r||this.r.started)return;
+    this.closing=true;this.sleeping=true;++this.generation;
+    const c=this.r.code;
+    this.broadcast({t:'room_closed',reason:'host_left'});
+    for(const ws of this.clients.keys())ws.close(4002,'closed');
+    this.clients.clear();this.rates.clear();this.link?.close();this.link=null;
+    await quiet(()=>lobby(this.env).bump(['rooms.closed_by_host']));
+    await this.ctx.container.destroy('host_left');
+    await lobby(this.env).remove(c);listingCache=null;
+    await this.ctx.storage.deleteAll();this.r=null;
+  }
   async alarm() {
     if(!this.r)return;
+    if(hostCloseDue(this.r)){await this.closeByHost();return;}
     if(roomExpired(this.r)){this.closing=true;if(!this.r.over)await this.stat('abandoned');this.sleeping=true;++this.generation;this.link?.close();await this.ctx.container.destroy('expired');for(const ws of this.clients.keys())ws.close(1000,'expired');this.clients.clear();await lobby(this.env).remove(this.r.code);await this.ctx.storage.deleteAll();this.r=null;return;}
     if(this.r.releasePending)await this.stop(this.r.releasePending);
     if(this.r.emptySince&&Date.now()-this.r.emptySince>=IDLE){this.sleeping=true;++this.generation;this.link?.close();this.link=null;await this.stop('idle');this.r.emptySince=null;await this.ctx.storage.put('room',this.r);}

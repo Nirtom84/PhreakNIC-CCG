@@ -69,7 +69,8 @@ func inspect_message(server, seat: int, message: Dictionary):
 func frames(count: int):
  for i in count: await process_frame
 func finish_game(server, clients: Array):
- for frame in 25000:
+ # Game length varies run to run; this checks that the game finishes, not how fast.
+ for frame in 80000:
   if server.engine.state.finished: break
   await process_frame
  verify(server.engine.state.finished, "Game completes")

@@ -2,6 +2,7 @@ class_name GameState
 extends RefCounted
 var starting_life: int = 24
 var card_pool: String = "2026"
+var banned: Array = []
 var players: Array = []
 var center_deck: Array = []
 var center_row: Array = [null, null, null, null, null]

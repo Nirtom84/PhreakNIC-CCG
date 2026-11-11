@@ -3,6 +3,7 @@ extends Node
 signal snapshot(data: Dictionary)
 class Decision extends RefCounted:
 	signal done(value)
+var setup_error = ""
 var engine: GameEngine
 var seats: Array = []
 var tokens: Array = []
@@ -25,10 +26,52 @@ var idle_streak: Dictionary = {}
 var idle_bot: Dictionary = {}
 var permanent_idle: Dictionary = {}
 var announced_dead: Dictionary = {}
+# Diagnostics: one line per notable server event, printed to the container's stdout (Cloudflare logs).
+# Never includes card identities, hands or deck contents; only seats, prompt kinds, sizes and timings.
+var room_label = ""
+var diag_budget: Dictionary = {}
+var taken_over: Dictionary = {}
+func diag(text: String, key: String = ""):
+	if key != "":
+		var minute = int(Time.get_ticks_msec() / 60000)
+		var entry = diag_budget.get(key, [minute, 0])
+		if entry[0] != minute: entry = [minute, 0]
+		entry[1] += 1
+		diag_budget[key] = entry
+		var budget = 60 if key.begins_with("action:") else 20
+		if entry[1] > budget: return
+		if entry[1] == budget: text += " (further '%s' lines muted this minute)" % key
+	var turn = engine.state.turn if engine != null and engine.state != null else 0
+	print("room %s t%d %s" % [room_label, turn, text])
+func why_not(seat: int) -> String:
+	var reasons = []
+	if not running: reasons.append("game not running")
+	if idle_bot.has(seat): reasons.append("bot is finishing an idle turn")
+	if permanent_idle.has(seat): reasons.append("seat handed to a bot after repeated idling")
+	if engine.state != null and not engine.is_turn(engine.state.players[seat]): reasons.append("not their turn (active seat %d, reaction depth %d)" % [engine.state.active_seat, engine.reaction_depth])
+	if engine.busy: reasons.append("engine busy resolving")
+	if locks.has(engine.reaction_depth): reasons.append("locked at reaction depth %d" % engine.reaction_depth)
+	for id in pending:
+		if pending[id].seat == seat: reasons.append("own %s prompt %s pending for %.1fs" % [pending[id].data.kind, id.left(6), now() - pending[id].at])
+	return ", ".join(reasons) if not reasons.is_empty() else "unknown"
+func prompt_shape(data: Dictionary) -> String:
+	var parts = [str(data.get("kind", "?"))]
+	for key in ["options", "cards", "players", "allowed", "sources"]:
+		if data.get(key) is Array: parts.append("%s=%d" % [key, data[key].size()])
+	for key in ["min", "max", "count", "amount"]:
+		if data.has(key): parts.append("%s=%s" % [key, str(data[key])])
+	return " ".join(parts)
+func value_shape(value) -> String:
+	if value is Array: return "array[%d]" % value.size()
+	return type_string(typeof(value))
 func version() -> String: return str(ProjectSettings.get_setting("application/config/version", ""))
 func now() -> float: return float(clock.call())
-func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, seed_value: int = 1):
+func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, seed_value: int = 1, banned: Array = []) -> bool:
 	assert(config.size() >= 2 and config.size() <= 4)
+	setup_error = ""
+	if not get_node("/root/CardDB").bans_valid(banned, card_pool):
+		setup_error = "At least 40 center-deck cards must remain."
+		return false
 	seats = []
 	for info in config:
 		seats.append({"name": str(info.get("name", "Bot" if info.get("bot", false) else "Seat %d" % seats.size())), "hero": str(info.get("hero", "")), "bot": bool(info.get("bot", false)), "difficulty": int(info.get("difficulty", 1))})
@@ -43,7 +86,7 @@ func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, se
 	_install_engine()
 	var choices = []
 	for i in seats.size(): choices.append(BotDecider.new(engine, seats[i].difficulty) if seats[i].bot else RemoteDecider.new(self, i))
-	engine.setup(levels, seed_value, choices, card_pool, starting_life)
+	return engine.setup(levels, seed_value, choices, card_pool, starting_life, banned)
 func _pick_bot_names(card_pool: String):
 	var db = get_node("/root/CardDB")
 	var used_names = []
@@ -126,7 +169,11 @@ func _closed(transport):
 	if connections.get(seat) == transport:
 		connections.erase(seat)
 		disconnected[seat] = now()
-func _error(transport, reason: String): transport.send({"t": "error", "reason": reason})
+		diag("seat %d disconnected" % seat)
+func _error(transport, reason: String):
+	var seat = authenticated.get(transport, -1)
+	diag("seat %d refused: %s" % [seat, reason], "error:%d" % seat)
+	transport.send({"t": "error", "reason": reason})
 func _receive(transport, message: Dictionary):
 	if not NetTransport.safe_value(message) or not message.get("t") is String: return
 	if message.get("t") == "hello":
@@ -135,7 +182,9 @@ func _receive(transport, message: Dictionary):
 		if not seat is int or seat < 0 or seat >= seats.size() or seats[seat].bot or not message.get("token") is String or message.token != tokens[seat]:
 			_error(transport, "invalid credentials"); return
 		if authenticated.has(transport) and authenticated[transport] != seat: _error(transport, "already authenticated"); return
-		if connections.has(seat) and connections[seat] != transport: connections[seat].close()
+		var replaced = connections.has(seat) and connections[seat] != transport
+		if replaced: connections[seat].close()
+		diag("seat %d connected%s; %d prompt(s) pending for it" % [seat, " (replaced older socket)" if replaced else "", pending.values().filter(func(r): return r.seat == seat).size()])
 		connections[seat] = transport
 		authenticated[transport] = seat
 		disconnected.erase(seat)
@@ -155,7 +204,9 @@ func _receive(transport, message: Dictionary):
 		if not id is String or not pending.has(id) or pending[id].seat != seat:
 			_error(transport, "unknown prompt"); return
 		var request = pending[id]
-		if not RemoteDecider.valid(request.data, message.get("value"), engine.db()): _error(transport, "invalid answer"); return
+		if not RemoteDecider.valid(request.data, message.get("value"), engine.db()):
+			diag("seat %d invalid answer to %s: got %s" % [seat, prompt_shape(request.data), value_shape(message.get("value"))], "answer:%d" % seat)
+			_error(transport, "invalid answer"); return
 		idle_at = now()
 		idle_warned = false
 		_complete(id, message.value)
@@ -165,7 +216,9 @@ func _receive(transport, message: Dictionary):
 func available(seat: int) -> bool:
 	return not idle_bot.has(seat) and not permanent_idle.has(seat) and running and engine.is_turn(engine.state.players[seat]) and not engine.busy and not locks.has(engine.reaction_depth) and not pending.values().any(func(r): return r.seat == seat)
 func _action(transport, seat: int, message: Dictionary):
-	if not available(seat): _error(transport, "seat cannot act now"); return
+	if not available(seat):
+		diag("seat %d action %s refused: %s" % [seat, str(message.get("kind", "?")), why_not(seat)], "act:%d" % seat)
+		_error(transport, "seat cannot act now"); return
 	var p = engine.state.players[seat]
 	var card = null
 	if message.has("uid"):
@@ -182,6 +235,7 @@ func _action(transport, seat: int, message: Dictionary):
 		"activate": legal = card != null and index is int and engine.activatable_abilities(p, card).any(func(a): return a.index == index and a.enabled)
 		"end_turn", "play_all", "play_basics": legal = true
 	if not legal: _error(transport, "illegal action"); return
+	diag("seat %d action %s" % [seat, kind], "action:%d" % seat)
 	idle_at = now()
 	idle_warned = false
 	var depth = engine.reaction_depth
@@ -203,21 +257,24 @@ func ask(seat: int, data: Dictionary, args: Array):
 	data.id = id
 	var decision = Decision.new()
 	pending[id] = {"seat": seat, "data": data, "args": args, "at": now(), "decision": decision}
+	diag("seat %d prompt %s sent: %s%s" % [seat, id.left(6), prompt_shape(data), "" if connections.has(seat) else " (seat offline)"])
 	dirty = true
 	_send(seat, data)
 	_waiting(seat)
 	return await decision.done
-func _complete(id: String, value):
+func _complete(id: String, value, how: String = "answered"):
 	var request = pending[id]
 	pending.erase(id)
+	diag("seat %d prompt %s %s after %.1fs" % [request.seat, id.left(6), how, now() - request.at])
 	_waiting(request.seat, true)
 	_send(request.seat, {"t": "prompt_done", "id": id})
 	request.decision.done.emit(value)
 func _fallback(id: String):
-	if not pending.has(id): return
+	if not pending.has(id) or pending[id].get("falling_back", false): return
 	var request = pending[id]
+	request.falling_back = true
 	var answer = await BotDecider.new(engine, 1).callv(request.data.kind, request.args)
-	if pending.has(id): _complete(id, RemoteDecider.wire_answer(request.data.kind, answer))
+	if pending.has(id): _complete(id, RemoteDecider.wire_answer(request.data.kind, answer), "auto-answered by bot (%s)" % ("seat taken over" if _takeover(request.seat) else "45 s timeout"))
 func _takeover(seat: int) -> bool:
 	return permanent_idle.has(seat) or idle_bot.has(seat) or (not seats[seat].bot and disconnected.has(seat) and now() - disconnected[seat] >= 120.0)
 func _process(_delta):
@@ -227,8 +284,14 @@ func _process(_delta):
 		if now() - pending[id].at >= 45.0 or _takeover(pending[id].seat): _fallback(id)
 	for seat in seats.size():
 		if _takeover(seat):
+			if not taken_over.has(seat):
+				taken_over[seat] = true
+				diag("seat %d handed to a bot: %s" % [seat, "repeated idling" if permanent_idle.has(seat) else "idle turn" if idle_bot.has(seat) else "disconnected for 120 s"])
 			engine.deciders[seat] = BotDecider.new(engine, 1)
 			engine.state.players[seat].difficulty = 1
+		elif taken_over.has(seat):
+			taken_over.erase(seat)
+			diag("seat %d back under human control" % seat)
 	if dirty:
 		dirty = false
 		for seat in connections: _view(seat)
@@ -236,6 +299,7 @@ func _process(_delta):
 		var p = engine.active()
 		if seats[p.seat].bot or _takeover(p.seat): _drive()
 func _turn_started(p):
+	diag("turn start seat %d (%s%s)" % [p.seat, "bot" if seats[p.seat].bot else "human", "" if seats[p.seat].bot or connections.has(p.seat) else ", offline"] if engine.reaction_depth == 0 else "reaction turn seat %d at depth %d" % [p.seat, engine.reaction_depth])
 	_event({"kind": "turn_started", "seat": p.seat})
 	if engine.reaction_depth == 0: _begin_idle_turn(p)
 func _begin_idle_turn(p):
@@ -262,11 +326,13 @@ func _idle_tick():
 	var elapsed = now() - idle_at
 	if elapsed >= 120 and not idle_warned:
 		idle_warned = true
+		diag("seat %d idle warning after %.0fs" % [p.seat, elapsed])
 		_send(p.seat, {"t": "event", "kind": "idle_warning", "seconds_left": 60})
 	if elapsed >= 180:
 		idle_streak[p.seat] = idle_streak.get(p.seat, 0) + 1
 		idle_bot[p.seat] = true
 		if idle_streak[p.seat] >= 3: permanent_idle[p.seat] = true
+		diag("seat %d idle for %.0fs; bot finishes the turn (streak %d%s)" % [p.seat, elapsed, idle_streak[p.seat], ", seat now bot-controlled" if permanent_idle.has(p.seat) else ""])
 		engine.say(seats[p.seat].name + " was idle; a bot finished their turn")
 func _drive_reaction(p):
 	var driver = BotPlayer.new(engine)

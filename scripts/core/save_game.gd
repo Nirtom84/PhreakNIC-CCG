@@ -2,7 +2,7 @@ class_name SaveGame
 extends RefCounted
 const PATH = "user://savegame.json"
 const VERSION = 1
-const STATE_FIELDS = ["starting_life", "card_pool", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
+const STATE_FIELDS = ["starting_life", "card_pool", "banned", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
 const PLAYER_FIELDS = ["seat", "life", "alive", "is_bot", "difficulty", "deck", "hand", "discard", "play_area", "reserve", "hacking", "played", "turn_flags", "turns"]
 const CARD_FIELDS = ["uid", "id", "owner", "controller", "counters", "attached", "flags"]
 var objects: Array = []
@@ -75,7 +75,7 @@ static func restore(data: Dictionary):
    object.set(field, value)
  var state = GameState.new()
  for field in STATE_FIELDS:
-  if field in ["card_pool", "starting_life"] and not data.state.has(field): continue
+  if field in ["card_pool", "starting_life", "banned"] and not data.state.has(field): continue
   if not data.state.has(field): return null
   var value = codec.decode(data.state[field])
   if field != "winner" and typeof(value) != typeof(state.get(field)): return null
@@ -122,8 +122,9 @@ static func restore(data: Dictionary):
  if seen.size() != state.initial_count or state.initial_ids.size() != state.initial_count: return null
  var expected = {"Hacking": 8 * state.players.size(), "Damage": 2 * state.players.size()}
  var database = Engine.get_main_loop().root.get_node("CardDB")
- for id in database.pool_ids(state.card_pool):
-  if not database.cards[id].starter: expected[id] = 1
+ if state.banned != database.filter_banned(state.banned, state.card_pool) or not database.bans_valid(state.banned, state.card_pool): return null
+ for id in database.center_ids(state.card_pool):
+  if id not in state.banned: expected[id] = 1
  for card in identities: expected[card.id] = expected.get(card.id, 0) - 1
  if expected.values().any(func(count): return count != 0): return null
  if state.next_uid != state.initial_count + 1: return null

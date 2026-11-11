@@ -30,7 +30,7 @@ The game is in **alpha testing**. Prefer an app? Grab the latest build from the 
 |---|---|---|
 | Windows 10/11 (64-bit) | [PhreakNIC-CCG-windows.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-windows.zip) | Unzip and double-click the `.exe`. The app isn't code-signed yet, so Windows SmartScreen may warn you: choose **More info → Run anyway**. |
 | Linux (x86_64) | [PhreakNIC-CCG-linux.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-linux.zip) | Unzip and run the `.x86_64` file. If it won't start, make it executable: `chmod +x PhreakNIC-CCG-*.x86_64`. |
-| Android 7.0+ (64-bit) | [PhreakNIC-CCG-android.apk](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-android.apk) | Open the file on your phone and allow your browser or file manager to install unknown apps. Plays in landscape. From v0.11 the APK is release-signed: uninstall an older version first. |
+| Android 7.0+ (64-bit) | [PhreakNIC-CCG-android.apk](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-android.apk) | Open the file on your phone and allow your browser or file manager to install unknown apps. Plays in landscape. From v0.11 the APK is release-signed: uninstall an older version first. If Google Play Protect says the app is from an unknown developer, tap **Install anyway** (it's new, not unsafe; see [SECURITY.md](SECURITY.md) to verify the signature). |
 
 Choose 2–4 players (you plus 1–3 bots), a bot level, the card set and the starting life, then start.
 - **Your turn:** click a hand card to play it, or use **Play Basics** (Hackers and Attacks only) or **Play All**.

@@ -134,7 +134,7 @@ prints win rates by difficulty (Elite should beat Script Kiddie clearly), card c
 ## Online play (core)
 
 `scripts/net/game_server.gd` owns the authoritative engine for a room of 2–4 seats.
-Call `setup(seats, card_pool, starting_life, seed)`, attach transports, and await
+Call `setup(seats, card_pool, starting_life, seed, banned = [])`, attach transports, and await
 `start()`. Seat dictionaries contain `name`, `hero`, `bot`, and numeric `difficulty`
 (0 Script Kiddie, 1 Phreak, 2 Elite). During setup, empty/default bot identities receive unique non-starter Hero names
 and IDs from the selected pool, excluding human names (case-insensitive) and Hero
@@ -296,7 +296,7 @@ the Room alone authenticates player sockets and supplies the authenticated seat.
 
 | Room → container | Fields and behavior |
 | --- | --- |
-| `setup` | `room`, `seats: [{name, hero, bot, difficulty, token}]`, `card_pool`, `starting_life`, `seed`; creates and starts a new authoritative game. Human seats have `bot: false` and a token; bots have an empty token. |
+| `setup` | `room`, `seats: [{name, hero, bot, difficulty, token}]`, `card_pool`, `starting_life`, `seed`, optional `banned`; creates and starts a new authoritative game. Human seats have `bot: false` and a token; bots have an empty token. |
 | `restore` | `room`, `snapshot`; calls `GameServer.restore` on the last stored authoritative checkpoint. |
 | `connect` | `seat`, `version`; creates a virtual NetTransport and submits hello with the stored seat token. A version mismatch sends that seat `error` with `reason: "version"`, `need: <server version>`. |
 | `disconnect` | `seat`; closes its virtual transport, starting existing disconnect/takeover timers. |
@@ -416,3 +416,32 @@ require; neither is a hidden-zone search option leak. Network structure checks
 bound depth, node count and strings before recursive normalization or dispatch.
 Save files are capped at 2 MiB; settings and remembered online seats at 64 KiB,
 with type/range checks before use. Bug report logs replace human opponents' names.
+
+### Version 0.12 party settings and room closure
+
+Party leaders can ban center-deck cards before setup, offline from the menu or
+online from creation and host settings. The picker supports name search, touch
+scrolling, background art loading and right-click/long-press inspection. Selecting
+a printed card bans every physical copy (including all Botnets); starters cannot
+be banned. At least **40 center-deck cards before dealing** must remain: five in
+the initial row and at least 35 for refills. This is a house safety floor, not a
+change to card effects. Bots use the resulting deck normally.
+
+Offline settings retain separate lists for 2025 and 2026. GameState.banned stores
+normalized physical IDs; save validation accounts for omitted cards and old saves
+default to no bans. Online room `banned` accepts at most 150 unique printable IDs
+of at most 64 characters; the Worker checks shape, while GameServer filters IDs
+against the selected center pool and refuses setup below the floor. Room broadcasts,
+container setup, public game views and authoritative snapshots preserve the list.
+Changing an online pool clears bans. Public summaries expose `banned_count` and
+every lobby seat can inspect the list; only the host can edit. The table's Banned
+button beside the center deck opens the same read-only list.
+
+Before start, the host's confirmed Close room action sends lobby `leave`. The
+Worker sends `room_closed` with `reason: host_left`, closes sockets with 4002
+`closed`, removes the room listing and stored room, and increments daily
+`rooms.closed_by_host`. An unannounced host disconnect starts a persisted 60-second
+alarm deadline; reconnect cancels it. Code reuse resets lifecycle state. Started
+games retain their existing disconnect/reconnect behavior. Clients handle either
+the message or close code by forgetting the seat, stopping retries and returning
+to online home with “The host closed the room.”

@@ -59,10 +59,12 @@ func trim_log():
 		if size > 65536:
 			state.log = state.log.slice(i + 1)
 			break
-func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026", starting_life: int = 0):
+func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026", starting_life: int = 0, banned: Array = []) -> bool:
 	assert(difficulties.size() >= 2 and difficulties.size() <= 4)
+	if not db().bans_valid(banned, card_pool): return false
 	state = GameState.new()
 	state.card_pool = card_pool if card_pool in ["2025", "2026"] else "2026"
+	state.banned = db().filter_banned(banned, state.card_pool)
 	state.rng.seed = seed_value
 	state.starting_life = starting_life if starting_life > 0 else (24 if difficulties.size() == 2 else 10 * difficulties.size())
 	deciders = choices.duplicate()
@@ -79,13 +81,14 @@ func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_p
 		shuffle(p.deck)
 		draw(p, 5)
 	for id in db().pool_ids(state.card_pool):
-		if not db().get_card(id).starter: state.center_deck.append(state.create(id))
+		if not db().get_card(id).starter and id not in state.banned: state.center_deck.append(state.create(id))
 	shuffle(state.center_deck)
 	for i in 5: refill(i)
 	state.active_seat = rand_int(state.players.size())
 	say("Seat %d goes first" % state.active_seat)
 	state.initial_count = state.all_cards().size()
 	for c in state.all_cards(): state.initial_ids[c.uid] = c.id
+	return true
 func say(message: String):
 	state.log.append(message)
 	trim_log()

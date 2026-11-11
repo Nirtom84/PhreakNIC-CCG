@@ -3,6 +3,9 @@ var api
 var handle_input: LineEdit
 var avatar_preview: Control
 var hero_picker
+var ban_picker
+var create_banned: Array = []
+var bans_button: Button
 var hero_overlay: Control
 var session: OnlineSession
 var content: VBoxContainer
@@ -35,6 +38,8 @@ func _ready():
  UIStyle.background(self)
  hero_picker = load("res://scripts/ui/hero_picker.gd").new()
  add_child(hero_picker)
+ ban_picker = load("res://scripts/ui/ban_picker.gd").new()
+ add_child(ban_picker)
  if api == null:
   api = OnlineAPI.new()
   add_child(api)
@@ -117,6 +122,9 @@ func browser():
   for i in 3: seat_types[i].get_parent().visible = i <= n)
  UIStyle.label(create, "Card set", 18)
  pool = option(create, ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27"], 0 if Sfx.card_pool == "2025" else 1)
+ create_banned = Sfx.banned_cards("2025" if pool.selected == 0 else "2026")
+ bans_button = action(create, "Banned cards: %d" % create_banned.size(), func(): ban_picker.open_bans("2025" if pool.selected == 0 else "2026", create_banned, func(ids): create_banned = ids; bans_button.text = "Banned cards: %d" % ids.size()))
+ pool.item_selected.connect(func(_n): create_banned = []; bans_button.text = "Banned cards: 0")
  UIStyle.label(create, "Starting life", 18)
  life = option(create, ["Standard", "20", "30", "40"], [0,20,30,40].find(Sfx.starting_life))
  UIStyle.primary(action(create, "Create game", create_game))
@@ -190,6 +198,7 @@ func create_game():
  var body = identity()
  body.public = public_choice.button_pressed
  body.card_pool = "2025" if pool.selected == 0 else "2026"
+ body.banned = create_banned.duplicate()
  body.starting_life = [0,20,30,40][life.selected]
  body.seats = [{"bot": false, "difficulty": 0}]
  for i in seat_count.selected + 1:
@@ -237,6 +246,7 @@ func refresh_rooms():
   row.add_child(UIStyle.avatar(str(room.seats[0].get("hero", ""))))
   UIStyle.label(row, str(room.host), 26).size_flags_horizontal = Control.SIZE_EXPAND_FILL
   action(row, "Join", join.bind(room.code))
+  UIStyle.label(box, "%d cards banned" % int(room.get("banned_count", 0)), 18)
   var seats = []
   for seat in room.seats:
    seats.append("◈ " + BotDifficulty.DISPLAY_NAMES[int(seat.difficulty)] if seat.bot else ("● " + seat.name if not seat.name.is_empty() else "○ Open seat"))
@@ -244,6 +254,7 @@ func refresh_rooms():
   UIStyle.label(box, SETS[0 if room.card_pool == "2025" else 1] + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 func enter(data: Dictionary):
  while hero_picker.close_top(): pass
+ while ban_picker.close_top(): pass
  hero_overlay = null
  message.text = "Connecting…"
  in_lobby = true
@@ -264,6 +275,8 @@ func enter(data: Dictionary):
   message.text = text)
  session.start(data)
 func lobby(room: Dictionary):
+ if ban_picker.selected_pool != room.card_pool:
+  while ban_picker.close_top(): pass
  clear_content()
  starting_indicator = null
  var columns = HBoxContainer.new()
@@ -327,10 +340,32 @@ func lobby(room: Dictionary):
   UIStyle.label(settings, "Fill every open human seat before starting." if start.disabled else "Everyone is ready!", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  else:
   UIStyle.label(settings, "Waiting for " + str(room.seats[int(room.host_seat)].name) + " to start…", 26).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
- action(settings, "Leave", leave_lobby)
+ UIStyle.label(settings, "%d cards banned" % room.get("banned", []).size(), 18)
+ action(settings, "Banned cards: %d" % room.get("banned", []).size() if host and not room.started else "View banned cards", func(): ban_picker.open_bans(room.card_pool, room.get("banned", []), func(ids): session.lobby("settings", {"banned": ids}), not host or room.started))
+ action(settings, "Close room" if host and not room.started else "Leave", leave_lobby)
 func leave_lobby():
  if not session.room.get("started", false):
-  if int(session.credential.seat) != int(session.room.get("host_seat", 0)): session.lobby("leave")
+  if int(session.credential.seat) == int(session.room.get("host_seat", 0)):
+   if is_instance_valid(kick_overlay): return
+   var overlay = UIStyle.panel()
+   kick_overlay = overlay
+   overlay.add_to_group("touch_modal")
+   add_child(overlay)
+   var box = VBoxContainer.new()
+   overlay.add_child(box)
+   UIStyle.label(box, "This closes the room for everyone.", 26)
+   UIStyle.button(box, "Close room", func(): kick_confirmed.emit(true))
+   UIStyle.button(box, "Cancel", func(): kick_confirmed.emit(false))
+   UIStyle.dialog(overlay, Vector2(640, 210))
+   var confirmed = await kick_confirmed
+   kick_overlay = null
+   overlay.queue_free()
+   if not confirmed or session == null: return
+  session.lobby("leave")
+  # Allow the transport to flush leave before freeing its polling session.
+  await get_tree().process_frame
+  await get_tree().process_frame
+  if session == null: return
   OnlineAPI.remember({})
  session.disconnect_game()
  back()
@@ -362,6 +397,7 @@ func _notification(what):
   if is_instance_valid(kick_overlay):
    kick_confirmed.emit(false)
    return
+  if ban_picker.close_top(): return
   if hero_picker.close_top(): return
   if in_lobby: leave_lobby()
   else: back()
@@ -369,6 +405,9 @@ func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"):
   if is_instance_valid(kick_overlay):
    kick_confirmed.emit(false)
+   get_viewport().set_input_as_handled()
+   return
+  if ban_picker.close_top():
    get_viewport().set_input_as_handled()
    return
   if hero_picker.close_top():

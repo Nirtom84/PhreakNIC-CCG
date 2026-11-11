@@ -2,7 +2,7 @@ class_name NetView
 extends SaveGame
 # The object codec preserves object-valued flags and dictionary keys. Only this
 # explicit public field list is encoded, never the authoritative save envelope.
-const PUBLIC_STATE = ["starting_life", "card_pool", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "finished", "winner"]
+const PUBLIC_STATE = ["starting_life", "card_pool", "banned", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "finished", "winner"]
 var visible: Array = []
 var masks: Dictionary = {}
 static func hidden_cards(count: int) -> Array:

@@ -1,5 +1,21 @@
 # Changelog
 
+## v0.12 — Smarter bots and card bans
+**Smarter bots**
+- **31337 Elite** now wins about 64–69% of head-to-head games against the v0.11 Elite (400-game benchmarks on both card sets). It values cards like Greatest Hits Vol 2 properly, saves its damage for the right moment, steals the right targets, and stops trashing its own offense and economy.
+- **Phreak** gets a lighter version of the same improvements (about 62–65% against the old Phreak).
+- **Script Kiddie** plays exactly as before, so new players still have a friendly opponent.
+- Bots still only use information a human player could see.
+
+**Card bans**
+- The party leader can remove cards from the game before it starts: on the main menu for offline games, and in the room settings (host only) online. Pick them in a searchable card grid; at least 40 cards always stay in the Center Row deck.
+- Everyone in the lobby can see which cards are banned, and the open-games list shows how many.
+
+**Fixes**
+- **Host leaves the lobby:** if the host leaves before the game starts, the room now closes for everyone with a message, instead of leaving guests stuck in a dead room. If the host just loses connection, the room waits 60 seconds for them to come back.
+- **Server diagnostics:** the game server now logs prompts, answers, timeouts, idle timers, refused actions (with the reason) and connections, without any card or hand details, so problems like a player being unable to act can be traced.
+- **Android:** the README now explains Google Play Protect's "unknown developer" warning (tap Install anyway).
+
 ## v0.11 — Security
 This release comes from a full security audit, since PhreakNIC is a hacker con and you will poke at it. Found something? See [SECURITY.md](SECURITY.md) to report it privately.
 

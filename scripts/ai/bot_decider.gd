@@ -32,6 +32,42 @@ func value(card, player = null) -> float:
 		"Time Travel": score = 5.0
 		"Nashville 2600": score = 1.0
 		"Nirtom Unleashed": score = 1.5
+	if difficulty > 0:
+		# Text-only effects need explicit estimates; printed damage/hack omit them.
+		match card.id:
+			"Ben The Meek": score = 4.0
+			"heartsh8ped": score = 1.3
+			"Jenny": score = 3.5
+			"Non-Infringing Game Show": score = 3.5
+			"LAN Party": score = 3.0
+			"Hotel Roof Chair Toss": score = 1.8
+			"Two Hump Camel": score = 1.9
+			"The Phreaknic Network": score = 7.0
+			"FOTTR Greatest Hits Vol 2": score = 10.0
+			"Clarion Inn Closet": score = 7.0
+			"The Big Dipper": score = 5.0
+			"Shell Speech": score = 8.0
+			"Payphone": score = 8.0
+			"Disassembled Sink": score = 7.0
+			"FOTTR Greatest Hits": score = 7.0
+			"Sticky Fingers": score = 6.0
+			"Registration": score = 4.0
+			"OSINT for Dummies": score = 5.0
+			"Brimstone, Fabulous": score = 6.5
+			"Lightning Talks": score = 4.5
+			"The Clarion Inn": score = 3.5
+			"Military-Grade Card Encapsulation": score = 4.0
+			"The Juice": score = -2.0
+			"AI Bens AI Camry": score = 2.0
+			"Fivrr Friendship": score = 2.0
+			"Tennessee Department of Health": score = 2.0
+		if player != null and difficulty == 2:
+			# Elite additionally evaluates the public board; Phreak uses the fixed estimates.
+			if card.id == "pouipoui, AV Guy": score = 1.0 + engine.permanents().size()
+			if card.id == "Hotel Roof Chair Toss": score += player.play_area.filter(func(c): return engine.db().has_subtype(c.id, "Location")).size()
+			if card.id in ["Sticky Fingers", "AI Slop", "Still Not Spock"] and engine.permanents().any(func(c): return c.controller != player.seat): score += 2.0
+			if card.id == "Clarion Inn Morning Coffee":
+				for c in engine.permanents(): score += 1.5 if c.controller != player.seat else -2.0
 	if player != null and difficulty == 2:
 		var owned = player.deck + player.hand + player.discard + player.play_area
 		if engine.db().named(card.id, "Botnet"): score += owned.filter(func(c): return engine.db().named(c.id, "Botnet")).size() * 2.0
@@ -112,6 +148,9 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 		sorted = sorted.filter(func(c): return c.controller != player.seat)
 		sorted.sort_custom(func(a, b): return value(a, player) > value(b, player))
 		return sorted.slice(0, maxi(min_n, 1))
+	if "Take control of permanent" in prompt:
+		var enemies = sorted.filter(func(c): return c.controller != player.seat)
+		if not enemies.is_empty(): sorted = enemies
 	var removing = "Remove cards" in prompt or "Discard" in prompt
 	if "Take phone" in prompt or "Take Clarion" in prompt or "Give Rickroll" in prompt: removing = false
 	sorted.sort_custom(func(a, b): return value(a, player) < value(b, player) if removing else value(a, player) > value(b, player))
@@ -122,12 +161,39 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 		return sorted.slice(0, 1)
 	if min_n > 0: return sorted.slice(0, min_n)
 	if "Remove cards" in prompt:
-		return sorted.filter(func(c): return c.id in ["Hacking", "Damage", "Rickroll"] or value(c, player) < 1.5).slice(0, max_n)
+		return thinning_choices(sorted, player, max_n)
 	if "Discard to redraw" in prompt or "Discard for hacking" in prompt:
 		return sorted.filter(func(c): return value(c, player) < 1.5).slice(0, max_n)
 	if "Discard hero to add ICE" in prompt: return []
 	if "Copy location" in prompt: return sorted.filter(func(c): return engine.effects.initial_ice(c.effect_id()) > 3).slice(0, 1)
 	return sorted.slice(0, maxi(1, min_n))
+func thinning_choices(cards: Array, player, count: int) -> Array:
+	# Composition only: never use the order of the deck or opponents' hidden cards.
+	var owned = player.deck + player.hand + player.discard
+	var hacking = 0
+	var damage = 0
+	for c in owned:
+		var d = engine.db().get_card(c.id)
+		hacking += int(d.hack)
+		damage += int(d.damage)
+		if c.id in ["Ben The Meek", "Non-Infringing Game Show", "LAN Party"]: damage += 3
+	for c in player.play_area:
+		if engine.db().named(c.id, "Botnet"): hacking += engine.controlled(player, "Botnet").size() * 2
+		if c.id in ["Payphone", "Unattended Phone", "Tableskirts"]: hacking += 2
+		if c.id in ["Payphone", "Bribery", "FOTTR Greatest Hits Vol 2", "Dick Van Dyke Stamp"]: damage += 3
+	var result: Array = []
+	for c in cards:
+		if result.size() >= count: break
+		if c.id not in ["Hacking", "Damage", "Rickroll"] and value(c, player) >= 1.5: continue
+		if c.id == "Hacking":
+			if hacking <= 6 or not engine.controlled(player, "Dick Van Dyke Stamp").is_empty(): continue
+			hacking -= 1
+		if c.id == "Damage":
+			if damage <= 2: continue
+			damage -= 1
+		result.append(c)
+	return result
+
 func choose_player(_player, _prompt: String, players: Array) -> PlayerState:
 	if players.is_empty(): return null
 	if difficulty == 0: return players[engine.rand_range(0, players.size() - 1)]

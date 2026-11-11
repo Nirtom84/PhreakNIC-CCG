@@ -24,3 +24,26 @@ func in_pool(id: String, pool: String = "2026") -> bool:
 	return cards.has(id) and (pool == "2026" or str(cards[id].get("set", "2025")) == "2025")
 func pool_ids(pool: String = "2026") -> Array:
 	return cards.keys().filter(func(id): return in_pool(id, pool))
+
+# Physical center-deck copies: each catalog ID represents one printed copy.
+const MIN_CENTER_CARDS = 40
+func center_ids(pool: String = "2026") -> Array:
+	return pool_ids(pool).filter(func(id): return not cards[id].starter)
+func filter_banned(value: Array, pool: String = "2026") -> Array:
+	var eligible = center_ids(pool)
+	var names_banned = []
+	for id in value:
+		if id is String and id in eligible: names_banned.append(cards[id].name)
+	return eligible.filter(func(id): return cards[id].name in names_banned)
+func bans_valid(value: Array, pool: String = "2026") -> bool:
+	return center_ids(pool).size() - filter_banned(value, pool).size() >= MIN_CENTER_CARDS
+func center_choices(pool: String = "2026") -> Array:
+	var seen = []
+	var result = []
+	for id in center_ids(pool):
+		if cards[id].name in seen: continue
+		seen.append(cards[id].name)
+		result.append(id)
+	return result
+func center_copies(id: String, pool: String = "2026") -> Array:
+	return center_ids(pool).filter(func(copy): return cards[copy].name == cards[id].name)

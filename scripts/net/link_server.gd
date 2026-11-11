@@ -160,6 +160,7 @@ func _receive(message: Dictionary):
 			if not seat.get("bot", false) is bool: return
 		for field in ["seed", "starting_life"]:
 			if message.has(field) and not message[field] is int: return
+		if not message.get("banned", []) is Array: return
 		if message.get("starting_life", 0) < 0 or message.get("starting_life", 0) > 10000: return
 	if message.get("t") == "restore" and not message.get("snapshot") is Dictionary: return
 	match message.get("t"):
@@ -167,7 +168,11 @@ func _receive(message: Dictionary):
 		"setup":
 			_new_game()
 			room = str(message.get("room", ""))
-			game.setup(message.seats, str(message.get("card_pool", "2026")), int(message.get("starting_life", 0)), int(message.get("seed", 1)))
+			game.room_label = room
+			if not game.setup(message.seats, str(message.get("card_pool", "2026")), int(message.get("starting_life", 0)), int(message.get("seed", 1)), message.get("banned", [])):
+				for seat in message.seats.size(): _send({"t": "to", "seat": seat, "msg": {"t": "error", "reason": "At least 40 center-deck cards must remain. Change the banned cards and create a new room."}})
+				_send({"t": "over", "winner": -1, "reason": "banned_minimum"})
+				return
 			for i in message.seats.size(): game.tokens[i] = str(message.seats[i].get("token", ""))
 			_watch_over()
 			print("room %s setup" % room)
@@ -175,6 +180,7 @@ func _receive(message: Dictionary):
 		"restore":
 			_new_game()
 			room = str(message.get("room", ""))
+			game.room_label = room
 			if game.restore(message.snapshot):
 				_watch_over()
 				print("room %s restore" % room)

@@ -78,3 +78,41 @@ test('deploy helpers remove private Docker config on success and failure without
   }finally{await fs.rm(root,{recursive:true,force:true});}
  }
 });
+
+test('host leave closes guests, removes storage/listing and records once',async()=>{
+ const r=makeRoom(),events=[],host=sock(),guest=sock(),messages=[];
+ guest.send=v=>messages.push(JSON.parse(v));r.clients.set(host,{seat:0});r.clients.set(guest,{seat:1});
+ r.ctx={container:{destroy:async why=>events.push(why)},storage:{deleteAll:async()=>events.push('delete')}};
+ r.env={LOBBY:binding({bump:async keys=>events.push(...keys),remove:async c=>events.push(c)})};
+ await r.message(host,JSON.stringify({t:'lobby',action:'leave'}));
+ assert.deepEqual(messages,[{t:'room_closed',reason:'host_left'}]);assert.deepEqual(guest.closed,{code:4002,reason:'closed'});
+ assert.deepEqual(events,['rooms.closed_by_host','host_left','AB23','delete']);assert.equal(r.r,null);
+ await r.closeByHost();assert.equal(events.length,4);
+ // Reuse a deleted code in the same live Durable Object.
+ r.stat=async()=>{};r.save=async()=>{};r.rates.set(0,{old:true});r.starting=true;
+ await r.createRoom('AB23',{seats:[{token:'new'}]});assert(!r.closing);assert(!r.starting);assert.equal(r.rates.size,0);assert.equal(r.r.code,'AB23');
+});
+test('host disconnect schedules grace and alarm closes only at deadline',async()=>{
+ const r=makeRoom(),host=sock(),guest=sock();r.clients.set(host,{seat:0});r.clients.set(guest,{seat:1});
+ await r.disconnected(host);assert(r.r.hostGoneAt<=Date.now());let closed=0;r.closeByHost=async()=>closed++;r.schedule=async()=>{};
+ await r.alarm();assert.equal(closed,0);r.r.hostGoneAt=Date.now()-60000;await r.alarm();assert.equal(closed,1);
+ r.r.started=true;await r.alarm();assert.equal(closed,1);
+});
+test('host reconnect cancels pregame grace',async()=>{
+ const originalResponse=globalThis.Response,originalPair=globalThis.WebSocketPair;
+ globalThis.Response=class extends originalResponse {constructor(body,init){if(init?.status===101){super(null);Object.defineProperty(this,'status',{value:101});}else super(body,init);}};
+ globalThis.WebSocketPair=class {constructor(){this[0]=sock();this[1]=Object.assign(sock(),{accept(){},addEventListener(){}});}};
+ try{const r=makeRoom();r.r.hostGoneAt=Date.now()-59999;await r.fetch(new Request('https://server/ws/room/AB23?token='+'a'.repeat(32),{headers:{Upgrade:'websocket'}}));assert.equal(r.r.hostGoneAt,undefined);}finally{globalThis.Response=originalResponse;globalThis.WebSocketPair=originalPair;}
+});
+test('settings broadcast bans and clear bans on pool change',async()=>{
+ const r=makeRoom(),host=sock(),messages=[];host.send=v=>messages.push(JSON.parse(v));r.clients.set(host,{seat:0});r.broadcastRoom=Room.prototype.broadcastRoom;
+ await r.message(host,JSON.stringify({t:'lobby',action:'settings',banned:['unknown']}));assert.deepEqual(r.r.banned,['unknown']);assert.deepEqual(messages.at(-1).banned,['unknown']);
+ await r.message(host,JSON.stringify({t:'lobby',action:'settings',card_pool:'2025',banned:['unknown']}));assert.deepEqual(r.r.banned,[]);
+});
+
+test('alarm scheduling uses persisted host deadline until reconnect or game start',async()=>{
+ const r=makeRoom(),alarms=[];r.ctx={storage:{setAlarm:async at=>alarms.push(at)}};
+ r.r.hostGoneAt=Date.now();await r.schedule();assert.equal(alarms.at(-1),r.r.hostGoneAt+60000);
+ r.r.started=true;await r.schedule();assert.equal(alarms.at(-1),r.r.created+8*3600000);
+ r.r.started=false;delete r.r.hostGoneAt;await r.schedule();assert.equal(alarms.at(-1),r.r.created+8*3600000);
+});

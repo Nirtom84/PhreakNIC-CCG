@@ -11,6 +11,12 @@ var auto_end_turn: bool = true
 var confirm_end_turn: bool = true
 var starting_life: int = 0
 var card_pool: String = "2026"
+var banned_by_pool: Dictionary = {"2025": [], "2026": []}
+func banned_cards(selected_pool: String) -> Array:
+ return banned_by_pool.get(selected_pool, []).duplicate()
+func set_banned(selected_pool: String, value: Array):
+ var clean = CardDB.filter_banned(value, selected_pool)
+ if CardDB.bans_valid(clean, selected_pool): banned_by_pool[selected_pool] = clean
 func clean_handle(value: String) -> String:
  return value.replace("[", "").replace("]", "").strip_edges().left(16)
 var pool: Array[AudioStreamPlayer] = []
@@ -34,6 +40,9 @@ func _ready():
   if v is bool: set("visual_effects" if entry[1] == "effects" else entry[1], v)
  v = config.get_value("game", "starting_life", 0)
  if v is int and v >= 0 and v <= 10000: starting_life = v
+ for selected_pool in ["2025", "2026"]:
+  var bans = config.get_value("game", "banned_" + selected_pool, [])
+  if bans is Array and bans.size() <= 150: set_banned(selected_pool, bans)
  if DisplayServer.get_name() == "headless": return
  for i in 8:
   var player = AudioStreamPlayer.new()
@@ -49,6 +58,7 @@ func save():
  config.set_value("game", "starting_life", starting_life)
  config.set_value("game", "bot_fast", bot_fast)
  config.set_value("game", "card_pool", card_pool)
+ for selected_pool in ["2025", "2026"]: config.set_value("game", "banned_" + selected_pool, banned_cards(selected_pool))
  config.set_value("visual", "effects", visual_effects)
  visuals_changed.emit(visual_effects)
  config.set_value("sound", "volume", volume)

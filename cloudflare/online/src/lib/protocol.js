@@ -44,6 +44,11 @@ export function settings(v, partial=false) {
     if (!valid(v[key])) fail(key);
     out[key]=v[key];
   }
+  if (!partial || 'banned' in v) {
+    const banned=v.banned===undefined?[]:v.banned;
+    if(!Array.isArray(banned)||banned.length>150||new Set(banned).size!==banned.length||banned.some(id=>typeof id!=='string'||id.length>64||/[^\x20-\x7e]/.test(id)))fail('banned');
+    out.banned=banned;
+  }
   return out;
 }
 export function difficulty(n) { if (!Number.isInteger(n) || n<0 || n>2) fail('difficulty'); return n; }
@@ -59,7 +64,7 @@ export function creation(v) {
 }
 export const wrap = (seat,msg) => ({t:'from',seat,msg});
 export function summary(r) {
-  return {code:r.code,host:r.seats[0].name,seats:r.seats.map(({name,hero,bot,difficulty})=>({name,hero,bot,difficulty})),open_seats:r.seats.filter(s=>!s.bot&&!s.token).length,card_pool:r.card_pool,starting_life:r.starting_life,version:r.version,created:r.created};
+  return {banned_count:(r.banned||[]).length,code:r.code,host:r.seats[0].name,seats:r.seats.map(({name,hero,bot,difficulty})=>({name,hero,bot,difficulty})),open_seats:r.seats.filter(s=>!s.bot&&!s.token).length,card_pool:r.card_pool,starting_life:r.starting_life,version:r.version,created:r.created};
 }
 export const isOpen = r => r.public && !r.started && !r.over && summary(r).open_seats>0;
 
@@ -90,3 +95,6 @@ export function seatRate(state,now,bytes) {
  const strikes=rateDecision(state.strikes,now,10,10000,messages.allowed&&traffic.allowed?0:1);
  return {messages,traffic,strikes,allowed:messages.allowed&&traffic.allowed,close:!traffic.allowed||!strikes.allowed};
 }
+
+export const hostCloseDue=(r,now=Date.now())=>!r.started&&r.hostGoneAt!=null&&now>=r.hostGoneAt+60000;
+export const hostLeave=(r,seat)=>!r.started&&seat===r.host_seat;

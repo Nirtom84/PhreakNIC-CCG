@@ -20,6 +20,8 @@ var engine: GameEngine
 var player_count: int = 2
 var difficulty: int = 0
 var card_pool: String = "2026"
+var banned: Array = []
+var ban_picker: Control
 var scripted_decider: Decider
 var auto_drive: bool = true
 var fast: bool = false
@@ -129,7 +131,7 @@ func _ready():
  pick_seat_names(game_seed)
  engine.log_message.connect(append_log)
  if resume_data.is_empty():
-  engine.setup(levels, game_seed, choices, card_pool, starting_life)
+  engine.setup(levels, game_seed, choices, card_pool, starting_life, banned)
  else:
   engine.state = SaveGame.restore(resume_data.game)
   starting_life = int(resume_data.table.get("starting_life", 0))
@@ -263,10 +265,21 @@ func redraw():
    center.add_child(slot)
  var piles = VBoxContainer.new()
  center.add_child(piles)
- piles.add_child(UIStyle.picture(UIStyle.BACK, Vector2(110, 115)))
  var deck_label = UIStyle.label(piles, "Deck: %d" % engine.state.center_deck.size(), 16)
  deck_label.custom_minimum_size.x = 180
  UIStyle.label(piles, "Base Set" if engine.state.card_pool == "2025" else "Base + Expansion 1", 14)
+ var banned_button = UIStyle.button(piles, "Banned: %d" % engine.state.banned.size(), func():
+  if is_instance_valid(ban_picker): return
+  ban_picker = load("res://scripts/ui/ban_picker.gd").new()
+  add_child(ban_picker)
+  ban_picker.open_bans(engine.state.card_pool, engine.state.banned, Callable(), true)
+  ban_picker.overlays[0].tree_exited.connect(ban_picker.queue_free))
+ banned_button.icon = load(UIStyle.BACK)
+ banned_button.expand_icon = true
+ banned_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+ banned_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+ banned_button.add_theme_constant_override("icon_max_width", 60)
+ banned_button.custom_minimum_size = Vector2(110, 115)
  UIStyle.button(piles, "Removed: %d" % engine.state.removed.size(), func(): view_cards("Removed from game", engine.state.removed))
  var p = engine.state.players[human_seat]
  var board_scroll = ScrollContainer.new()
@@ -832,6 +845,7 @@ func restart():
  table.player_count = player_count
  table.difficulty = difficulty
  table.card_pool = engine.state.card_pool
+ table.banned = engine.state.banned.duplicate()
  table.starting_life = starting_life
  get_tree().root.add_child(table)
  get_tree().current_scene = table
@@ -1095,6 +1109,7 @@ func _notification(what):
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
 func go_back():
+ if is_instance_valid(ban_picker) and ban_picker.close_top(): return
  if is_instance_valid(inspect_overlay): close_inspect()
  elif is_instance_valid(rules_overlay): rules_overlay.queue_free(); rules_overlay = null
  elif is_instance_valid(game_menu): close_menu()

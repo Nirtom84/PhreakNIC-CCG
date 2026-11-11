@@ -37,6 +37,9 @@ func connect_socket():
 func _closed(endpoint):
 	if stopped or endpoint != transport: return
 	client.can_act = false
+	if endpoint is WebSocketTransport and endpoint.close_code == 4002:
+		_room_closed()
+		return
 	if endpoint is WebSocketTransport and endpoint.close_reason in ["room_version", "busy", "maintenance", "rate_limit"]:
 		stopped = true
 		retry = 0
@@ -55,6 +58,7 @@ func _closed(endpoint):
 	attempts += 1
 func _message(data: Dictionary):
 	match data.get("t"):
+		"room_closed": _room_closed()
 		"error":
 			var reason = data.get("reason", data.get("error", ""))
 			if reason in ["room_version", "version", "busy", "maintenance", "rate_limit"]:
@@ -79,6 +83,16 @@ func _message(data: Dictionary):
 			OnlineAPI.remember({})
 			if data.get("reason") == "restore_failed": set_status("The server was updated, so this game couldn't be resumed. Start a new one from Play online.")
 			finished.emit(int(data.get("winner", -1)))
+func _room_closed():
+	if stopped: return
+	stopped = true
+	retry = 0
+	client.can_act = false
+	credential = {}
+	OnlineAPI.remember({})
+	set_status("The host closed the room.")
+	if transport != null: transport.close()
+	removed.emit("The host closed the room.")
 func lobby(action: String, fields: Dictionary = {}):
 	var message = fields.duplicate()
 	message.t = "lobby"

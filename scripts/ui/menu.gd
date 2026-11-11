@@ -8,6 +8,8 @@ var handle_input: LineEdit
 var avatar_preview: Control
 var count: OptionButton
 var hero_picker
+var ban_picker
+var bans_button: Button
 func _ready():
  if "--server" in OS.get_cmdline_user_args():
   get_tree().change_scene_to_file.call_deferred("res://scenes/server.tscn")
@@ -15,6 +17,8 @@ func _ready():
  get_tree().auto_accept_quit = true
  hero_picker = load("res://scripts/ui/hero_picker.gd").new()
  add_child(hero_picker)
+ ban_picker = load("res://scripts/ui/ban_picker.gd").new()
+ add_child(ban_picker)
  UIStyle.rotate_prompt(self)
  UIStyle.apply(self)
  UIStyle.background(self)
@@ -134,7 +138,7 @@ func _ready():
  var pool_group = ButtonGroup.new()
  for pool in ["2025", "2026"]:
   var description = "Base Set — PhreakNIC 26\n102 cards" if pool == "2025" else "Base Set + Expansion 1 — PhreakNIC 27\n150 cards"
-  var tile = UIStyle.button(sets, description, func(): Sfx.card_pool = pool; Sfx.save())
+  var tile = UIStyle.button(sets, description, func(): Sfx.card_pool = pool; Sfx.save(); refresh_bans())
   tile.toggle_mode = true
   tile.button_group = pool_group
   tile.button_pressed = Sfx.card_pool == pool
@@ -152,6 +156,8 @@ func _ready():
   if n == Sfx.starting_life: life.select(life.item_count - 1)
  count.item_selected.connect(func(_i): life.set_item_text(0, "Standard · %d" % (24 if count.get_selected_id() == 2 else 10 * count.get_selected_id())))
  life.item_selected.connect(func(_i): Sfx.starting_life = life.get_selected_id(); Sfx.save())
+ bans_button = UIStyle.button(life_row, "", func(): ban_picker.open_bans(Sfx.card_pool, Sfx.banned_cards(Sfx.card_pool), func(ids): Sfx.set_banned(Sfx.card_pool, ids); Sfx.save(); refresh_bans()))
+ refresh_bans()
  var actions = HBoxContainer.new()
  menu.add_child(actions)
  var saved = SaveGame.read()
@@ -242,6 +248,7 @@ func launch(resume: Dictionary = {}):
  table.player_count = count.get_selected_id()
  table.difficulty = difficulty.selected
  table.card_pool = Sfx.card_pool
+ table.banned = Sfx.banned_cards(Sfx.card_pool)
  table.starting_life = Sfx.starting_life
  get_tree().root.add_child(table)
  get_tree().current_scene = table
@@ -254,7 +261,10 @@ func _notification(what):
  if what == NOTIFICATION_WM_GO_BACK_REQUEST: go_back()
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
+func refresh_bans():
+ if is_instance_valid(bans_button): bans_button.text = "Banned cards: %d" % Sfx.banned_cards(Sfx.card_pool).size()
 func go_back():
+ if is_instance_valid(ban_picker) and ban_picker.close_top(): return
  if is_instance_valid(hero_picker) and hero_picker.close_top(): return
  if is_instance_valid(rules_overlay): rules_overlay.queue_free()
  else: get_tree().quit()

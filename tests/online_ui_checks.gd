@@ -127,12 +127,13 @@ func run():
  current_scene = online
  await frames()
  for populated in [false, true]:
-  api.rooms = [{"code": "ABCD", "host": "Host", "seats": [{"name": "Host", "bot": false, "difficulty": 0}, {"name": "", "bot": false, "difficulty": 0}, {"name": "Bot", "bot": true, "difficulty": 2}], "card_pool": "2026", "starting_life": 20, "open_seats": 1}] if populated else []
+  api.rooms = [{"code": "ABCD", "host": "Host", "seats": [{"name": "Host", "bot": false, "difficulty": 0}, {"name": "", "bot": false, "difficulty": 0}, {"name": "Bot", "bot": true, "difficulty": 2}], "card_pool": "2026", "starting_life": 20, "open_seats": 1, "banned_count": 3}] if populated else []
   if populated:
    for i in 7: api.rooms.append(api.rooms[0].duplicate(true))
   online.seat_count.select(2)
   online.seat_count.item_selected.emit(2)
   await online.refresh_rooms()
+  if populated: verify(has_label(online.rooms_box, "3 cards banned"), "Open games show ban count")
   for viewport in [Vector2i(1920,1080), Vector2i(2400,1080), Vector2i(1920,1440)]:
    root.content_scale_size = viewport
    root.size = viewport
@@ -273,6 +274,10 @@ func run():
  await join_ui.join("ABCD")
  await frames()
  verify(api.calls[-1].path == "/rooms/ABCD/join" and join_ui.in_lobby, "join flow")
+ room.socket.send({"t": "room_closed", "reason": "host_left"})
+ await frames()
+ verify(not join_ui.in_lobby and join_ui.message.text == "The host closed the room.", "Host closure returns to online home")
+ verify(join_ui.session == null and OnlineAPI.remembered().is_empty(), "Host closure forgets seat and stops reconnect")
  join_ui.queue_free()
  await frames()
  var mismatch_ui = load("res://scripts/ui/online.gd").new()

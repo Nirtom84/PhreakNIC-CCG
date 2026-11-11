@@ -16,7 +16,7 @@ test('names, seat fields, and settings reject malformed values',()=>{for(const n
 test('CORS permits only listed origins and HTTP loopback',()=>{for(const o of [null,'https://phreaknic-ccg.net','https://www.phreaknic-ccg.net','https://nirtom84.github.io','http://localhost:8080','http://127.0.0.1:1234'])assert(originAllowed(o));for(const o of ['null','https://evil.test','https://phreaknic-ccg.net.evil.test','http://localhost.evil.test:80','https://localhost:1234','http://localhost:8080/path'])assert(!originAllowed(o));});
 test('routes match methods and exact paths',()=>{assert.deepEqual(route('POST','/rooms/AB23/join'),{kind:'join',code:'AB23'});assert.equal(route('GET','/ws/room/AB23').kind,'ws');assert.equal(route('GET','/rooms').kind,'list');assert.equal(route('POST','/rooms').kind,'create');assert.equal(route('GET','/health').kind,'health');for(const [m,p]of [['GET','/rooms/AB23/join'],['POST','/ws/room/AB23'],['GET','/ws/room/ABO1'],['GET','/health/']])assert.equal(route(m,p),null);});
 test('game payload remains opaque and unchanged',()=>{const msg={t:'answer',nested:{secret:[null,1,'x']}};const r=wrap(2,msg);assert.deepEqual(r,{t:'from',seat:2,msg});assert.equal(r.msg,msg);});
-test('public summary includes avatars but omits tokens, snapshots and closed rooms',()=>{const r={...creation(input()),code:'AB23',created:123,started:false,over:false,snapshot:{secret:1}};assert.deepEqual(summary(r),{code:'AB23',host:'Nirtom',seats:[{name:'Nirtom',hero:'nirtom',bot:false,difficulty:0},{name:'',hero:'',bot:false,difficulty:0}],open_seats:1,card_pool:'2026',starting_life:0,version:'0.09',created:123});assert(isOpen(r));for(const patch of [{public:false},{started:true},{over:true},{seats:[r.seats[0],{bot:true}]}])assert(!isOpen({...r,...patch}));});
+test('public summary includes avatars but omits tokens, snapshots and closed rooms',()=>{const r={...creation(input()),code:'AB23',created:123,started:false,over:false,snapshot:{secret:1}};assert.deepEqual(summary(r),{banned_count:0,code:'AB23',host:'Nirtom',seats:[{name:'Nirtom',hero:'nirtom',bot:false,difficulty:0},{name:'',hero:'',bot:false,difficulty:0}],open_seats:1,card_pool:'2026',starting_life:0,version:'0.09',created:123});assert(isOpen(r));for(const patch of [{public:false},{started:true},{over:true},{seats:[r.seats[0],{bot:true}]}])assert(!isOpen({...r,...patch}));});
 
 test('release version gate accepts matching or unconfigured versions',()=>{
  for(const required of [undefined,'']) for(const client of ['0.09','0.10']) assert.doesNotThrow(()=>checkVersion(client,required));
@@ -59,3 +59,14 @@ test('admin lock is checked before key comparison, including a correct key',asyn
 });
 
 await import("./runtime.test.js");
+
+test('banned shape accepts bounded unique printable IDs and rejects malformed input',()=>{
+ assert.deepEqual(settings({banned:['Botnet','unknown']},true),{banned:['Botnet','unknown']});assert.deepEqual(creation({...input(),banned:['Botnet']}).banned,['Botnet']);assert.throws(()=>creation({...input(),banned:'Botnet'}));
+ for(const banned of [null,{},'x',[1],['a','a'],['a\n'],['é'],['x'.repeat(65)],Array.from({length:151},(_,i)=>''+i)])assert.throws(()=>settings({banned},true));
+ assert.equal(summary({...creation(input()),banned:['a','b']}).banned_count,2);
+});
+test('host close decisions honor grace boundary and game start',()=>{
+ const r={host_seat:0,started:false,hostGoneAt:100};
+ assert(hardening.hostLeave(r,0));assert(!hardening.hostLeave(r,1));assert(!hardening.hostLeave({...r,started:true},0));
+ assert(!hardening.hostCloseDue(r,60099));assert(hardening.hostCloseDue(r,60100));assert(!hardening.hostCloseDue({...r,hostGoneAt:null},1e9));assert(!hardening.hostCloseDue({...r,started:true},1e9));
+});

@@ -97,3 +97,21 @@ Store the new key securely and enter it in the admin panel. Nothing else changes
 Deploy helpers use a private temporary `DOCKER_CONFIG` (mode 700), removed by an EXIT trap on success and failure so registry credentials never persist.
 
 The site Worker caches full WASM responses under the versioned R2 path and remembers strong ETags by version, allowing conditional 304 responses without R2 reads. Site responses carry CSP, nosniff, referrer, HSTS, and minimal permissions headers. HTML scripts receive a fresh CSP nonce so the Godot inline bootstrap runs without allowing arbitrary inline scripts. HTML is not cached. The policy permits WebAssembly compilation and self/blob workers; browser verification must cover audio worklets and JavaScriptBridge calls (the export contains `eval`, which this CSP deliberately does not authorize).
+
+### Party bans and pregame room closure (0.12)
+
+Create and lobby `settings` accept optional `banned` (default `[]`): an array of
+at most 150 unique printable ASCII card IDs, each at most 64 characters.
+The Worker validates shape only. A changed `card_pool` clears bans. The room
+broadcast and container `setup` include `banned`; public summaries include
+`banned_count`. Godot filters IDs to the selected center pool, expands copies and
+refuses setup unless at least 40 center-deck cards remain before dealing five.
+Authoritative snapshots retain the normalized list.
+
+A host's lobby `leave` closes an unstarted room for everyone. Other sockets receive
+`{t:'room_closed',reason:'host_left'}` followed by WebSocket code **4002**, reason
+`closed`. Clients forget the seat and stop reconnecting. An unannounced pregame
+host disconnect gets a persisted, alarm-based 60-second grace period; authenticated
+host reconnect cancels it. Closure deletes room storage and the lobby entry and
+increments daily `rooms.closed_by_host`; the code may be reused. Started games
+keep their existing lifecycle.
