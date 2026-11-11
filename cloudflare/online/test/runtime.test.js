@@ -151,10 +151,12 @@ test('emotes relay with the authenticated seat, silently drop flood and malforme
  try{
   for(const id of ['0',-1,8,0.5,null,true])await r.message(ws,JSON.stringify({type:'emote',id}));
   await r.message(ws,JSON.stringify({type:'emote',id:0,seat:1}));assert.equal(sent.length,0);
-  for(let i=0;i<10;i++){await r.message(ws,JSON.stringify({type:'emote',id:i%8}));for(let j=0;j<100;j++)await r.message(ws,JSON.stringify({type:'emote',id:1}));now+=3000;}
+  for(let i=0;i<10;i++){await r.message(ws,JSON.stringify({type:'emote',id:i%8}));for(let j=0;j<5;j++)await r.message(ws,JSON.stringify({type:'emote',id:1}));now+=3000;}
   assert.equal(sent.length,10);assert.deepEqual(sent[0],{t:'from',seat:0,msg:{type:'emote',id:0}});assert(!ws.closed);
   await r.message(ws,JSON.stringify({type:'emote',id:0}));assert.equal(sent.length,10);now+=30000;await r.message(ws,JSON.stringify({type:'emote',id:7}));assert.equal(sent.length,11);
   r.send=(socket,m)=>received.push([socket,m]);await r.linkMessage({t:'to',seat:1,msg:{type:'emote',seat:0,id:7}});assert.deepEqual(received,[[other,{type:'emote',seat:0,id:7}]]);
   const oversized=sock();r.clients.set(oversized,{seat:1});await r.message(oversized,JSON.stringify({type:'emote',id:'x'.repeat(70000)}));assert.equal(oversized.closed.code,1009);
+  // Emotes count against the seat's general rate limit: a flood closes the socket like any other flood.
+  const flood=sock();r.clients.set(flood,{seat:1});const before=sent.length;for(let j=0;j<400&&!flood.closed;j++)await r.message(flood,JSON.stringify({type:'emote',id:1}));assert.equal(flood.closed?.code,1008);assert(sent.length-before<=1);
  }finally{Date.now=original;}
 });

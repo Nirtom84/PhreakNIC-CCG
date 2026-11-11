@@ -175,14 +175,14 @@ export class Room extends DurableObject {
   async message(ws,data) {
     const c=this.clients.get(ws);if(!c||this.closing)return;
     if(typeof data!=='string'||new TextEncoder().encode(data).length>65536){ws.close(1009,'message size');return;}
-    let emote;try{emote=JSON.parse(data);}catch{}
-    if(emote?.type==='emote'){
-      if(!validEmote(emote)||!this.r.started||this.r.over||roomExpired(this.r)||this.link?.readyState!==1)return;
-      this.emoteRates??=new Map();const rate=emoteRate(this.emoteRates.get(c.seat),Date.now());this.emoteRates.set(c.seat,rate.stamps);
-      if(rate.allowed)this.linkSend(wrap(c.seat,emote));return;
-    }
+    // Every message counts against the seat's rate limit before anything is parsed, emotes included.
     const rate=seatRate(this.rates.get(c.seat)||{},Date.now(),new TextEncoder().encode(data).length);this.rates.set(c.seat,rate);if(!rate.allowed){if(rate.close)ws.close(1008,'rate_limit');return;}if(roomExpired(this.r)){await this.alarm();return;}
     let m;try{m=JSON.parse(data);}catch{fail('json');}if(!m||typeof m!=='object'||Array.isArray(m))fail('message');
+    if(m.type==='emote'){
+      if(!validEmote(m)||!this.r.started||this.r.over||this.link?.readyState!==1)return;
+      this.emoteRates??=new Map();const quota=emoteRate(this.emoteRates.get(c.seat),Date.now());this.emoteRates.set(c.seat,quota.stamps);
+      if(quota.allowed)this.linkSend(wrap(c.seat,m));return;
+    }
     if(this.r.started){
       if(!this.r.over&&this.link?.readyState===1){
         // Game messages only refresh the activity time; persist it (and the lobby entry) at most once a minute.
