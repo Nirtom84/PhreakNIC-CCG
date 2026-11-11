@@ -58,4 +58,5 @@ static func apply(view: Dictionary) -> GameState:
 		for field in record.data: codec.objects[i].set(field, codec.decode(record.data[field]))
 	var state = GameState.new()
 	for field in PUBLIC_STATE: state.set(field, codec.decode(view.state[field]))
+	Engine.get_main_loop().root.get_node("CardDB").select_pool(state.card_pool)
 	return state

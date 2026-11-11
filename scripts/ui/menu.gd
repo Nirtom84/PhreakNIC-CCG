@@ -15,6 +15,7 @@ func _ready():
   get_tree().change_scene_to_file.call_deferred("res://scenes/server.tscn")
   return
  get_tree().auto_accept_quit = true
+ CardDB.select_pool(Sfx.card_pool)
  hero_picker = load("res://scripts/ui/hero_picker.gd").new()
  add_child(hero_picker)
  ban_picker = load("res://scripts/ui/ban_picker.gd").new()
@@ -133,16 +134,16 @@ func _ready():
  var sets_box = VBoxContainer.new()
  configuration.add_child(sets_box)
  UIStyle.label(sets_box, "// CARD SET", 18)
- var sets = HBoxContainer.new()
+ var sets = VBoxContainer.new()
  sets_box.add_child(sets)
  var pool_group = ButtonGroup.new()
- for pool in ["2025", "2026"]:
-  var description = "Base Set — PhreakNIC 26\n102 cards" if pool == "2025" else "Base Set + Expansion 1 — PhreakNIC 27\n150 cards"
-  var tile = UIStyle.button(sets, description, func(): Sfx.card_pool = pool; Sfx.save(); refresh_bans())
+ for pool in CardDB.POOLS:
+  var description = "Base Set — PhreakNIC 26 · 102 cards" if pool == "2025" else ("Base Set + Expansion 1 — PhreakNIC 27 · 150 cards" if pool == "2026" else "Mog Variant · PhreakNIC 27 · 150 cards")
+  var tile = UIStyle.button(sets, description, func(): Sfx.card_pool = pool; CardDB.select_pool(pool); Sfx.save(); refresh_bans())
   tile.toggle_mode = true
   tile.button_group = pool_group
   tile.button_pressed = Sfx.card_pool == pool
-  tile.custom_minimum_size = Vector2(280, 60)
+  tile.custom_minimum_size = Vector2(550, 34)
   tile.add_theme_font_size_override("font_size", 16)
   tile.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, UIStyle.CYAN, 0))
   tile.add_theme_stylebox_override("pressed", UIStyle.box(UIStyle.PANEL.lightened(0.06), UIStyle.CYAN, 10))

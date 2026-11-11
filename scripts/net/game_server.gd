@@ -1,6 +1,7 @@
 class_name GameServer
 extends Node
 signal snapshot(data: Dictionary)
+signal diagnostic(text: String)
 class Decision extends RefCounted:
 	signal done(value)
 var setup_error = ""
@@ -26,7 +27,7 @@ var idle_streak: Dictionary = {}
 var idle_bot: Dictionary = {}
 var permanent_idle: Dictionary = {}
 var announced_dead: Dictionary = {}
-# Diagnostics: one line per notable server event, printed to the container's stdout (Cloudflare logs).
+# Diagnostics: one line per notable server event, printed to stdout and forwarded over the room link.
 # Never includes card identities, hands or deck contents; only seats, prompt kinds, sizes and timings.
 var room_label = ""
 var diag_budget: Dictionary = {}
@@ -43,6 +44,7 @@ func diag(text: String, key: String = ""):
 		if entry[1] == budget: text += " (further '%s' lines muted this minute)" % key
 	var turn = engine.state.turn if engine != null and engine.state != null else 0
 	print("room %s t%d %s" % [room_label, turn, text])
+	diagnostic.emit("t%d %s" % [turn, text])
 func why_not(seat: int) -> String:
 	var reasons = []
 	if not running: reasons.append("game not running")
@@ -88,7 +90,7 @@ func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, se
 	for i in seats.size(): choices.append(BotDecider.new(engine, seats[i].difficulty) if seats[i].bot else RemoteDecider.new(self, i))
 	return engine.setup(levels, seed_value, choices, card_pool, starting_life, banned)
 func _pick_bot_names(card_pool: String):
-	var db = get_node("/root/CardDB")
+	var db = get_node("/root/CardDB").catalog(card_pool)
 	var used_names = []
 	var used_ids = []
 	for info in seats:

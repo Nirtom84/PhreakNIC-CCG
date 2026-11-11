@@ -14,14 +14,14 @@ Godot 4.7, GDScript only (typed GDScript where practical). Target 1920x1080, str
   implements each card's text as code.
 
 ## Data
-- `data/cards.json`: one entry per unique card (152). Fields: `id` (file stem, the stable key),
+- `data/cards.json`: 152 original card definitions plus five Mognet effect/copy definitions. Fields: `id` (file stem, the stable key),
   `name` (printed title), `cost`, `kind` ("Action" | "Permanent"), `subtypes` (e.g.
   "Legendary Hero", "Exploit", "Technology", "Location", "Organization", "Event",
   "FOTTR Hero", "pTFS Hero"), `type_line`, `hack`, `damage`, `text` ({H} = hacking symbol,
   {D} = damage symbol), `image`, `starter`, optional `legendary` and `aliases` metadata, `set` ("2025" for the 104 base definitions including starters; "2026" for the 48 expansion cards).
 - Starter cards: `Hacking` (printed name "Hacker", +1 {H}) and `Damage` (printed name "Attack",
   Deal 1 {D}). Each player's starting deck = 8 Hacker + 2 Attack. Starters never go in the center deck.
-- Card pools: "2025" selects the base game (102 non-starter cards); "2026" selects base plus expansion (150 non-starter cards, the default). GameState.card_pool persists in saves; older saves default to "2026". In-game card naming, bot Hero names and card searches use the selected pool. Cosmetic human avatars may use any Hero.
+- Card pools: "2026mog" selects Base Set + Expansion 1 · Mog Variant (short: Mog Variant · PhreakNIC 27), replacing the 48 illustrated cards and all five Botnet copies while retaining 150 center cards; "2025" selects the base game (102 non-starter cards); "2026" selects base plus expansion (150 non-starter cards, the default). GameState.card_pool persists in saves; older saves default to "2026". In-game card naming, bot Hero names and card searches use the selected pool. Cosmetic human avatars may use any Hero.
 - Center deck = one copy of every non-starter card in the selected pool. The five "Botnet" files are
   five copies of Botnet.
 - `assets/cards/<id>.jpg` (600x820) card faces; `assets/cards/phreaknic_fottr_tcg_card_back.jpg` card back.
@@ -445,3 +445,11 @@ alarm deadline; reconnect cancels it. Code reuse resets lifecycle state. Started
 games retain their existing disconnect/reconnect behavior. Clients handle either
 the message or close code by forgetting the seat, stopping retries and returning
 to online home with “The host closed the room.”
+
+### Version 0.13 variant and online identity
+
+`reference/mog_cards_2026.json` records all 48 visually transcribed Mog images. CardDB builds isolated catalogs per pool: identical rules retain stable effect IDs while their name, image and flavor change. Mognet has five new physical-copy IDs with its own once-per-turn activation counting Mognet. The UI selects its presentation catalog; engine catalogs remain independent. Bans and saved pool settings support all three pools.
+
+Invite links open a Join game CODE panel with the editable YOU identity and avatar. No join request is sent until the player presses Join as their handle (or Join anyway for the default identity). Code/list joins prompt once when the handle is empty/You and no Hero is selected. Hero-less identities retain the FOTTR logo.
+
+GameServer diagnostics keep stdout and emit a diagnostic signal to LinkServer, which sends `{t:"diag",text}` at most 120 times per minute per container room, marking the last permitted line muted. The Room logs string payloads only as `room CODE: TEXT`, truncated to 300 characters, without sending diagnostics to clients.

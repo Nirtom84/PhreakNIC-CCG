@@ -8,7 +8,7 @@ All browser requests must originate from `https://phreaknic-ccg.net`, `https://w
 
 - `GET /health`: `ok` (Worker health, not container readiness).
 - `GET /rooms`: `{rooms:[{code,host,seats:[{name,hero,bot,difficulty}],open_seats,card_pool,starting_life,version,created}]}`. Only public, unstarted, unfilled rooms appear; timestamps are Unix milliseconds.
-- `POST /rooms`: `{name,hero,public,seats:[{bot,difficulty},...],card_pool,starting_life,version}` → HTTP 201 `{code,seat:0,token}`. Supply 2–4 seats including the creator at index 0; that seat is always human. Remaining human seats initially have empty names and no tokens. Bot names default to `Bot`, heroes to empty strings for the game server's default selection. Difficulty is an integer 0–2. Names are trimmed printable Unicode, 1–16 code points; hero identifiers are trimmed printable strings of 1–64 code points; versions are printable ASCII, 1–32 characters. Card pool is `2025` or `2026`; life is 0, 20, 30 or 40. Public must be a boolean.
+- `POST /rooms`: `{name,hero,public,seats:[{bot,difficulty},...],card_pool,starting_life,version}` → HTTP 201 `{code,seat:0,token}`. Supply 2–4 seats including the creator at index 0; that seat is always human. Remaining human seats initially have empty names and no tokens. Bot names default to `Bot`, heroes to empty strings for the game server's default selection. Difficulty is an integer 0–2. Names are trimmed printable Unicode, 1–16 code points; hero identifiers are trimmed printable strings of 1–64 code points; versions are printable ASCII, 1–32 characters. Card pool is `2025`, `2026` or `2026mog` (Base Set + Expansion 1 · Mog Variant); life is 0, 20, 30 or 40. Public must be a boolean.
 - `POST /rooms/CODE/join`: `{name,hero,version}` → `{seat,token}`. Claims the first empty human seat. Started/full rooms return 409. Version mismatch returns HTTP 409 `{error:"version",need:GAME_VERSION}` when the deployment version is set; a current client joining an older room receives 409 `{error:"room_version",room:<room version>}`.
 - `GET /ws/room/CODE?token=SECRET`: WebSocket upgrade. Codes are uppercase, four unambiguous symbols. Store the 128-bit hex token privately for reconnection; never put token-bearing URLs in logs or analytics. Only one socket per seat is allowed; a new authenticated connection closes the old socket with 4000 `replaced`.
 
@@ -115,3 +115,7 @@ host disconnect gets a persisted, alarm-based 60-second grace period; authentica
 host reconnect cancels it. Closure deletes room storage and the lobby entry and
 increments daily `rooms.closed_by_host`; the code may be reused. Started games
 keep their existing lifecycle.
+
+Version 0.13: invite links open the online identity panel and wait for an explicit Join as / Join anyway press. Default identities joining by code or open-game list also receive a one-time identity prompt. Players without a Hero use the FOTTR logo.
+
+Container diagnostics now cross the trusted room link as `{t:'diag',text}`. LinkServer limits forwarding to 120 lines per minute per room (including a final muted note), preserving stdout. Room.linkMessage logs string text only as `room CODE: TEXT`, truncates to 300 characters, ignores non-strings and never broadcasts diagnostic lines. These messages are visible to `wrangler tail`.

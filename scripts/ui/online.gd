@@ -31,7 +31,12 @@ var toast: Label
 var starting_indicator: Label
 var initial_status = ""
 var kick_overlay: Control
-const SETS = ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27"]
+const SETS = ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27", "Base Set + Expansion 1 · Mog Variant"]
+var pending_join = ""
+var join_button: Button
+var join_anyway: Button
+var identity_panel: Control
+var identity_prompted = false
 func _ready():
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  UIStyle.apply(self)
@@ -68,6 +73,7 @@ func clear_content():
    child.queue_free()
 func browser():
  in_lobby = false
+ pending_join = ""
  clear_content()
  var header = HBoxContainer.new()
  content.add_child(header)
@@ -84,6 +90,7 @@ func browser():
  left.add_theme_constant_override("separation", 18)
  columns.add_child(left)
  var you = section(left, "// YOU")
+ identity_panel = you.get_parent()
  var identity_row = HBoxContainer.new()
  you.add_child(identity_row)
  avatar_preview = UIStyle.avatar(Sfx.hero_id)
@@ -101,6 +108,7 @@ func browser():
   handle_input.text = value.replace("[", "").replace("]", "")
   handle_input.caret_column = handle_input.text.length()
   refresh_avatar()
+  refresh_join_button()
   Sfx.save())
  handle_input.focus_exited.connect(func(): handle_input.text = Sfx.handle)
  var create = section(left, "// CREATE GAME", true)
@@ -121,10 +129,10 @@ func browser():
  seat_count.item_selected.connect(func(n):
   for i in 3: seat_types[i].get_parent().visible = i <= n)
  UIStyle.label(create, "Card set", 18)
- pool = option(create, ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27"], 0 if Sfx.card_pool == "2025" else 1)
- create_banned = Sfx.banned_cards("2025" if pool.selected == 0 else "2026")
- bans_button = action(create, "Banned cards: %d" % create_banned.size(), func(): ban_picker.open_bans("2025" if pool.selected == 0 else "2026", create_banned, func(ids): create_banned = ids; bans_button.text = "Banned cards: %d" % ids.size()))
- pool.item_selected.connect(func(_n): create_banned = []; bans_button.text = "Banned cards: 0")
+ pool = option(create, SETS, CardDB.POOLS.find(Sfx.card_pool))
+ create_banned = Sfx.banned_cards(CardDB.POOLS[pool.selected])
+ bans_button = action(create, "Banned cards: %d" % create_banned.size(), func(): ban_picker.open_bans(CardDB.POOLS[pool.selected], create_banned, func(ids): create_banned = ids; Sfx.set_banned(CardDB.POOLS[pool.selected], ids); Sfx.save(); bans_button.text = "Banned cards: %d" % ids.size()))
+ pool.item_selected.connect(func(_n): CardDB.select_pool(CardDB.POOLS[pool.selected]); create_banned = Sfx.banned_cards(CardDB.POOLS[pool.selected]); bans_button.text = "Banned cards: %d" % create_banned.size())
  UIStyle.label(create, "Starting life", 18)
  life = option(create, ["Standard", "20", "30", "40"], [0,20,30,40].find(Sfx.starting_life))
  UIStyle.primary(action(create, "Create game", create_game))
@@ -149,7 +157,7 @@ func browser():
    if c in OnlineAPI.ALPHABET: clean += c
   code_input.text = clean
   code_input.caret_column = clean.length())
- action(join_row, "Join", func(): join(code_input.text))
+ action(join_row, "Join", func(): request_join(code_input.text))
  var open = section(columns, "// OPEN GAMES", true)
  rooms_box = VBoxContainer.new()
  rooms_box.add_theme_constant_override("separation", 16)
@@ -160,7 +168,7 @@ func browser():
  if not initial_code.is_empty():
   var code = initial_code
   initial_code = ""
-  join(code)
+  request_join(code, true)
 func action(parent, text: String, callback: Callable) -> Button:
  var button = UIStyle.button(parent, text, callback)
  button.custom_minimum_size.y = 56
@@ -197,7 +205,7 @@ func create_game():
  message.text = "Creating game…"
  var body = identity()
  body.public = public_choice.button_pressed
- body.card_pool = "2025" if pool.selected == 0 else "2026"
+ body.card_pool = CardDB.POOLS[pool.selected]
  body.banned = create_banned.duplicate()
  body.starting_life = [0,20,30,40][life.selected]
  body.seats = [{"bot": false, "difficulty": 0}]
@@ -206,6 +214,32 @@ func create_game():
   body.seats.append({"bot": selected > 0, "difficulty": maxi(0, selected - 1)})
  var result = await api.request(HTTPClient.METHOD_POST, "/rooms", body)
  handle_result(result, "")
+func request_join(code: String, shared_link: bool = false):
+ code = code.to_upper()
+ if not OnlineAPI.valid_code(code): message.text = "Enter a four-character game code."; return
+ if shared_link or (not identity_prompted and Sfx.hero_id.is_empty() and Sfx.handle.strip_edges().to_lower() in ["", "you"]):
+  identity_prompted = true
+  pending_join = code
+  # Move the existing YOU panel so edits and avatar stay visible before joining.
+  identity_panel.get_parent().remove_child(identity_panel)
+  clear_content()
+  UIStyle.label(content, "Join game " + code, 40)
+  content.add_child(identity_panel)
+  UIStyle.label(content, "Set a handle or pick a Hero before joining.", 24)
+  join_button = action(content, "", func(): join(pending_join))
+  UIStyle.primary(join_button)
+  join_anyway = action(content, "Join anyway", func(): join(pending_join))
+  refresh_join_button()
+  action(content, "Back to online games", browser)
+ else: join(code)
+func refresh_join_button():
+ if is_instance_valid(join_button):
+  var who = identity()
+  join_button.text = "Join as " + str(who.name)
+  # With the default identity, offer only "Join anyway" so the two buttons never do the same thing.
+  var default_identity = who.name.to_lower() == "you" and who.hero.is_empty()
+  join_button.visible = not default_identity
+  if is_instance_valid(join_anyway): join_anyway.visible = default_identity
 func join(code: String):
  if submitting: return
  code = code.to_upper()
@@ -225,11 +259,11 @@ func handle_result(result: Dictionary, code: String):
   message.text = OnlineAPI.error_text(result.status, result.data)
   if result.data.get("error") == "version": action(content, "Get the latest release", func(): OS.shell_open("https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest"))
 func refresh_rooms():
- if listing or in_lobby: return
+ if listing or in_lobby or not pending_join.is_empty(): return
  listing = true
  var result = await api.request(HTTPClient.METHOD_GET, "/rooms")
  listing = false
- if in_lobby or not is_instance_valid(rooms_box): return
+ if in_lobby or not pending_join.is_empty() or not is_instance_valid(rooms_box): return
  for child in rooms_box.get_children():
   rooms_box.remove_child(child)
   child.queue_free()
@@ -245,13 +279,13 @@ func refresh_rooms():
   box.add_child(row)
   row.add_child(UIStyle.avatar(str(room.seats[0].get("hero", ""))))
   UIStyle.label(row, str(room.host), 26).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-  action(row, "Join", join.bind(room.code))
+  action(row, "Join", request_join.bind(room.code))
   UIStyle.label(box, "%d cards banned" % int(room.get("banned_count", 0)), 18)
   var seats = []
   for seat in room.seats:
    seats.append("◈ " + BotDifficulty.DISPLAY_NAMES[int(seat.difficulty)] if seat.bot else ("● " + seat.name if not seat.name.is_empty() else "○ Open seat"))
   UIStyle.label(box, " · ".join(seats), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-  UIStyle.label(box, SETS[0 if room.card_pool == "2025" else 1] + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  UIStyle.label(box, UIStyle.pool_label(room.card_pool) + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 func enter(data: Dictionary):
  while hero_picker.close_top(): pass
  while ban_picker.close_top(): pass
@@ -329,8 +363,8 @@ func lobby(room: Dictionary):
   publicity.button_pressed = room.public
   settings.add_child(publicity)
   publicity.toggled.connect(func(value): session.lobby("settings", {"public": value}))
-  var sets = option(settings, SETS, 0 if room.card_pool == "2025" else 1)
-  sets.item_selected.connect(func(n): session.lobby("settings", {"card_pool": "2025" if n == 0 else "2026"}))
+  var sets = option(settings, SETS, CardDB.POOLS.find(room.card_pool))
+  sets.item_selected.connect(func(n): session.lobby("settings", {"card_pool": CardDB.POOLS[n]}))
   UIStyle.label(settings, "Starting life", 18)
   var lives = option(settings, ["Standard", "20", "30", "40"], [0,20,30,40].find(int(room.starting_life)))
   lives.item_selected.connect(func(n): session.lobby("settings", {"starting_life": [0,20,30,40][n]}))
@@ -427,6 +461,7 @@ func select_hero(id: String):
  Sfx.handle = str(CardDB.cards[id].name)
  handle_input.text = Sfx.handle.left(16)
  refresh_avatar()
+ refresh_join_button()
  Sfx.save()
 func pick_hero():
  if in_lobby or is_instance_valid(hero_overlay): return

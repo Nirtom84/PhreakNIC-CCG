@@ -21,6 +21,15 @@ var game: GameServer
 var endpoints: Dictionary = {}
 var port = 8080
 var room = ""
+var diag_minute = -1
+var diag_count = 0
+func forward_diag(text: String):
+	var minute = int(Time.get_ticks_msec() / 60000)
+	if minute != diag_minute: diag_minute = minute; diag_count = 0
+	diag_count += 1
+	if diag_count > 120: return
+	if diag_count == 120: text = text.left(240) + " (further room diagnostics muted this minute)"
+	_send({"t": "diag", "text": text.left(300)})
 func listen(on_port: int = 8080) -> Error:
 	var result = listener.listen(on_port, "0.0.0.0")
 	if result != OK: return result
@@ -144,6 +153,7 @@ func _new_game():
 		game.queue_free()
 	game = GameServer.new()
 	add_child(game)
+	game.diagnostic.connect(forward_diag)
 	game.snapshot.connect(func(data): _send({"t": "snapshot", "data": data}))
 func _watch_over():
 	game.engine.game_over.connect(func(winner):

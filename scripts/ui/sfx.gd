@@ -11,7 +11,7 @@ var auto_end_turn: bool = true
 var confirm_end_turn: bool = true
 var starting_life: int = 0
 var card_pool: String = "2026"
-var banned_by_pool: Dictionary = {"2025": [], "2026": []}
+var banned_by_pool: Dictionary = {"2025": [], "2026": [], "2026mog": []}
 func banned_cards(selected_pool: String) -> Array:
  return banned_by_pool.get(selected_pool, []).duplicate()
 func set_banned(selected_pool: String, value: Array):
@@ -26,21 +26,22 @@ func _ready():
  var config = OnlineAPI.settings()
  var v = config.get_value("sound", "volume", 0.65)
  if (v is float or v is int) and is_finite(float(v)) and v >= 0 and v <= 1: volume = float(v)
+ v = config.get_value("game", "card_pool", "2026")
+ if v is String and v in ["2025", "2026", "2026mog"]: card_pool = v
+ CardDB.select_pool(card_pool)
  v = config.get_value("player", "handle", "")
  if v is String: handle = clean_handle(v)
  v = config.get_value("player", "hero_id", "")
  if v is String and CardDB.cards.has(v):
   hero_id = v
   handle = str(CardDB.cards[v].name)
- v = config.get_value("game", "card_pool", "2026")
- if v is String and v in ["2025", "2026"]: card_pool = v
  for entry in [["game", "bot_fast"], ["game", "auto_end_turn"], ["game", "confirm_end_turn"], ["sound", "muted"], ["visual", "effects"]]:
   if not config.has_section_key(entry[0], entry[1]): continue
   v = config.get_value(entry[0], entry[1])
   if v is bool: set("visual_effects" if entry[1] == "effects" else entry[1], v)
  v = config.get_value("game", "starting_life", 0)
  if v is int and v >= 0 and v <= 10000: starting_life = v
- for selected_pool in ["2025", "2026"]:
+ for selected_pool in ["2025", "2026", "2026mog"]:
   var bans = config.get_value("game", "banned_" + selected_pool, [])
   if bans is Array and bans.size() <= 150: set_banned(selected_pool, bans)
  if DisplayServer.get_name() == "headless": return
@@ -58,7 +59,7 @@ func save():
  config.set_value("game", "starting_life", starting_life)
  config.set_value("game", "bot_fast", bot_fast)
  config.set_value("game", "card_pool", card_pool)
- for selected_pool in ["2025", "2026"]: config.set_value("game", "banned_" + selected_pool, banned_cards(selected_pool))
+ for selected_pool in ["2025", "2026", "2026mog"]: config.set_value("game", "banned_" + selected_pool, banned_cards(selected_pool))
  config.set_value("visual", "effects", visual_effects)
  visuals_changed.emit(visual_effects)
  config.set_value("sound", "volume", volume)

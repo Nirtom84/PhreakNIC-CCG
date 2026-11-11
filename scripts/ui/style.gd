@@ -96,7 +96,7 @@ static func avatar(card_id: String, width: int = 64) -> Control:
  var image = picture("res://assets/icon/icon.png", Vector2(width, width))
  if CardDB.cards.has(card_id):
   var atlas = AtlasTexture.new()
-  atlas.atlas = load("res://assets/cards/" + card_id + ".jpg")
+  atlas.atlas = load(CardDB.image_path(card_id))
   atlas.region = AVATAR_CROP
   image.texture = atlas
  frame.add_child(image)
@@ -219,4 +219,5 @@ static func escape_bbcode(text: String) -> String:
  return result
 
 static func pool_label(pool: String) -> String:
+ if pool == "2026mog": return "Mog Variant · PhreakNIC 27"
  return "Base Set · PhreakNIC 26" if pool == "2025" else "Base Set + Expansion 1 · PhreakNIC 27"

@@ -177,6 +177,8 @@ func run():
  saved = {}
  await setup()
  await until(func(): return server.game != null and not saved.is_empty())
+ server.game.diag("link diagnostic test")
+ verify(await until(func(): return messages.any(func(m): return m.t == "diag" and "link diagnostic test" in m.text)), "Diagnostics forwarded over live link")
  var now = server.game.now()
  server.game.clock = func(): return now + 121.0
  verify(await until(func(): return over, 40000), "Bots and takeover run with no connected humans")

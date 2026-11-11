@@ -70,3 +70,7 @@ test('host close decisions honor grace boundary and game start',()=>{
  assert(hardening.hostLeave(r,0));assert(!hardening.hostLeave(r,1));assert(!hardening.hostLeave({...r,started:true},0));
  assert(!hardening.hostCloseDue(r,60099));assert(hardening.hostCloseDue(r,60100));assert(!hardening.hostCloseDue({...r,hostGoneAt:null},1e9));assert(!hardening.hostCloseDue({...r,started:true},1e9));
 });
+test('Mog variant is accepted for creation and host pool settings',()=>{
+ assert.equal(settings({card_pool:'2026mog'},true).card_pool,'2026mog');
+ assert.equal(settings({public:true,card_pool:'2026mog',starting_life:0,banned:[]}).card_pool,'2026mog');
+});

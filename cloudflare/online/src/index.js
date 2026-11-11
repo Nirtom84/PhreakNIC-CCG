@@ -209,7 +209,7 @@ export class Room extends DurableObject {
         if(!Number.isInteger(m.seat)||m.seat<=0||m.seat>=this.r.seats.length||this.r.seats.length<=2)fail('seat');
         for(const [s,v]of this.clients){if(v.seat===m.seat){this.clients.delete(s);s.close(1000,'removed');}else if(v.seat>m.seat)v.seat--;}
         this.r.seats.splice(m.seat,1);const rates=new Map();for(const [seat,rate]of this.rates)if(seat!==m.seat)rates.set(seat>m.seat?seat-1:seat,rate);this.rates=rates;
-      }else if(m.action==='settings'){const next=settings(m,true);if(next.card_pool&&next.card_pool!==this.r.card_pool)next.banned=[];Object.assign(this.r,next);}else fail('action');
+      }else if(m.action==='settings'){const next=settings(m,true);this.r.banned_by_pool||={};this.r.banned_by_pool[this.r.card_pool]=this.r.banned||[];if(next.card_pool&&next.card_pool!==this.r.card_pool)next.banned=this.r.banned_by_pool[next.card_pool]||[];Object.assign(this.r,next);this.r.banned_by_pool[this.r.card_pool]=this.r.banned||[];}else fail('action');
     }
     await this.save(true);this.broadcastRoom();
   }
@@ -278,7 +278,8 @@ export class Room extends DurableObject {
   }
   async linkMessage(m) {
     if(!this.r||roomExpired(this.r)||this.sleeping)return;
-    if(m.t==='to'){for(const [ws,c]of this.clients)if(c.seat===m.seat)this.send(ws,m.msg);}
+    if(m.t==='diag'){if(typeof m.text==='string')console.log(`room ${this.r.code}: ${m.text.slice(0,300)}`);}
+    else if(m.t==='to'){for(const [ws,c]of this.clients)if(c.seat===m.seat)this.send(ws,m.msg);}
     else if(m.t==='snapshot'){this.r.snapshot=m.data;await this.ctx.storage.put('room',this.r);}
     else if(m.t==='over'&&!this.r.over){this.r.over=true;await this.stat('over',undefined,m);await this.stop('over');await this.save(true);this.broadcast(m.reason?{t:'over',winner:m.winner,reason:String(m.reason)}:{t:'over',winner:m.winner});}
   }

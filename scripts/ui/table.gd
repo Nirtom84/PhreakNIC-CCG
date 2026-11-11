@@ -56,6 +56,7 @@ var opening_rickroll = null
 var incoming_source: String = "another player"
 var table_rule_uids: Array = []
 func _ready():
+ CardDB.select_pool(card_pool)
  install_page_listeners()
  get_tree().auto_accept_quit = false
  fast = (fast or Sfx.bot_fast) if resume_data.is_empty() else resume_data.table.fast
@@ -124,6 +125,7 @@ func _ready():
  var levels: Array = [-1]
  for i in range(1, player_count): levels.append(difficulty)
  if not resume_data.is_empty(): card_pool = str(resume_data.game.state.get("card_pool", "2026"))
+ CardDB.select_pool(card_pool)
  for id in CardDB.pool_ids(card_pool):
   card_names.append({"id": id, "name": str(CardDB.cards[id].name)})
  card_names.sort_custom(func(a, b): return a.name.length() > b.name.length())
@@ -267,7 +269,7 @@ func redraw():
  center.add_child(piles)
  var deck_label = UIStyle.label(piles, "Deck: %d" % engine.state.center_deck.size(), 16)
  deck_label.custom_minimum_size.x = 180
- UIStyle.label(piles, "Base Set" if engine.state.card_pool == "2025" else "Base + Expansion 1", 14)
+ UIStyle.label(piles, UIStyle.pool_label(engine.state.card_pool), 14)
  var banned_button = UIStyle.button(piles, "Banned: %d" % engine.state.banned.size(), func():
   if is_instance_valid(ban_picker): return
   ban_picker = load("res://scripts/ui/ban_picker.gd").new()
@@ -415,8 +417,7 @@ func seat_area(parent: Node, p, _human: bool):
  for c in p.play_area: board.add_child(card_widget(c, "opponent", 70))
  for c in p.reserve: board.add_child(card_widget(c, "opponent_reserve", 70))
 func texture_for(id: String) -> Texture2D:
- var asset_id = "phreaknic_fottr_tcg_card_back" if id == "hidden" else id
- if not textures.has(id): textures[id] = load("res://assets/cards/" + asset_id + ".jpg")
+ if not textures.has(id): textures[id] = load(CardDB.image_path(id))
  return textures[id]
 func card_widget(c, zone: String, width: int) -> Control:
  var box = VBoxContainer.new()
@@ -654,7 +655,7 @@ func show_zoom(c):
  zoom = PanelContainer.new()
  zoom.mouse_filter = Control.MOUSE_FILTER_IGNORE
  zoom.position = (get_local_mouse_position() + Vector2(24, 24)).clamp(Vector2.ZERO, size - Vector2(470, 635))
- zoom.add_child(UIStyle.picture("res://assets/cards/" + c.id + ".jpg", Vector2(450, 615)))
+ zoom.add_child(UIStyle.picture(CardDB.image_path(c.id), Vector2(450, 615)))
  zoom.get_child(0).mouse_filter = Control.MOUSE_FILTER_IGNORE
  add_child(zoom)
 func hide_zoom():
@@ -787,7 +788,7 @@ func spotlight(id: String, caption: String):
  var box = VBoxContainer.new()
  box.mouse_filter = Control.MOUSE_FILTER_IGNORE
  panel.add_child(box)
- var image = UIStyle.picture("res://assets/cards/" + id + ".jpg", Vector2(330, 450))
+ var image = UIStyle.picture(CardDB.image_path(id), Vector2(330, 450))
  image.mouse_filter = Control.MOUSE_FILTER_IGNORE
  box.add_child(image)
  var label = UIStyle.label(box, caption, 16)
@@ -1010,7 +1011,7 @@ func inspect_card(c, interactive: bool = false):
  var row = HBoxContainer.new()
  panel.add_child(row)
  row.add_theme_constant_override("separation", 24)
- var picture = UIStyle.picture("res://assets/cards/" + c.id + ".jpg", Vector2(360, 492))
+ var picture = UIStyle.picture(CardDB.image_path(c.id), Vector2(360, 492))
  picture.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
  row.add_child(picture)
  var scroll = ScrollContainer.new()

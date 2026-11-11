@@ -1,5 +1,18 @@
 # Changelog
 
+## v0.13 — Mog Variant
+**New card set: Mog Variant · PhreakNIC 27**
+- A third card set, alongside the 2025 base game and the 2026 expansion: the 2026 card pool with 48 cards swapped for their Mog Variant versions (Touch Mog, Mog Wonka, The Big Mogger, Who is Mog? and more), with new art and flavor text. Choose it on the main menu or when creating an online game.
+- The cards play exactly like the originals, except **Mognet**, which counts cards named "Mognet" (like Botnet counts Botnets). "Who is Mog?" has every card name, so it counts too.
+- Bans, saves, online rooms and bot Hero names all work with the new set.
+
+**Joining by link**
+- Opening an invite link no longer joins instantly as "You". You get a "Join game" step where you can type a handle or pick a Hero first (so your avatar shows at the table), then join.
+- Joining by code or from the open-games list with the default name also asks once before joining.
+
+**Server diagnostics**
+- The game server's diagnostic lines (prompts, timeouts, idle turns, refused actions) now reach Cloudflare's logs, so problems like a stuck turn can be traced.
+
 ## v0.12 — Smarter bots and card bans
 **Smarter bots**
 - **31337 Elite** now wins about 64–69% of head-to-head games against the v0.11 Elite (400-game benchmarks on both card sets). It values cards like Greatest Hits Vol 2 properly, saves its damage for the right moment, steals the right targets, and stops trashing its own offense and economy.

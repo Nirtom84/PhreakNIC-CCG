@@ -158,6 +158,9 @@ func _init(engine):
 	handlers["White Python Boots"] = _effect_white_python_boots
 	handlers["zalphaWolf"] = _effect_zalphawolf
 	handlers["Zenthere, Mind Goblin"] = _effect_zenthere_mind_goblin
+	for id in ["Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4"]: handlers[id] = _effect_mognet
+func _effect_mognet(_p, _c):
+	pass
 func resolve(p, c):
 	var data = e.db().get_card(c.effect_id())
 	p.hacking += int(data.hack)
@@ -1136,7 +1139,7 @@ func end_turn(p):
 		elif c.effect_id() == "FOTTR Greatest Hits Vol 2" and c.controller != p.seat and not p.played.any(func(x): return x.id in RICK_ART):
 			pending.append({"card": c, "resolve": e.damage.bind(e.state.players[c.controller], p, 2, c)})
 	await e.resolve_triggers(pending)
-const FREE_ONCE = ["Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4", "Tableskirts", "Unattended Phone", "The Big Dipper", "Payphone", "Shell Speech", "Disassembled Sink", "FOTTR Greatest Hits"]
+const FREE_ONCE = ["Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4", "Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4", "Tableskirts", "Unattended Phone", "The Big Dipper", "Payphone", "Shell Speech", "Disassembled Sink", "FOTTR Greatest Hits"]
 const PAID = {"Bribery": 2, "AI Bens AI Camry": 2, "Fivrr Friendship": 2, "White Python Boots": 2, "The Sandwich Factory": 2, "Lowes Shopping Cart": 1}
 func abilities(p, c) -> Array:
 	var result: Array = []
@@ -1162,6 +1165,7 @@ func activate(p, c, index: int):
 	if id in FREE_ONCE and index == 0:
 		c.flags.used = true
 		match id:
+			"Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4": p.hacking += e.controlled(p, "Mognet").size()
 			"Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4": p.hacking += e.controlled(p, "Botnet").size()
 			"Tableskirts", "Unattended Phone": p.hacking += 1
 			"The Big Dipper": p.life += 1

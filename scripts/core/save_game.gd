@@ -84,7 +84,7 @@ static func restore(data: Dictionary):
    state.log.assign(value)
   else: state.set(field, value)
  if not data.state.has("starting_life"): state.starting_life = 24 if state.players.size() == 2 else 10 * state.players.size()
- if not codec.valid or state.card_pool not in ["2025", "2026"]: return null
+ if not codec.valid or state.card_pool not in ["2025", "2026", "2026mog"]: return null
  if state.players.size() < 2 or state.players.size() > 4 or state.center_row.size() != 5: return null
  if state.starting_life < 1 or state.starting_life > 10000: return null
  if state.turn < 1: return null
@@ -151,7 +151,7 @@ static func safe(engine, human: int = 0) -> bool:
  var state = engine.state
  return not state.finished and human >= 0 and human < state.players.size() and state.active_seat == human and state.players[human].alive and not engine.busy and engine.reaction_depth == 0 and engine.simultaneous_depth == 0 and state.resolving.is_empty()
 static func content() -> String:
- var ids = Engine.get_main_loop().root.get_node("CardDB").cards.keys()
+ var ids = Engine.get_main_loop().root.get_node("CardDB").originals.keys()
  ids.sort()
  return JSON.stringify(ids).sha256_text()
 static func write(engine, table: Dictionary) -> bool:

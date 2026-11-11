@@ -27,7 +27,7 @@ func _init():
 	turn_ended.connect(func(_p): turn_or_game_over.emit())
 	game_over.connect(func(_winner): turn_or_game_over.emit())
 	effects = preload("res://scripts/core/effects.gd").new(self)
-func db() -> Node: return get_node("/root/CardDB")
+func db() -> Node: return get_node("/root/CardDB").catalog(state.card_pool if state != null else "2026")
 # Rejection sampling over 32 random bits avoids modulo bias.
 static func crypto_int(n: int) -> int:
 	assert(n > 0 and n <= 0x100000000)
@@ -61,9 +61,9 @@ func trim_log():
 			break
 func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026", starting_life: int = 0, banned: Array = []) -> bool:
 	assert(difficulties.size() >= 2 and difficulties.size() <= 4)
-	if not db().bans_valid(banned, card_pool): return false
+	if not get_node("/root/CardDB").catalog(card_pool).bans_valid(banned, card_pool): return false
 	state = GameState.new()
-	state.card_pool = card_pool if card_pool in ["2025", "2026"] else "2026"
+	state.card_pool = card_pool if card_pool in ["2025", "2026", "2026mog"] else "2026"
 	state.banned = db().filter_banned(banned, state.card_pool)
 	state.rng.seed = seed_value
 	state.starting_life = starting_life if starting_life > 0 else (24 if difficulties.size() == 2 else 10 * difficulties.size())

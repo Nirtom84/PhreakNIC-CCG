@@ -14,6 +14,7 @@ func _ready():
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 func open_bans(pool: String, value: Array, callback: Callable = Callable(), read_only: bool = false) -> Control:
  while close_top(): pass
+ CardDB.select_pool(pool)
  selected_pool = pool
  banned = CardDB.filter_banned(value, pool)
  changed = callback
@@ -56,7 +57,7 @@ func open_bans(pool: String, value: Array, callback: Callable = Callable(), read
   button.add_theme_constant_override("icon_max_width", 160)
   button.add_theme_font_size_override("font_size", 16)
   TouchInput.register_card(button, func(): inspect_hero(id))
-  var path = "res://assets/cards/" + id + ".jpg"
+  var path = CardDB.image_path(id)
   if hero_icons.has(path): button.icon = hero_icons[path]
   else:
    picker_buttons[path] = button

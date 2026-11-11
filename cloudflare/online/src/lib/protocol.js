@@ -39,7 +39,7 @@ export function identity(v) {
 }
 export function settings(v, partial=false) {
   const out = {};
-  for (const [key, valid] of Object.entries({public:x=>typeof x==='boolean',card_pool:x=>['2025','2026'].includes(x),starting_life:x=>[0,20,30,40].includes(x)})) {
+  for (const [key, valid] of Object.entries({public:x=>typeof x==='boolean',card_pool:x=>['2025','2026','2026mog'].includes(x),starting_life:x=>[0,20,30,40].includes(x)})) {
     if (partial && !(key in v)) continue;
     if (!valid(v[key])) fail(key);
     out[key]=v[key];

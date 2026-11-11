@@ -24,5 +24,15 @@
   "cards": 48,
   "starter_cards": 0,
   "center_deck_cards": 48
+ },
+ {
+  "id": "2026mog",
+  "name": "Base Set + Expansion 1 · Mog Variant",
+  "short_name": "Mog Variant · PhreakNIC 27",
+  "release_year": 2026,
+  "printed_code": "PhreakNIC 27",
+  "cards": 48,
+  "variant_of": "2026",
+  "center_deck_cards": 150
  }
 ]

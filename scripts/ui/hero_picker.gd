@@ -9,7 +9,7 @@ func _ready():
  mouse_filter = Control.MOUSE_FILTER_IGNORE
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  for id in UIStyle.heroes():
-  var path = "res://assets/cards/" + id + ".jpg"
+  var path = CardDB.image_path(id)
   if ResourceLoader.load_threaded_request(path) == OK: loading_icons.append(path)
 func open(selected: Callable) -> Control:
  get_parent().move_child(self, -1)
@@ -30,7 +30,7 @@ func open(selected: Callable) -> Control:
  scroll.add_child(grid)
  for id in UIStyle.heroes():
   var button = UIStyle.button(grid, str(CardDB.cards[id].name), func(): selected.call(id); overlay.queue_free())
-  var path = "res://assets/cards/" + id + ".jpg"
+  var path = CardDB.image_path(id)
   if hero_icons.has(path): button.icon = hero_icons[path]
   elif path in loading_icons: picker_buttons[path] = button
   else: button.icon = load(path)
@@ -64,7 +64,7 @@ func inspect_hero(id: String):
  add_child(overlay)
  var box = VBoxContainer.new()
  overlay.add_child(box)
- box.add_child(UIStyle.picture("res://assets/cards/" + id + ".jpg", Vector2(480, 656)))
+ box.add_child(UIStyle.picture(CardDB.image_path(id), Vector2(480, 656)))
  UIStyle.button(box, "Close", overlay.queue_free)
  UIStyle.dialog(overlay, Vector2(520, 750))
 

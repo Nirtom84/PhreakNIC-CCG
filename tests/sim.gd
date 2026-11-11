@@ -8,6 +8,7 @@ var appearances = [0, 0, 0]
 var draws = 0
 var capped_draws = 0
 var duel_wins = [0, 0, 0]
+var handler_count = 0
 var checks = 0
 var failures = 0
 func _initialize(): call_deferred("run")
@@ -20,6 +21,7 @@ func game(levels: Array, seed_value: int):
 	var engine = GameEngine.new()
 	root.add_child(engine)
 	engine.setup(levels, seed_value, [], card_pool)
+	handler_count = engine.effects.handlers.size()
 	engine.state_changed.connect(func():
 		verify(engine.state.conservation_ok(), "Action conservation seed %d" % seed_value)
 		if card_pool == "2025": verify(engine.state.all_cards().all(func(c): return root.get_node("CardDB").in_pool(c.id, card_pool)), "Base zones exclude expansion"))
@@ -63,16 +65,16 @@ func tournament():
 	for level in 3:
 		print("%s: %d wins / %d seats (%.1f%%)" % [BotDifficulty.DISPLAY_NAMES[level], wins[level], appearances[level], 100.0 * wins[level] / maxf(1, appearances[level])])
 	print("Elite vs Script Kiddie (60 games): Elite %d (%.1f%%), Kiddie %d (%.1f%%)" % [duel_wins[2], duel_wins[2] * 100.0 / 60, duel_wins[0], duel_wins[0] * 100.0 / 60])
-	print("Tournament played coverage (%s): %d/%d; handlers: 152/152" % [card_pool, coverage.size(), root.get_node("CardDB").pool_ids(card_pool).size()])
+	print("Tournament played coverage (%s): %d/%d; handlers: %d/%d" % [card_pool, coverage.size(), root.get_node("CardDB").pool_ids(card_pool).size(), handler_count, root.get_node("CardDB").originals.size()])
 	print("Never played in tournament: %s" % str(never))
 	if "--coverage" in OS.get_cmdline_user_args():
 		var ids = root.get_node("CardDB").pool_ids(card_pool)
 		ids.sort()
 		for id in ids: print("Coverage %s: %d plays" % [id, coverage.get(id, 0)])
 	verify(duel_wins[2] >= 36, "Elite must win at least 60%% of seeded duels")
-	if card_pool == "2025": verify(never.is_empty(), "All 104 base definitions played")
+	if card_pool in ["2025", "2026mog"]: verify(never.is_empty(), "All selected pool definitions played, including every Mog card")
 func run():
-	for pool in ["2026", "2025"]:
+	for pool in ["2026", "2025", "2026mog"]:
 		card_pool = pool
 		coverage = {}
 		wins = [0, 0, 0]

@@ -17,7 +17,7 @@ _Screenshots are from the current version and are refreshed with every release._
 Choose **Play online** on the main menu to play other people on the official server:
 - **Open games:** browse the public games and join one with an open seat.
 - **Create game:** make a public or invite-only room for 2–4 players. Fill seats with friends or bots, and pick the card set and starting life.
-- **Join by code:** type a friend's four-character code. In a browser, an invite link like `phreaknic-ccg.net/join/CODE` opens the join straight away.
+- **Join by code:** type a friend's four-character code. In a browser, an invite link like `phreaknic-ccg.net/join/CODE` opens an identity panel; pick a Hero or enter a handle, then press Join as your name (or Join anyway).
 
 The server runs every game, so nobody can see cards they shouldn't. Your menu handle and Hero are used online.
 **Leave game** keeps your seat: **Resume online game** reconnects, and a bot plays for you after two minutes away.
@@ -41,7 +41,7 @@ Choose 2–4 players (you plus 1–3 bots), a bot level, the card set and the st
 Your turn ends by itself once you have nothing left to do (switch **Auto-end turn** off if you'd rather press End Turn).
 **Menu** (or Back / Escape) opens the in-game menu: options, rules, **Save game**, **Main menu** and **Exit**. The game also saves at the start of each of your turns and when you leave, and **Resume game** on the main menu picks it up again.
 On the main menu you can type a handle or **Pick a Hero** to play as one of the Hero cards, with their art as your avatar.
-Under **Card set**, choose **Base Set · PhreakNIC 26** (102 cards) or **Base Set + Expansion 1 · PhreakNIC 27** (150 cards). Starting life defaults to the official 24 for two players, or 10 per player with 3–4 players.
+Under **Card set**, choose **Base Set · PhreakNIC 26** (102 cards) **Base Set + Expansion 1 · PhreakNIC 27** (150 cards), or **Mog Variant · PhreakNIC 27** (150 cards, with 48 Mog illustrations). Starting life defaults to the official 24 for two players, or 10 per player with 3–4 players.
 
 ### Found a bug?
 Press **Report a bug** on the main menu or in the in-game menu. It opens a GitHub bug report already filled in with your version, platform and the last moves of your game. You need a free GitHub account to submit it. You can also [open an issue](https://github.com/Nirtom84/PhreakNIC-CCG/issues/new/choose) directly and pick **Bug report** or **Card or rules problem**.
@@ -66,7 +66,7 @@ This is the **official** digital version of the FOTTR TCG. The game follows [ref
 The in-game Rules screen has a player-friendly summary. Implementation notes are in [RULES_NOTES.md](RULES_NOTES.md), and the design and architecture in [DESIGN.md](DESIGN.md).
 
 ## Project layout
-- `data/cards.json` — all 152 cards (cost, type, rules text, aliases, Legendary flag, and `set`: 2025 base or 2026 expansion), checked against `reference/cards_transcribed.json` by the tests
+- `data/cards.json` — 152 original definitions plus five Mognet copy/effect definitions (cost, type, rules text, aliases, Legendary flag, and `set`: 2025 base, 2026 expansion, or 2026mog variant), checked against `reference/cards_transcribed.json` by the tests
 - `reference/` — official rules, errata and rulings (`rules.md`), the audited card transcription and the set list
 - `assets/cards/` — 600px card faces and the card back
 - `scripts/core/` — rules engine (`rules.gd`), one effect handler per card (`effects.gd`)
@@ -97,7 +97,7 @@ For development, point the game at another server with the `PHREAKNIC_SERVER` en
 
 ## Tests
 ```bash
-godot4.7.1 --headless --path . -s tests/sim.gd           # 300 bot-vs-bot games (both card sets, 2-4 players), the rules scenarios and the official-rulings checks (rules_v08)
+godot4.7.1 --headless --path . -s tests/sim.gd           # 450 bot-vs-bot games (all three card sets, 2-4 players), the rules scenarios and the official-rulings checks (rules_v08)
 godot4.7.1 --headless --path . -s tests/online_ui_checks.gd # offline fake REST/room and real online table dialogs
 godot4.7.1 --headless --path . -s tests/ui_smoke.gd      # table UI drives full turns
 godot4.7.1 --headless --path . -s tests/ui_state_sync.gd # UI always matches engine state

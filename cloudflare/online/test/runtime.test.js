@@ -116,3 +116,16 @@ test('alarm scheduling uses persisted host deadline until reconnect or game star
  r.r.started=true;await r.schedule();assert.equal(alarms.at(-1),r.r.created+8*3600000);
  r.r.started=false;delete r.r.hostGoneAt;await r.schedule();assert.equal(alarms.at(-1),r.r.created+8*3600000);
 });
+test('container diagnostics log bounded strings without broadcasting',async()=>{
+ const r=makeRoom(),lines=[],original=console.log;r.broadcast=()=>assert.fail('diagnostics are private');console.log=(...args)=>lines.push(args);
+ try {await r.linkMessage({t:'diag',text:'x'.repeat(400)});for(const text of [null,12,{},[],true])await r.linkMessage({t:'diag',text});}
+ finally {console.log=original;}
+ assert.deepEqual(lines,[[`room AB23: ${'x'.repeat(300)}`]]);
+});
+test('host retains independent bans when switching back to a pool',async()=>{
+ const r=makeRoom(),host=sock();r.clients.set(host,{seat:0});r.r.card_pool='2026';r.r.banned=['Filler'];
+ await r.message(host,JSON.stringify({t:'lobby',action:'settings',card_pool:'2026mog'}));assert.deepEqual(r.r.banned,[]);
+ await r.message(host,JSON.stringify({t:'lobby',action:'settings',banned:['Mognet']}));
+ await r.message(host,JSON.stringify({t:'lobby',action:'settings',card_pool:'2026'}));assert.deepEqual(r.r.banned,['Filler']);
+ await r.message(host,JSON.stringify({t:'lobby',action:'settings',card_pool:'2026mog'}));assert.deepEqual(r.r.banned,['Mognet']);
+});
