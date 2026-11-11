@@ -40,6 +40,29 @@ func run():
  # The handler is tested without requiring sandbox socket access.
  link.game = server
  for seat in 2: link.endpoints[seat] = endpoints[seat]
+ var emotes = []
+ clients[1].message_received.connect(func(data):
+  if data.get("type") == "emote": emotes.append(data))
+ server.clock = func(): return 10.0
+ for value in [true, false, null, "0", -1, 8, 0.1, [], {}, "x".repeat(70000)]:
+  var message = {"type": "emote", "id": value}
+  verify(not NetTransport.valid_emote(message), "Malformed emote rejected")
+  server._receive(endpoints[0], message)
+  link._receive({"t": "from", "seat": 0, "msg": message})
+ server._receive(endpoints[0], {"type": "emote", "id": 0, "seat": 1})
+ await frames()
+ verify(emotes.is_empty(), "No malformed emote broadcasts")
+ for i in 100:
+  if i == 0: link._receive({"t": "from", "seat": 0, "msg": {"type": "emote", "id": 2}})
+  else: server._receive(endpoints[0], {"type": "emote", "id": 2})
+ await frames()
+ verify(emotes.size() == 1 and emotes[0].seat == 0 and emotes[0].id == 2, "Emote flood drops silently and authenticates seat")
+ for i in range(1, 11):
+  server.clock = func(): return 10.0 + i * 3.0
+  server._receive(endpoints[0], {"type": "emote", "id": 2})
+ await frames()
+ verify(emotes.size() == 10, "Godot emotes limited to ten per minute")
+ server.clock = func(): return Time.get_ticks_msec() / 1000.0
  var deep = "leaf"
  for i in 1000: deep = [deep]
  var values = [null, true, false, "", "x".repeat(100000), -999999999999, 999999999999, NAN, INF, -INF, [], {}, deep, 0.5]

@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.14**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.15**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -9,6 +9,13 @@ Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 ![Main menu](docs/screenshot_menu.png)
 
 _Screenshots are from the current version and are refreshed with every release._
+
+## What's in the game
+- **New here?** Choose **Tutorial** on the main menu for a guided first game.
+- **Phones:** a phone layout switches on automatically (larger cards and buttons, the log as a drawer; tap a card, then **Play**). Change it under Settings → Layout.
+- **Not sure why a card won't play?** Tap it: the game says why.
+- **After a game:** a match summary with every player's stats, and a result card you can save as an image or share (X, Bluesky, Reddit, Facebook, Discord, or your phone's share sheet in a browser).
+- **Options:** bot speed (Normal / Fast / Instant), music and sound volume, and a "Visual effects" switch that turns off all animation.
 
 ## Play in your browser
 **[▶ Play PhreakNIC CCG now at phreaknic-ccg.net](https://phreaknic-ccg.net)**, or use the [GitHub Pages mirror](https://nirtom84.github.io/PhreakNIC-CCG/). Nothing to install. It runs in modern browsers on computers and phones; hold your phone sideways. It's tested in Chrome so far, and Firefox and Safari reports are welcome. The first visit downloads about 28 MB. Saves and settings are kept in that browser.
@@ -20,6 +27,7 @@ Choose **Play online** on the main menu to play other people on the official ser
 - **Join by code:** type a friend's four-character code. In a browser, an invite link like `phreaknic-ccg.net/join/CODE` opens an identity panel; pick a Hero or enter a handle, then press Join as your name (or Join anyway).
 
 The server runs every game, so nobody can see cards they shouldn't. Your menu handle and Hero are used online.
+A countdown shows how long you have before a bot answers for you, and the **Emote** button sends one of eight preset messages (you can mute them in Settings).
 **Leave game** keeps your seat: **Resume online game** reconnects, and a bot plays for you after two minutes away.
 Online games need everyone on the same version of the game.
 
@@ -74,7 +82,7 @@ The in-game Rules screen has a player-friendly summary. Implementation notes are
 - `scripts/ui/`, `scenes/` — menu and game table
 
 ## Sound
-Retro sounds have menu volume/mute controls and a table mute button. Regenerate the WAV files from the project root with `python3 tools/make_sounds.py`.
+Retro sounds and an optional ambient music loop each have their own volume control in the menu, plus a table mute button. Regenerate the sound and music files from the project root with `python3 tools/make_sounds.py`.
 
 ## Building Linux, Windows, Android and Web versions
 ```bash
@@ -107,7 +115,8 @@ godot4.7.1 --headless --path . -s tests/save_checks.gd   # save/resume round tri
 godot4.7.1 --headless --path . -s tests/v06_checks.gd    # 2025 / 2026 card sets
 godot4.7.1 --headless --path . -s tests/v07_checks.gd    # browser version: hidden Quit/Exit, rotate prompt, save on leaving the page
 godot4.7.1 --headless --path . -s tests/v08_checks.gd    # card sheet, Play Basics, end-turn confirmation, 3-4 players, starting life, bug report
-godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot
+godot4.7.1 --headless --path . -s tests/v15_checks.gd    # card movement, phone layout, match stats and sharing, tutorial, countdown, emotes
+godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```
 
 ## Visuals and fonts

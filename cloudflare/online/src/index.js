@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave} from './lib/protocol.js';
+import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave,validEmote,emoteRate} from './lib/protocol.js';
 import {adminHTML,adminJS,adminHeaders} from './admin.js';
 const HOUR=3600000, IDLE=600000, DAY=24*HOUR;
 let listingCache;
@@ -133,7 +133,7 @@ export class Room extends DurableObject {
   async createRoom(c,data) {
     if(this.r) fail('exists',409);
     // A code can be reused after an expired room was deleted while this instance stayed in memory: reset its lifecycle.
-    this.closing=false;this.sleeping=false;this.starting=false;this.boot=null;this.stopping=null;this.savedAt=0;++this.generation;this.clients.clear();this.rates.clear();this.link=null;
+    this.closing=false;this.sleeping=false;this.starting=false;this.boot=null;this.stopping=null;this.savedAt=0;++this.generation;this.clients.clear();this.rates.clear();this.emoteRates?.clear();this.link=null;
     if(this.env.ONLINE_ENABLED==='0'){await lobby(this.env).bump(['refused.maintenance']);fail('maintenance',503);}
     const {platform:p,...config}=data;
     this.r={...config,code:c,host_seat:0,started:false,over:false,created:Date.now(),lastActivity:Date.now(),emptySince:Date.now(),hostGoneAt:Date.now(),snapshot:null,seed:crypto.getRandomValues(new Uint32Array(1))[0]&0x7fffffff};
@@ -175,6 +175,12 @@ export class Room extends DurableObject {
   async message(ws,data) {
     const c=this.clients.get(ws);if(!c||this.closing)return;
     if(typeof data!=='string'||new TextEncoder().encode(data).length>65536){ws.close(1009,'message size');return;}
+    let emote;try{emote=JSON.parse(data);}catch{}
+    if(emote?.type==='emote'){
+      if(!validEmote(emote)||!this.r.started||this.r.over||roomExpired(this.r)||this.link?.readyState!==1)return;
+      this.emoteRates??=new Map();const rate=emoteRate(this.emoteRates.get(c.seat),Date.now());this.emoteRates.set(c.seat,rate.stamps);
+      if(rate.allowed)this.linkSend(wrap(c.seat,emote));return;
+    }
     const rate=seatRate(this.rates.get(c.seat)||{},Date.now(),new TextEncoder().encode(data).length);this.rates.set(c.seat,rate);if(!rate.allowed){if(rate.close)ws.close(1008,'rate_limit');return;}if(roomExpired(this.r)){await this.alarm();return;}
     let m;try{m=JSON.parse(data);}catch{fail('json');}if(!m||typeof m!=='object'||Array.isArray(m))fail('message');
     if(this.r.started){

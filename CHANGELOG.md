@@ -1,5 +1,42 @@
 # Changelog
 
+## v0.15 — Feel, phones and sharing
+**Cards move**
+- Played, bought, drawn and discarded cards now slide from where they were to where they go, instead of fading in. Hidden cards travel face down.
+- The table no longer rebuilds every card on each change, so it stays smooth on phones.
+- Short win/lose transition, and the damaged player's life counter shakes.
+
+**Phone layout**
+- New layout for phones (automatic; change it under Settings → Layout: Auto / Desktop / Phone): larger hand cards, large buttons, a compact opponent row, and the log as a slide-out drawer.
+- On phones, tap a hand card to raise it, then tap **Play** — so a mis-tap does not play a card.
+- On every screen, the log can be collapsed with the **Log** button, and the hand and Center Row cards are larger.
+
+**End-of-game summary and sharing**
+- The result screen now shows a match summary: life, damage, cards bought and played for every player, biggest hit, star card (your most-played card that is not a starter), priciest buy, turns and duration, plus **View final deck**.
+- **Share your result:** save a result card image, copy a text summary, or open a post on X, Bluesky, Reddit or Facebook. The Discord button saves the image and copies the text, ready to paste. On phone browsers, **Share…** opens the system share sheet with the image attached.
+
+**Tutorial**
+- A guided first game (main menu → Tutorial, offered once on first launch) walks through playing, buying, attacking and ending a turn.
+
+**Why can't I play this?**
+- Tapping a card you cannot play or buy now says why ("Costs 6 Hacking — you have 4", "Nashville 2600 is in play…").
+- Playable and affordable cards get a small badge as well as the coloured border.
+
+**Online**
+- A countdown shows how long you have before a bot answers for you, and other players show an idle timer.
+- Eight preset emotes (GG, Nice play, Hack the planet!, …), with a setting to mute them.
+
+**Sound**
+- Optional ambient music with its own volume slider.
+- New sounds for "your turn", a player being eliminated and the idle warning; card sounds vary slightly in pitch; reserving a card online plays the reserve sound.
+
+**Options**
+- Bot speed is now Normal / Fast / Instant.
+- "Visual effects" off now stops every animation.
+
+**Smaller download**
+- The web version's game data is about 16 MB smaller (the Mog Variant art was stored uncompressed).
+
 ## v0.14 — Designer rulings
 **Rules update** from the card game's designers (2026-11-10, 18 rulings; full text in `reference/rulings-2026-11-10.md`)
 - **I've got the Logs:** only opponents who reveal the named card take damage (its printed cost), one separate hit each. Before, every opponent took the damage if anyone revealed it. Logs is still removed from the game if anyone reveals the card, and you still draw a card if no one does.

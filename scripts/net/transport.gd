@@ -43,3 +43,6 @@ static func _normalize(value):
 		for key in value: result[key] = _normalize(value[key])
 		return result
 	return value
+
+static func valid_emote(message: Dictionary) -> bool:
+	return message.size() == 2 and message.get("type") == "emote" and message.get("id") is int and message.id >= 0 and message.id < 8

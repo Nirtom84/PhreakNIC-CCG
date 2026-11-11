@@ -20,6 +20,39 @@ static func is_touch_platform() -> bool:
  var android = OS.has_feature("web_android") if web_android_override == null else bool(web_android_override)
  var ios = OS.has_feature("web_ios") if web_ios_override == null else bool(web_ios_override)
  return OS.has_feature("mobile") or (is_web() and (android or ios))
+static var compact_override = null
+static func compact() -> bool:
+ if compact_override != null: return bool(compact_override)
+ var layout = OnlineAPI.settings().get_value("ui", "layout", "auto")
+ if layout != "auto": return layout == "compact"
+ if OS.has_feature("android") or OS.has_feature("ios"): return true
+ if OS.has_feature("web"):
+  var window = JavaScriptBridge.get_interface("window")
+  return bool(window.matchMedia("(pointer: coarse)").matches) and minf(float(window.screen.width), float(window.screen.height)) < 900
+ return false
+static func layout_setting(parent: Control):
+ var picker = OptionButton.new()
+ for title in ["Layout: Auto", "Layout: Desktop", "Layout: Phone"]: picker.add_item(title)
+ picker.selected = maxi(0, ["auto", "desktop", "compact"].find(OnlineAPI.settings().get_value("ui", "layout", "auto")))
+ parent.add_child(picker)
+ picker.item_selected.connect(func(index):
+  var config = OnlineAPI.settings()
+  config.set_value("ui", "layout", ["auto", "desktop", "compact"][index])
+  config.save("user://settings.cfg"))
+static func touch_fit_id(id: int):
+ var node = instance_from_id(id)
+ if is_instance_valid(node): touch_fit(node)
+static func touch_fit(node: Node):
+ if not compact(): return
+ if node is Button:
+  node.custom_minimum_size.y = maxf(72, node.custom_minimum_size.y)
+  node.add_theme_font_size_override("font_size", 22)
+ if node is LineEdit or node is Slider: node.custom_minimum_size.y = maxf(64, node.custom_minimum_size.y)
+ if node is Label: node.add_theme_font_size_override("font_size", maxi(22, node.get_theme_font_size("font_size")))
+ if node is RichTextLabel:
+  for kind in ["normal_font_size", "bold_font_size", "italics_font_size"]: node.add_theme_font_size_override(kind, maxi(22, node.get_theme_font_size(kind)))
+ if node is BoxContainer: node.add_theme_constant_override("separation", 12)
+ for child in node.get_children(): touch_fit(child)
 static func rotate_prompt(parent: Control):
  if is_web(): parent.add_child(load("res://scripts/ui/rotate_prompt.gd").new())
 
@@ -62,9 +95,9 @@ static func primary(b: Button):
  b.add_theme_color_override("font_hover_color", BACKGROUND)
 static func pulse(node: Control, tint: Color = Color(1.0, 0.86, 0.62)):
  if not Sfx.visual_effects: return
- var t = node.create_tween().set_loops()
- t.tween_property(node, "self_modulate", tint, 0.8)
- t.tween_property(node, "self_modulate", Color.WHITE, 0.8)
+ var t = animation(node, true).set_loops()
+ t.tween_property(node, "self_modulate", tint, UIStyle.motion(0.8))
+ t.tween_property(node, "self_modulate", Color.WHITE, UIStyle.motion(0.8))
 static func dialog(p: PanelContainer, dimensions: Vector2 = Vector2(640, 400)):
  viewport_cover(p)
  var content = p.get_child(0)
@@ -121,7 +154,7 @@ static func viewport_cover(control: Control):
 static func glitch(label: Label):
  if not Sfx.visual_effects: return
  label.add_theme_color_override("font_shadow_color", Color(RED, 0.6))
- var t = label.create_tween().set_loops()
+ var t = animation(label, true).set_loops()
  t.tween_interval(4.0)
  t.tween_callback(func(): label.add_theme_constant_override("shadow_offset_x", -5); label.position.x += 3)
  t.tween_interval(0.05)
@@ -135,7 +168,7 @@ static func dialog_box() -> StyleBoxFlat:
 static func apply(control: Control):
  var theme = Theme.new()
  theme.default_font = load("res://assets/fonts/JetBrainsMonoNerdFontMono-Regular.ttf")
- theme.default_font_size = 18
+ theme.default_font_size = 22 if compact() else 18
  for kind in ["Label", "RichTextLabel", "LineEdit", "CheckButton", "OptionButton"]:
   theme.set_color("font_color", kind, TEXT)
  theme.set_color("default_color", "RichTextLabel", TEXT)
@@ -158,6 +191,7 @@ static func apply(control: Control):
  theme.set_color("font_placeholder_color", "LineEdit", MUTED)
  theme.set_color("caret_color", "LineEdit", CYAN)
  theme.set_stylebox("panel", "PopupMenu", box(BACKGROUND))
+ if compact(): theme.set_constant("v_separation", "PopupMenu", 48)
  theme.set_stylebox("hover", "PopupMenu", box(PANEL, AMBER))
  for kind in ["VScrollBar", "HScrollBar", "HSlider"]:
   var track = box(BACKGROUND, Color.TRANSPARENT, 0)
@@ -172,10 +206,16 @@ static func apply(control: Control):
  for state in ["unchecked", "unchecked_disabled"]: theme.set_icon(state, "CheckButton", load("res://assets/ui/toggle_off.svg"))
  for state in ["grabber", "grabber_highlight", "grabber_disabled"]: theme.set_icon(state, "HSlider", load("res://assets/ui/slider_grip.svg"))
  control.theme = theme
+ var added = func(node):
+  if compact() and control.is_ancestor_of(node): touch_fit_id.call_deferred(node.get_instance_id())
+ control.get_tree().node_added.connect(added)
+ control.tree_exiting.connect(func():
+  if control.get_tree().node_added.is_connected(added): control.get_tree().node_added.disconnect(added), CONNECT_ONE_SHOT)
+ touch_fit_id.call_deferred(control.get_instance_id())
 static func label(parent: Node, text: String, size: int = 18) -> Label:
  var node = Label.new()
  node.text = text
- node.add_theme_font_size_override("font_size", size)
+ node.add_theme_font_size_override("font_size", maxi(22, size) if compact() else size)
  if size >= 22: node.add_theme_font_override("font", heading())
  parent.add_child(node)
  return node
@@ -185,6 +225,9 @@ static func button(parent: Node, text: String, action: Callable) -> Button:
  node.pressed.connect(func(): Sfx.play("button"))
  node.pressed.connect(action)
  parent.add_child(node)
+ if compact():
+  node.custom_minimum_size.y = 72
+  node.add_theme_font_size_override("font_size", 22)
  return node
 static func picture(path: String, dimensions: Vector2) -> TextureRect:
  var node = TextureRect.new()
@@ -221,3 +264,38 @@ static func escape_bbcode(text: String) -> String:
 static func pool_label(pool: String) -> String:
  if pool == "2026mog": return "Mog Variant · PhreakNIC 27"
  return "Base Set · PhreakNIC 26" if pool == "2025" else "Base Set + Expansion 1 · PhreakNIC 27"
+
+static func motion(seconds: float) -> float:
+ return seconds if Sfx.visual_effects else 0.0
+static func animation(node: Node, looping: bool = false) -> Tween:
+ var tween = node.create_tween()
+ var finish = func(enabled):
+  if enabled or not tween.is_valid(): return
+  if looping:
+   tween.kill()
+   if node is CanvasItem: node.modulate = Color.WHITE; node.self_modulate = Color.WHITE
+   if node.get_parent() is Container: node.get_parent().queue_sort()
+   if node is Label: node.add_theme_constant_override("shadow_offset_x", 0)
+  else: tween.custom_step(100000.0)
+ Sfx.visuals_changed.connect(finish)
+ node.tree_exiting.connect(func():
+  if Sfx.visuals_changed.is_connected(finish): Sfx.visuals_changed.disconnect(finish), CONNECT_ONE_SHOT)
+ return tween
+static func music_controls(parent: Control):
+ var row = HBoxContainer.new()
+ parent.add_child(row)
+ var toggle = CheckButton.new()
+ toggle.text = "Music"
+ toggle.button_pressed = not Sfx.music_muted
+ row.add_child(toggle)
+ toggle.toggled.connect(func(enabled): Sfx.music_muted = not enabled; Sfx.save())
+ var slider = HSlider.new()
+ slider.custom_minimum_size = Vector2(140, 40)
+ slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ slider.max_value = 1.0
+ slider.step = 0.01
+ slider.value = Sfx.music_volume
+ row.add_child(slider)
+ # Follow the drag live, but write the settings file once, on release.
+ slider.value_changed.connect(func(value): Sfx.music_volume = value; Sfx.apply_music())
+ slider.drag_ended.connect(func(_changed): Sfx.save())

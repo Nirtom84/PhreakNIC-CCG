@@ -2,6 +2,9 @@ class_name GameEngine
 extends Node
 signal card_played(player, card)
 signal card_bought(player, card)
+signal purchase_paid(player, card, cost)
+signal life_gained(player, amount)
+signal damage_resolved(source_player, target_player, amount, dealing)
 signal card_reserved(player, card)
 signal state_changed
 signal log_message(text)
@@ -212,20 +215,25 @@ func start_turn(seat: int = -1):
 	if not p.alive and not state.finished: await end_turn(p)
 func is_turn(p) -> bool: return not state.finished and p.alive and p == active()
 func can_play(p, card) -> bool:
-	if not is_turn(p) or card not in p.hand: return false
-	return legal_effect(p, card)
+	return why_not_play(p, card).is_empty()
+func why_not_play(p, card) -> String:
+	if not is_turn(p): return "Not your turn"
+	if card not in p.hand: return "Card is not in your hand"
+	return why_not_effect(p, card)
 func legal_effect(p, card) -> bool:
+	return why_not_effect(p, card).is_empty()
+func why_not_effect(p, card) -> String:
 	var data = db().get_card(card.id)
-	if data.kind == "Permanent" and in_play("Nashville 2600"): return false
-	if card.id == "PhreakMyst" and p.turn_flags.get("bought", 0) > 0: return false
-	if card.id == "Even More Logo" and played_name(p, "_NSAKEY", true): return false
-	if db().name_contains(card.id, "_NSAKEY") and p.played.any(func(c): return c.id == "Even More Logo"): return false
+	if data.kind == "Permanent" and in_play("Nashville 2600"): return "Nashville 2600 is in play: no one can play permanents"
+	if card.id == "PhreakMyst" and p.turn_flags.get("bought", 0) > 0: return "Another played card blocks this action"
+	if card.id == "Even More Logo" and played_name(p, "_NSAKEY", true): return "Another played card blocks this action"
+	if db().name_contains(card.id, "_NSAKEY") and p.played.any(func(c): return c.id == "Even More Logo"): return "Another played card blocks this action"
 	if data.kind == "Action":
 		if card.id == "Nirtom Unleashed":
 			for prior in p.played:
-				if db().get_card(prior.id).kind == "Action" and not db().named(prior.id, "Reps4Thor"): return false
-		elif p.played.any(func(c): return c.id == "Nirtom Unleashed") and not db().named(card.id, "Reps4Thor"): return false
-	return true
+				if db().get_card(prior.id).kind == "Action" and not db().named(prior.id, "Reps4Thor"): return "Another played card blocks this action"
+		elif p.played.any(func(c): return c.id == "Nirtom Unleashed") and not db().named(card.id, "Reps4Thor"): return "Another played card blocks this action"
+	return ""
 func play_card(p, card) -> bool:
 	if busy or not can_play(p, card): return false
 	busy = true
@@ -251,7 +259,17 @@ func effective_cost(p, card) -> int: return effects.cost(p, card)
 func can_acquire(p) -> bool:
 	return is_turn(p) and (not p.turn_flags.get("reserved", false) or p.turn_flags.get("tips", false))
 func can_buy(p, card) -> bool:
-	return card != null and can_acquire(p) and (card in state.center_row or card in p.reserve) and not p.turn_flags.get("no_buy", false) and not in_play("Grass") and p.hacking >= effective_cost(p, card)
+	return why_not_buy(p, card).is_empty()
+func why_not_buy(p, card) -> String:
+	if not is_turn(p): return "Not your turn"
+	if card == null: return "No card here"
+	if card not in state.center_row and card not in p.reserve: return "Card is not available to buy"
+	if not can_acquire(p): return "You reserved this turn: cannot acquire more cards"
+	if p.turn_flags.get("no_buy", false): return "Buying is blocked this turn"
+	if in_play("Grass"): return "Grass is in play: no one can buy"
+	var cost = effective_cost(p, card)
+	if p.hacking < cost: return "Costs %d Hacking — you have %d" % [cost, p.hacking]
+	return ""
 func buy_card(p, card, mandatory: bool = false) -> bool:
 	if busy and not mandatory: return false
 	if not can_buy(p, card): return false
@@ -277,6 +295,7 @@ func buy_card(p, card, mandatory: bool = false) -> bool:
 	gain_owner(card, p)
 	move(card, p.discard, "discard", "center_row" if from_row else "reserve")
 	say("Seat %d buys %s for %d" % [p.seat, db().get_card(card.id).name, price])
+	purchase_paid.emit(p, card, price)
 	card_bought.emit(p, card)
 	await effects.bought(p, card, from_row)
 	busy = saved_busy
@@ -403,6 +422,7 @@ func resolve_damage(p, q, amount: int, source = null, dealing: bool = false):
 	if not q.alive or state.finished: return
 	if amount > 0:
 		q.life -= amount
+		damage_resolved.emit(p, q, amount, dealing)
 		if dealing: damage_dealt.emit(p, q, amount)
 		say("Seat %d takes %d damage (%d life)" % [q.seat, amount, q.life])
 		if q.life <= 0: await eliminate(q)

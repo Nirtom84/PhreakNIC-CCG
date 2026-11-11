@@ -37,8 +37,9 @@ func respond(table):
   if table.engine != null and table.engine.reaction_depth > 0 and table.available() and not reaction_driving:
    drive_human_reaction(table)
   if table.pending:
-   var overlay = table.get_child(table.get_child_count() - 1)
-   if not overlay is PanelContainer: continue
+   var prompts = table.get_children().filter(func(node): return node is PanelContainer and node.is_in_group("touch_modal") and node.z_index == 20)
+   if prompts.is_empty(): continue
+   var overlay = prompts.back()
    var box = overlay.get_child(0)
    if box.get_child(0).text.contains("damage incoming"):
     box.get_child(box.get_child_count() - 1).pressed.emit()
@@ -124,10 +125,11 @@ func buy_and_sink_regression(table):
  verify(e.state.removed.size() == removed_before + 1, "Sink removes one hand card")
  verify(p.hand.size() == hand_before, "Sink draws one replacement")
  sync(table)
+ var prior_floats = table.get_children().filter(func(c): return c.has_meta("life_float"))
  await e.damage(p, e.state.players[1], 1)
  await process_frame
  await process_frame
- var floats = table.get_children().filter(func(c): return c.has_meta("life_float"))
+ var floats = table.get_children().filter(func(c): return c.has_meta("life_float") and c not in prior_floats)
  verify(not floats.is_empty(), "Damage creates a floating number")
  for number in floats:
   verify(absf(number.global_position.x - table.life_labels[1].global_position.x) < 1, "Damage number tracks target life readout")

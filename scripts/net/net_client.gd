@@ -37,6 +37,8 @@ func send_action(kind: String, uid = null, index = null):
 	if uid != null: data.uid = uid
 	if index != null: data.index = index
 	transport.send(data)
+func send_emote(id: int):
+	if id >= 0 and id < 8 and transport != null: transport.send({"type": "emote", "id": id})
 func answer(id: String, value): transport.send({"t": "answer", "id": id, "value": value})
 func _receive(raw: Dictionary):
 	var message = NetTransport.normalize(raw)

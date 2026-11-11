@@ -25,6 +25,8 @@ func run():
 	var keep_hand: bool = args.size() > 2 and args[2] == "hand"
 	# Auto-end would end the last turn during the wait below and catch the bot mid-turn; switch it off for this run only (not saved).
 	root.get_node("Sfx").auto_end_turn = false
+	# Optional LAYOUT=compact or desktop environment variable to force the phone or desktop layout.
+	if OS.get_environment("LAYOUT") != "": load("res://scripts/ui/style.gd").compact_override = OS.get_environment("LAYOUT") == "compact"
 	table = load("res://scenes/table.tscn").instantiate()
 	# Optional PLAYERS=3 or 4 environment variable for multi-bot screenshots.
 	if OS.get_environment("PLAYERS") != "": table.player_count = int(OS.get_environment("PLAYERS"))

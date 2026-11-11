@@ -17,6 +17,7 @@ func register_card(control: Control, inspect: Callable):
  control.set_meta("inspect", inspect)
  cards.append(control)
  control.tree_exiting.connect(func(): cards.erase(control))
+ control.tree_entered.connect(func(): if control not in cards: cards.append(control))
 func register_scroll(control: Control):
  # TouchInput owns finger scrolling, including drags starting on STOP buttons.
  # Keep native touch tracking below its threshold; wheel and scrollbar input still work.

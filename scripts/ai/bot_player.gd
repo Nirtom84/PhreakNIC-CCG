@@ -5,6 +5,7 @@ var engine
 var continue_turn: Callable
 var action_completed: Callable
 var action_delay: float = 0.0
+var yield_frame: bool = false
 func _init(game): engine = game
 func take_turn(p):
 	var actions = 0
@@ -12,7 +13,9 @@ func take_turn(p):
 	while engine.is_turn(p) and actions < MAX_ACTIONS and (not continue_turn.is_valid() or continue_turn.call()):
 		if action_delay > 0.0:
 			await engine.get_tree().create_timer(action_delay).timeout
-			if not engine.is_turn(p): break
+		elif yield_frame:
+			await engine.get_tree().process_frame
+		if not engine.is_turn(p): break
 		actions += 1
 		var candidates = p.hand.filter(func(c): return engine.can_play(p, c))
 		if p.difficulty > 0:

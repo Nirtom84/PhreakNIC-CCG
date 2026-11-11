@@ -30,20 +30,26 @@ func run():
  p.hand.clear()
  p.hacking = 0
  p.turn_flags.reserved = true
+ # Direct fixture edits request redraws to invalidate the cached action state.
+ table.redraw()
  verify(table.nothing_left(), "Empty turn has no moves")
  p.hand.append(hand[0])
+ table.redraw()
  verify(not table.nothing_left(), "Playable card prevents auto-end")
  p.hand.clear()
  p.turn_flags.reserved = false
+ table.redraw()
  verify(not table.nothing_left(), "Reserve prevents auto-end")
  p.turn_flags.acquired = 1
  p.hacking = 100
+ table.redraw()
  verify(not table.nothing_left(), "Affordable market prevents auto-end")
  var reserved = e.state.center_row[0]
  e.state.center_row[0] = null
  p.reserve.append(reserved)
  var market = e.state.center_row.duplicate()
  e.state.center_row.fill(null)
+ table.redraw()
  verify(not table.nothing_left(), "Affordable reserve prevents auto-end")
  p.reserve.clear()
  e.state.center_row.assign(market)
@@ -52,8 +58,10 @@ func run():
  p.turn_flags.reserved = true
  var botnet = CardInstance.new(9999, "Botnet", 0)
  p.play_area.append(botnet)
+ table.redraw()
  verify(not table.nothing_left(), "Enabled ability prevents auto-end")
  p.play_area.clear()
+ table.redraw()
  var turn = e.state.turn
  table._process(1.3)
  verify(e.state.turn == turn, "Setting off prevents auto-end")

@@ -2,8 +2,13 @@ extends Control
 signal answered(value)
 var online_session: OnlineSession
 var human_seat = 0
+var tutorial_mode = false
+var tutorial_coach
 var online_prompt_id = ""
 var online_over = false
+var online_final_players: Array = []
+var countdowns: Dictionary = {}
+var emote_ui
 var connection_dot: Label
 var resume_data: Dictionary = {}
 var game_menu: Control
@@ -16,6 +21,7 @@ var save_status: Label
 var last_autosave_turn = -1
 var saving = false
 var starting_life: int = 0
+var match_stats = preload("res://scripts/ui/match_stats.gd").new()
 var engine: GameEngine
 var player_count: int = 2
 var difficulty: int = 0
@@ -24,7 +30,10 @@ var banned: Array = []
 var ban_picker: Control
 var scripted_decider: Decider
 var auto_drive: bool = true
-var fast: bool = false
+var bot_speed: int = 0
+var fast: bool:
+ get: return bot_speed == 2
+ set(value): bot_speed = 2 if value else 0
 var seed_value: int = 0
 var pending: bool = false
 # Answer the Back button / Escape gives the open dialog: its Cancel-like option, or null when Back should do nothing.
@@ -33,6 +42,11 @@ var acting: bool = false
 var driving: bool = false
 var body: VBoxContainer
 var log_entries: Array = []
+var log_panel: PanelContainer
+var log_ticker: Button
+var log_open = true
+var selected_hand = null
+var hand_selection: Control
 var log_view: RichTextLabel
 var banner: Label
 var play_button: Button
@@ -55,11 +69,19 @@ var moved_uids: Dictionary = {}
 var opening_rickroll = null
 var incoming_source: String = "another player"
 var table_rule_uids: Array = []
+var safe_extra = Vector2.ZERO
 func _ready():
+ if tutorial_mode:
+  player_count = 2
+  difficulty = 0
+  seed_value = preload("res://scripts/ui/tutorial.gd").SEED
+  card_pool = "2025"
+  banned = []
+  starting_life = 0
  CardDB.select_pool(card_pool)
  install_page_listeners()
  get_tree().auto_accept_quit = false
- fast = (fast or Sfx.bot_fast) if resume_data.is_empty() else resume_data.table.fast
+ bot_speed = (2 if fast else Sfx.bot_speed) if resume_data.is_empty() else int(resume_data.table.get("bot_speed", 2 if resume_data.table.get("fast", false) else 0))
  UIStyle.rotate_prompt(self)
  UIStyle.apply(self)
  UIStyle.background(self)
@@ -67,6 +89,14 @@ func _ready():
  var margin = MarginContainer.new()
  margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  for side in ["left", "right", "top", "bottom"]: margin.add_theme_constant_override("margin_" + side, 16)
+ if OS.has_feature("android"):
+  var safe = DisplayServer.get_display_safe_area()
+  var screen = DisplayServer.screen_get_size()
+  if safe.has_area():
+   var scale_factor = get_viewport_rect().size / Vector2(screen)
+   safe_extra = Vector2(maxf(0, safe.position.x * scale_factor.x - 16), maxf(0, (screen.x - safe.end.x) * scale_factor.x - 16))
+   margin.add_theme_constant_override("margin_left", maxi(16, int(safe.position.x * scale_factor.x)))
+   margin.add_theme_constant_override("margin_right", maxi(16, int((screen.x - safe.end.x) * scale_factor.x)))
  add_child(margin)
  var columns = HBoxContainer.new()
  margin.add_child(columns)
@@ -79,19 +109,36 @@ func _ready():
  toolbar.add_child(turn_avatar)
  banner = UIStyle.label(toolbar, "Connecting…", 28)
  banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- speed_button = UIStyle.button(toolbar, "» 4×" if fast else "» 1×", toggle_speed)
+ speed_button = UIStyle.button(toolbar, "» " + ["Normal", "Fast", "Instant"][bot_speed], toggle_speed)
  mute_button = UIStyle.button(toolbar, "♪ OFF" if Sfx.muted else "♪ ON", func():
   Sfx.muted = not Sfx.muted
   Sfx.save())
  mute_button.pressed.connect(sync_options)
+ UIStyle.button(toolbar, "Log", toggle_log)
  menu_button = UIStyle.button(toolbar, "Menu", menu)
  body = VBoxContainer.new()
  body.size_flags_vertical = Control.SIZE_EXPAND_FILL
  left.add_child(body)
- var log_panel = UIStyle.panel("// NETWORK LOG")
+ log_ticker = UIStyle.button(left, "Network log", toggle_log)
+ log_ticker.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+ log_open = bool(OnlineAPI.settings().get_value("ui", "log_open", not UIStyle.compact()))
+ ghost_layer = CanvasLayer.new()
+ ghost_layer.layer = 8
+ add_child(ghost_layer)
+ log_panel = UIStyle.panel("// NETWORK LOG")
  columns.add_child(log_panel)
+ log_panel.visible = log_open
+ log_ticker.visible = not log_open
+ if UIStyle.compact():
+  columns.remove_child(log_panel)
+  add_child(log_panel)
+  log_panel.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+  log_panel.offset_left = -680
+  log_panel.z_index = 20
+
  var side = VBoxContainer.new()
  log_panel.add_child(side)
+ if UIStyle.compact(): UIStyle.button(side, "Close log", toggle_log)
  side.custom_minimum_size.x = 300
 
 
@@ -112,9 +159,9 @@ func _ready():
  var cursor = UIStyle.label(side, "> _", 18)
  cursor.add_theme_color_override("font_color", UIStyle.CYAN)
  if Sfx.visual_effects:
-  var blink = create_tween().set_loops()
-  blink.tween_property(cursor, "modulate:a", 0.0, 0.6)
-  blink.tween_property(cursor, "modulate:a", 1.0, 0.6)
+  var blink = UIStyle.animation(cursor, true).set_loops()
+  blink.tween_property(cursor, "modulate:a", 0.0, UIStyle.motion(0.6))
+  blink.tween_property(cursor, "modulate:a", 1.0, UIStyle.motion(0.6))
  UIStyle.label(side, "Right-click or long-press to inspect", 14)
  if online_session != null:
   setup_online()
@@ -134,6 +181,7 @@ func _ready():
  engine.log_message.connect(append_log)
  if resume_data.is_empty():
   engine.setup(levels, game_seed, choices, card_pool, starting_life, banned)
+  if tutorial_mode: engine.state.active_seat = human_seat
  else:
   engine.state = SaveGame.restore(resume_data.game)
   starting_life = int(resume_data.table.get("starting_life", 0))
@@ -141,16 +189,25 @@ func _ready():
   difficulty = engine.state.players[1].difficulty
   seat_names.assign(resume_data.table.seat_names)
   seat_heroes.assign(resume_data.table.seat_heroes)
-  fast = resume_data.table.fast
+  bot_speed = int(resume_data.table.get("bot_speed", 2 if resume_data.table.get("fast", false) else 0))
   engine.deciders = choices
   for p in engine.state.players.slice(1): engine.deciders.append(BotDecider.new(engine, p.difficulty))
   log_entries = resume_data.table.get("log_entries", [resume_data.table.log]).slice(-400)
   for entry in log_entries: log_view.append_text(entry)
+  if not log_entries.is_empty(): log_ticker.text = log_view.get_parsed_text().strip_edges().split("\n")[-1]
   for p in engine.state.players:
    previous_life[p.seat] = p.life
    previous_hack[p.seat] = p.hacking
   last_autosave_turn = engine.state.turn
   sync_options()
+ match_stats.setup(player_count, card_pool, engine.state.players.map(func(p): return p.difficulty), not resume_data.is_empty())
+ if not resume_data.is_empty() and resume_data.table.has("match_stats"):
+  var restored_stats = match_stats.from_dict(resume_data.table.match_stats)
+  if restored_stats != null: match_stats = restored_stats
+ engine.card_played.connect(func(p, c): match_stats.played(p.seat, c.id))
+ engine.purchase_paid.connect(func(p, c, cost): match_stats.bought(p.seat, c.id, cost))
+ engine.life_gained.connect(func(p, amount): match_stats.gain(p.seat, amount))
+ engine.damage_resolved.connect(func(p, q, amount, dealing): match_stats.damage(p.seat if dealing else -1, q.seat, amount))
  engine.state_changed.connect(redraw)
 
  engine.ice_counter_removed.connect(func(_card): Sfx.play("ice"))
@@ -160,10 +217,11 @@ func _ready():
    incoming_source = CardDB.cards[source_card.id].name + " / " + seat_name(source_player.seat) if source_card != null else seat_name(source_player.seat))
  engine.card_moved.connect(moved)
  engine.turn_started.connect(func(p):
+  match_stats.turn(p.seat)
   opening_rickroll = null
   for card in engine.state.center_row:
    if card != null and card.id == "Rickroll": opening_rickroll = card
-  Sfx.play("turn_start")
+  Sfx.play("your_turn" if p.seat == human_seat else "turn_start")
   if p.seat == human_seat: clear_spotlights(1.5)
   append_log("TURN %d · Seat %d connected" % [engine.state.turn, p.seat])
   turn_band(p)
@@ -177,6 +235,10 @@ func _ready():
   await engine.start_turn()
  auto_save()
  redraw()
+ if tutorial_mode:
+  tutorial_coach = load("res://scripts/ui/tutorial.gd").new()
+  add_child(tutorial_coach)
+  tutorial_coach.begin(self)
 func pick_seat_names(game_seed: int):
  var heroes: Array[String] = []
  var hero_ids: Dictionary = {}
@@ -203,13 +265,89 @@ func player_name(p) -> String:
 func available() -> bool:
  if online_session != null: return not online_over and online_session.client.can_act and not pending and online_session.client.prompts.is_empty() and engine.state != null
  return engine != null and engine.is_turn(engine.state.players[human_seat]) and not engine.busy and not pending and (not acting or engine.reaction_depth > 0)
+var synchronous_redraw = DisplayServer.get_name() == "headless"
+var redraw_dirty = false
+var rebuild_count = 0
+var rebuilding = false
+var widget_cache: Dictionary = {}
+var shown_widgets: Dictionary = {}
+var zone_anchors: Dictionary = {}
+var last_locations: Dictionary = {}
+var ghost_layer: CanvasLayer
+var ghosts: Array = []
+var state_revision = 0
+var action_cache_key: Array = []
+var cached_save = false
+var cached_nothing = false
 func redraw():
+ state_revision += 1
+ auto_end_elapsed = 0
+ auto_end_turn_number = -1
+ if synchronous_redraw: redraw_now(); return
+ if redraw_dirty: return
+ redraw_dirty = true
+ if not get_tree().process_frame.is_connected(_flush_redraw): get_tree().process_frame.connect(_flush_redraw, CONNECT_ONE_SHOT)
+func _flush_redraw():
+ if redraw_dirty: redraw_now()
+func locations() -> Dictionary:
+ var result = {}
+ for p in engine.state.players:
+  for zone in ["deck", "hand", "discard", "play_area", "reserve"]:
+   for c in p.get(zone): result[c.uid] = {"zone": "%d:%s" % [p.seat, zone], "hidden": zone == "deck" or (zone == "hand" and p.seat != human_seat), "id": c.id}
+ for c in engine.state.resolving: result[c.uid] = {"zone": "%d:resolving" % c.controller, "hidden": false, "id": c.id}
+ for zone in ["center_deck", "center_row", "removed"]:
+  for c in engine.state.get(zone):
+   if c != null: result[c.uid] = {"zone": zone, "hidden": zone == "center_deck", "id": c.id}
+ return result
+func anchor(key: String, node: Control):
+ zone_anchors[key] = node
+func card_rects() -> Dictionary:
+ var result = {}
+ for uid in shown_widgets:
+  var widget = shown_widgets[uid]
+  if is_instance_valid(widget) and widget.is_inside_tree(): result[uid] = widget.get_child(0).get_global_rect()
+ return result
+func anchor_rects() -> Dictionary:
+ var result = {}
+ for key in zone_anchors:
+  if is_instance_valid(zone_anchors[key]): result[key] = zone_anchors[key].get_global_rect()
+ return result
+func toggle_log():
+ log_open = not log_open
+ log_panel.visible = log_open
+ log_ticker.visible = not log_open
+ var config = OnlineAPI.settings()
+ config.set_value("ui", "log_open", log_open)
+ config.save("user://settings.cfg")
+ redraw()
+func redraw_now():
+ UIStyle.touch_fit(self)
+ clear_hand_selection()
+ state_revision += 1
+ redraw_dirty = false
  auto_end_elapsed = 0
  auto_end_turn_number = -1
  if not is_instance_valid(body) or engine.state == null: return
  if opening_rickroll != null and not engine.busy:
   show_notice("Rickroll was in the Center Row when your turn started, so you had to buy it" if opening_rickroll not in engine.state.center_row else "Rickroll forced buy was blocked", 7.0)
   opening_rickroll = null
+ rebuild_count += 1
+ hover_serial += 1
+ hide_zoom()
+ var old_rects = card_rects()
+ var old_anchors = anchor_rects()
+ var old_locations = last_locations
+ var next_locations = locations()
+ var moves = moved_uids.duplicate(true)
+ moved_uids.clear()
+ for uid in next_locations:
+  if old_locations.has(uid) and old_locations[uid].zone != next_locations[uid].zone: moves[uid] = true
+ for uid in widget_cache:
+  var widget = widget_cache[uid]
+  if is_instance_valid(widget) and widget.get_parent() != null: widget.get_parent().remove_child(widget)
+ shown_widgets.clear()
+ zone_anchors.clear()
+ rebuilding = true
  for child in body.get_children():
   body.remove_child(child)
   child.queue_free()
@@ -220,12 +358,25 @@ func redraw():
  var avatar_source = UIStyle.avatar(seat_heroes[engine.active().seat])
  turn_avatar.get_child(0).texture = avatar_source.get_child(0).texture
  avatar_source.free()
- var width = maxf(1538, size.x - 382)
+ var width = get_viewport_rect().size.x - (382 if log_open and not UIStyle.compact() else 64) - safe_extra.x - safe_extra.y
+ var compact = UIStyle.compact()
+ var human = engine.state.players[human_seat]
+ var empty_rig = human.play_area.is_empty() and human.reserve.is_empty()
+ var height = get_viewport_rect().size.y - (184 if compact or not log_open else 100)
+ var remote_h = 110.0 if compact else 220.0
+ var rule_h = 88.0 if compact else 56.0
+ var center_y = remote_h + 20
+ var rig_h = 60.0 if empty_rig else (92.0 if compact else 194.0)
+ var hand_h = clampf(height * 0.27, 240, 340)
+ if not compact and not empty_rig and engine.permanents().any(func(c): return not CardDB.get_card(c.effect_id()).get("table_rule", "").is_empty()): hand_h = maxf(214, hand_h - 56)
+ var hand_y = height - hand_h
+ var rig_y = hand_y - (212 if compact and not empty_rig else (180 if empty_rig else 214))
+ var market_h = rig_y - center_y - 20
  var canvas = Control.new()
- canvas.custom_minimum_size.y = 990
+ canvas.custom_minimum_size.y = height
  body.add_child(canvas)
  var opponents = HBoxContainer.new()
- region(canvas, opponents, Vector2(0, 0), Vector2(width, 220), "// REMOTE HOSTS")
+ region(canvas, opponents, Vector2(0, 0), Vector2(width, remote_h), "// REMOTE HOSTS")
  for p in engine.state.players:
   if p.seat != human_seat: seat_area(opponents, p, false)
  var active_rules = engine.permanents().filter(func(c): return not CardDB.get_card(c.effect_id()).get("table_rule", "").is_empty())
@@ -238,8 +389,8 @@ func redraw():
   var strip = HBoxContainer.new()
   strip.name = "InEffect"
   canvas.add_child(strip)
-  strip.position = Vector2(0, 220)
-  strip.size = Vector2(width, 56)
+  strip.position = Vector2(0, remote_h)
+  strip.size = Vector2(width, rule_h)
   UIStyle.label(strip, "⚠ IN EFFECT", 14).add_theme_color_override("font_color", UIStyle.AMBER)
   var rule_scroll = ScrollContainer.new()
   rule_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -255,21 +406,26 @@ func redraw():
    chip.add_theme_font_size_override("font_size", 13)
    chip.add_theme_color_override("font_color", UIStyle.AMBER)
  # Reserve room for the strip and its scrollbar without overlapping the rig below.
+ if not active_rules.is_empty(): center_y += rule_h; market_h -= rule_h
+ # Height is the real limit: the cards fill the row, less the frame and the cost readout below each card.
+ var market_width = int(clampf(minf((width - 320) / 6.0, (market_h - 70) / 1.367), 110, 240))
  var center = HBoxContainer.new()
- center.add_theme_constant_override("separation", maxi(18, int((width - 1120) / 5)))
- region(canvas, center, Vector2(0, 296 if not active_rules.is_empty() else 240), Vector2(width, 252 if not active_rules.is_empty() else 300), "// CENTER ROW")
+ center.add_theme_constant_override("separation", 18)
+ region(canvas, center, Vector2(0, center_y), Vector2(width, market_h), "// CENTER ROW")
+ anchor("center", center)
  for c in engine.state.center_row:
-  if c != null: center.add_child(card_widget(c, "market", 135 if not active_rules.is_empty() else 170))
+  if c != null: center.add_child(card_widget(c, "market", market_width))
   else:
    var slot = UIStyle.panel()
-   slot.custom_minimum_size = Vector2(170, 233)
+   slot.custom_minimum_size = Vector2(market_width, market_width * 1.367)
    slot.add_theme_stylebox_override("panel", UIStyle.box(Color(0.02,0.04,0.05,0.4), Color(UIStyle.CYAN,0.2), 0))
    center.add_child(slot)
  var piles = VBoxContainer.new()
  center.add_child(piles)
  var deck_label = UIStyle.label(piles, "Deck: %d" % engine.state.center_deck.size(), 16)
+ anchor("center_deck", deck_label)
  deck_label.custom_minimum_size.x = 180
- UIStyle.label(piles, UIStyle.pool_label(engine.state.card_pool), 14)
+ if not compact: UIStyle.label(piles, UIStyle.pool_label(engine.state.card_pool), 14)
  var banned_button = UIStyle.button(piles, "Banned: %d" % engine.state.banned.size(), func():
   if is_instance_valid(ban_picker): return
   ban_picker = load("res://scripts/ui/ban_picker.gd").new()
@@ -278,56 +434,97 @@ func redraw():
   ban_picker.overlays[0].tree_exited.connect(ban_picker.queue_free))
  banned_button.icon = load(UIStyle.BACK)
  banned_button.expand_icon = true
- banned_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
- banned_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
- banned_button.add_theme_constant_override("icon_max_width", 60)
- banned_button.custom_minimum_size = Vector2(110, 115)
- UIStyle.button(piles, "Removed: %d" % engine.state.removed.size(), func(): view_cards("Removed from game", engine.state.removed))
+ banned_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+ banned_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+ banned_button.add_theme_constant_override("icon_max_width", 32)
+ banned_button.custom_minimum_size = Vector2(110, 72)
+ anchor("removed", UIStyle.button(piles, "Removed: %d" % engine.state.removed.size(), func(): view_cards("Removed from game", engine.state.removed)))
  var p = engine.state.players[human_seat]
  var board_scroll = ScrollContainer.new()
  TouchInput.register_scroll(board_scroll)
- region(canvas, board_scroll, Vector2(0, 560), Vector2(width - 688, 194), "// YOUR RIG & RESERVED")
+ region(canvas, board_scroll, Vector2(0, rig_y), Vector2(width if compact else width - 820, rig_h), "// YOUR RIG & RESERVED")
  board_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
  var board = HBoxContainer.new()
  board_scroll.add_child(board)
- for c in p.play_area: board.add_child(card_widget(c, "permanent", 100))
- for c in p.reserve: board.add_child(card_widget(c, "reserve", 100))
+ anchor("%d:play_area" % human_seat, board_scroll)
+ anchor("%d:resolving" % human_seat, board_scroll)
+ if compact and not empty_rig:
+  UIStyle.button(board, "Rig: %d · Reserved: %d · Open board" % [p.play_area.size(), p.reserve.size()], func(): view_cards("Your rig & reserved", p.play_area + p.reserve))
+ else:
+  for c in p.play_area: board.add_child(card_widget(c, "permanent", 100))
+  for c in p.reserve: board.add_child(card_widget(c, "reserve", 100))
+ anchor("%d:reserve" % human_seat, board_scroll)
  if p.play_area.is_empty() and p.reserve.is_empty():
   board.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   var placeholder = UIStyle.label(board, "Build your network here.", 18)
   placeholder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   placeholder.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
   placeholder.add_theme_color_override("font_color", UIStyle.MUTED)
- var status = VBoxContainer.new()
- region(canvas, status, Vector2(width - 638, 560), Vector2(600, 194), "// " + seat_name(human_seat).to_upper() + " / SYSTEM STATUS")
+ var status = HBoxContainer.new() if compact or empty_rig else VBoxContainer.new()
+ region(canvas, status, Vector2(0, rig_y + (102 if compact and not empty_rig else 70)) if compact or empty_rig else Vector2(width - 780, rig_y), Vector2(width, 100) if compact or empty_rig else Vector2(780, 194), "// " + seat_name(human_seat).to_upper() + " / SYSTEM STATUS")
  var stats = HBoxContainer.new()
  status.add_child(stats)
  stats.add_child(UIStyle.avatar(seat_heroes[human_seat], 56))
  life_labels[human_seat] = readout(stats, "life", p.life, 40)
- readout(stats, "hack", p.hacking, 40)
+ anchor("hack", readout(stats, "hack", p.hacking, 40))
+ anchor("life", life_labels[human_seat])
  var piles_button = UIStyle.button(status, "Deck %d   /   Discard %d" % [p.deck.size(), p.discard.size()], func(): view_cards("Your discard", p.discard))
  piles_button.name = "PlayerPiles"
+ anchor("%d:deck" % human_seat, piles_button)
+ anchor("%d:discard" % human_seat, piles_button)
+ var hand_scroll = ScrollContainer.new()
+ hand_scroll.name = "HandViewport"
+ hand_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ region(canvas, hand_scroll, Vector2(0, hand_y), Vector2(width, hand_h), "// YOUR HAND · %d" % p.hand.size())
+ TouchInput.register_scroll(hand_scroll)
+ anchor("%d:hand" % human_seat, hand_scroll)
  var hand = Control.new()
  hand.name = "Hand"
- region(canvas, hand, Vector2(0, 774), Vector2(width, 214), "// YOUR HAND · %d" % p.hand.size())
- var step = 158.0 if p.hand.size() <= 7 else minf(158.0, (width - 150) / maxf(1, p.hand.size() - 1))
+ hand_scroll.add_child(hand)
+ var hand_width = int(clampf(minf((width - 40) / 8.0, (hand_h - 44) / 1.367), 150 if compact else 140, 260))
+ var step = maxf(72, minf(hand_width + 12, (width - hand_width - 24) / maxf(1, p.hand.size() - 1)))
+ hand.custom_minimum_size = Vector2(maxf(width - 20, (p.hand.size() - 1) * step + hand_width), hand_h - 36)
  for i in p.hand.size():
-  var card = card_widget(p.hand[i], "hand", 140)
+  var card = card_widget(p.hand[i], "hand", hand_width)
   hand.add_child(card)
   card.position.x = i * step
  var actions = HBoxContainer.new()
  status.add_child(actions)
+ actions.add_theme_constant_override("separation", 16)
  play_button = UIStyle.button(actions, "▶ Play All", play_all)
  var basics = UIStyle.button(actions, "Play Basics", play_basics)
  basics.disabled = not available()
  end_button = UIStyle.button(actions, "End Turn →", end_human_turn)
- play_button.custom_minimum_size.y = 38
- end_button.custom_minimum_size.y = 38
+ anchor("end", end_button)
+ anchor("banner", banner)
+ anchor("log", log_panel if log_open else log_ticker)
+ anchor("rules", menu_button)
+ play_button.custom_minimum_size.y = 72 if compact else 38
+ end_button.custom_minimum_size.y = 72 if compact else 38
  play_button.disabled = not available()
  end_button.disabled = not available()
  UIStyle.primary(end_button)
  if available() and p.hand.filter(func(c): return engine.can_play(p, c)).is_empty(): UIStyle.pulse(end_button)
- moved_uids.clear()
+ rebuilding = false
+ if online_session != null and not old_locations.is_empty():
+  # Masked hand UIDs are deliberately unstable online. Animate count increases
+  # with backs; never correlate masks with newly revealed public identities.
+  for player in engine.state.players:
+   if player.seat == human_seat: continue
+   var hand_zone = "%d:hand" % player.seat
+   var old_count = old_locations.values().filter(func(entry): return entry.zone == hand_zone).size()
+   var draws = player.hand.size() - old_count
+   for c in player.hand.slice(0, maxi(0, draws)):
+    moves[c.uid] = {"from": {"zone": "%d:deck" % player.seat, "hidden": true}, "to": next_locations[c.uid]}
+ if not old_locations.is_empty():
+  for uid in shown_widgets:
+   if not old_locations.has(uid): moves[uid] = moves.get(uid, true)
+ for uid in widget_cache.keys():
+  if not shown_widgets.has(uid):
+   if is_instance_valid(widget_cache[uid]): widget_cache[uid].queue_free()
+   widget_cache.erase(uid)
+ last_locations = next_locations
+ if not moves.is_empty(): animate_moves(moves, old_rects, old_anchors, old_locations, next_locations)
  track_life()
  if online_session == null and auto_drive and engine.active().is_bot and not driving and not engine.busy and not engine.state.finished: drive_bot.call_deferred()
 func region(parent, node, pos: Vector2, dimensions: Vector2, title: String = ""):
@@ -356,6 +553,29 @@ func readout(parent, icon: String, value: int, font_size: int) -> Label:
  number.add_theme_color_override("font_color", color)
  return number
 func seat_area(parent: Node, p, _human: bool):
+ if UIStyle.compact():
+  var summary = UIStyle.button(parent, "%s · ♥ %d\nHand %d · Deck %d · Discard %d" % [seat_name(p.seat), p.life, p.hand.size(), p.deck.size(), p.discard.size()], func(): view_cards(seat_name(p.seat) + " · Board", p.play_area + p.reserve + p.discard))
+  var avatar = UIStyle.avatar(seat_heroes[p.seat])
+  summary.icon = avatar.get_child(0).texture
+  avatar.free()
+  summary.expand_icon = true
+  summary.add_theme_constant_override("icon_max_width", 64)
+  summary.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  summary.alignment = HORIZONTAL_ALIGNMENT_LEFT
+  var mini_board = HBoxContainer.new()
+  mini_board.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  summary.add_child(mini_board)
+  mini_board.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+  mini_board.offset_left = -84
+  mini_board.offset_top = -48
+  mini_board.offset_right = -8
+  mini_board.offset_bottom = -4
+  for card in p.play_area.slice(0, 2):
+   var miniature = UIStyle.picture(CardDB.image_path(card.id), Vector2(32, 44))
+   miniature.mouse_filter = Control.MOUSE_FILTER_IGNORE
+   mini_board.add_child(miniature)
+  for zone in ["deck", "hand", "discard", "play_area", "reserve"]: anchor("%d:%s" % [p.seat, zone], summary)
+  return
  var panel = UIStyle.panel()
  panel.name = "Opponent%d" % p.seat
  panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -385,12 +605,13 @@ func seat_area(parent: Node, p, _human: bool):
  compact.content_margin_top = 2
  compact.content_margin_bottom = 2
  life_frame.add_theme_stylebox_override("panel", compact)
- UIStyle.label(box, "Hand %d · Deck %d · Discard %d" % [p.hand.size(), p.deck.size(), p.discard.size()], 16)
+ anchor("%d:deck" % p.seat, UIStyle.label(box, "Hand %d · Deck %d · Discard %d" % [p.hand.size(), p.deck.size(), p.discard.size()], 16))
  var row = HBoxContainer.new()
  box.add_child(row)
  var fan = Control.new()
  fan.custom_minimum_size = Vector2(100, 100)
  row.add_child(fan)
+ anchor("%d:hand" % p.seat, fan)
  for i in mini(p.hand.size(), 5):
   var back = UIStyle.picture(UIStyle.BACK, Vector2(55, 75))
   fan.add_child(back)
@@ -399,6 +620,7 @@ func seat_area(parent: Node, p, _human: bool):
  # Discard pile is public: show its top card face up and let the human browse it.
  var pile = VBoxContainer.new()
  row.add_child(pile)
+ anchor("%d:discard" % p.seat, pile)
  if p.discard.is_empty():
   var empty = UIStyle.label(pile, "Discard\nempty", 14)
   empty.custom_minimum_size = Vector2(60, 75)
@@ -414,12 +636,29 @@ func seat_area(parent: Node, p, _human: bool):
  row.add_child(scroll)
  var board = HBoxContainer.new()
  scroll.add_child(board)
+ anchor("%d:play_area" % p.seat, scroll)
+ anchor("%d:resolving" % p.seat, scroll)
  for c in p.play_area: board.add_child(card_widget(c, "opponent", 70))
  for c in p.reserve: board.add_child(card_widget(c, "opponent_reserve", 70))
 func texture_for(id: String) -> Texture2D:
  if not textures.has(id): textures[id] = load(CardDB.image_path(id))
  return textures[id]
 func card_widget(c, zone: String, width: int) -> Control:
+ var human = engine.state.players[human_seat]
+ var legal = engine.can_play(human, c) if zone == "hand" else engine.can_buy(human, c)
+ var abilities_key = engine.activatable_abilities(human, c) if zone == "permanent" else []
+ var key = [c, c.id, c.effect_id(), zone, width, legal, c.counters, str(abilities_key), engine.effective_cost(human, c), available() if zone == "permanent" else true]
+ if rebuilding and widget_cache.has(c.uid):
+  var previous = widget_cache[c.uid]
+  if is_instance_valid(previous) and previous.get_meta("visual_key") == key:
+   previous.z_index = 0
+   previous.position = Vector2.ZERO
+   previous.modulate.a = 0.0 if previous.has_meta("flight") else 1.0
+   previous.get_child(0).position = Vector2.ZERO
+   previous.get_child(0).add_theme_stylebox_override("normal", previous.get_meta("card_style"))
+   shown_widgets[c.uid] = previous
+   return previous
+  if is_instance_valid(previous): previous.queue_free()
  var box = VBoxContainer.new()
  box.set_meta("card_uid", c.uid)
  box.set_meta("zone", zone)
@@ -427,9 +666,6 @@ func card_widget(c, zone: String, width: int) -> Control:
  button.custom_minimum_size = Vector2(width, width * 1.367)
  button.tooltip_text = engine.db().get_card(c.id).name + "\nRight-click or long-press to inspect"
  box.add_child(button)
- if moved_uids.has(c.uid):
-  button.modulate.a = 0.25
-  create_tween().tween_property(button, "modulate:a", 1.0, 0.25)
  var picture = TextureRect.new()
  picture.texture = texture_for(c.id)
  picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -437,8 +673,17 @@ func card_widget(c, zone: String, width: int) -> Control:
  picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
  button.add_child(picture)
  picture.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
- var human = engine.state.players[human_seat]
- var legal = engine.can_play(human, c) if zone == "hand" else engine.can_buy(human, c)
+ if legal and zone in ["hand", "market", "reserve"]:
+  var badge = UIStyle.label(button, "▶" if zone == "hand" else "+", 20)
+  badge.name = "LegalBadge"
+  badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  badge.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+  badge.offset_left = 4
+  badge.offset_top = -28
+  badge.offset_right = 28
+  badge.offset_bottom = -4
+  badge.add_theme_color_override("font_color", Color.WHITE)
+  badge.add_theme_constant_override("outline_size", 5)
  var accent = UIStyle.GREEN if zone == "hand" and legal else (UIStyle.AMBER if zone in ["market", "reserve"] and legal else Color(0,0,0,0.8))
  var card_style = UIStyle.box(UIStyle.BACKGROUND, accent, 7)
  card_style.set_content_margin_all(0)
@@ -455,12 +700,11 @@ func card_widget(c, zone: String, width: int) -> Control:
   if TouchInput.touch_mode: return
   hover_serial += 1
   var serial = hover_serial
-  if zone == "hand":
+  if zone == "hand" and Sfx.visual_effects:
    box.z_index = 5
    button.position.y = -30
   button.add_theme_stylebox_override("normal", hover_border())
-  await get_tree().create_timer(0.4).timeout
-  if is_instance_valid(button) and serial == hover_serial and not pending and not TouchInput.touch_mode: show_zoom(c))
+  delayed_zoom(weakref(button), c, serial))
  button.mouse_exited.connect(func():
   hover_serial += 1
   if is_instance_valid(button):
@@ -488,13 +732,103 @@ func card_widget(c, zone: String, width: int) -> Control:
    b.tooltip_text = ability.label
  if zone == "market" or zone == "reserve":
   var cost = HBoxContainer.new()
-  box.add_child(cost)
+  if UIStyle.compact():
+   button.add_child(cost)
+   cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+   cost.position = Vector2(6, width * 1.367 - 50)
+  else: box.add_child(cost)
   readout(cost, "hack", engine.effective_cost(human, c), 16)
+ if rebuilding:
+  box.set_meta("visual_key", key)
+  box.set_meta("card_style", card_style)
+  widget_cache[c.uid] = box
+  shown_widgets[c.uid] = box
  return box
+func reveal_staged_cards(staged: Array):
+ for reference in staged:
+  var widget = reference.get_ref()
+  if widget != null and not widget.has_meta("flight"): widget.modulate.a = 1
+func animate_moves(moves, old_rects, old_anchors, old_locations, next_locations):
+ if bot_speed == 2 or not Sfx.visual_effects: return
+ var generation = rebuild_count
+ var staged: Array = []
+ for uid in moves:
+  if staged.size() >= maxi(0, 12 - ghosts.size()): break
+  var widget = shown_widgets.get(uid)
+  if is_instance_valid(widget):
+   staged.append(weakref(widget))
+   widget.modulate.a = 0
+ await get_tree().process_frame
+ if not is_inside_tree() or generation != rebuild_count or bot_speed == 2 or not Sfx.visual_effects:
+  reveal_staged_cards(staged)
+  return
+ var new_rects = card_rects()
+ var new_anchors = anchor_rects()
+ if not is_instance_valid(ghost_layer):
+  ghost_layer = CanvasLayer.new()
+  ghost_layer.layer = 8
+  add_child(ghost_layer)
+ var index = 0
+ for uid in moves:
+  if ghosts.size() >= 12: break
+  var after = next_locations.get(uid, {})
+  var before = old_locations.get(uid, {})
+  var event = moves[uid]
+  if before.is_empty() and event is Dictionary: before = event.from
+  if after.is_empty() and event is Dictionary: after = event.to
+  if after.is_empty(): continue
+  if before.is_empty():
+   before = {"zone": "center_deck" if after.zone == "center_row" else ("%d:hand" % int(after.zone.get_slice(":", 0)) if after.zone.ends_with(":play_area") or after.zone.ends_with(":discard") else "%d:deck" % human_seat), "hidden": true}
+  var start = old_rects.get(uid, old_anchors.get(before.zone, Rect2()))
+  var end = new_rects.get(uid, new_anchors.get(after.zone, Rect2()))
+  if start.size == Vector2.ZERO or end.size == Vector2.ZERO: continue
+  var ghost = TextureRect.new()
+  ghost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+  ghost.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+  ghost.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+  ghost.texture = load(UIStyle.BACK) if before.get("hidden", false) or after.get("hidden", false) else texture_for(after.get("id", before.get("id", "")))
+  ghost.set_meta("uid", uid)
+  ghost.set_meta("start_rect", start)
+  ghost.set_meta("end_rect", end)
+  ghost_layer.add_child(ghost)
+  ghost.position = start.position
+  ghost.size = start.size
+  ghosts.append(ghost)
+  var real = shown_widgets.get(uid)
+  var real_ref = weakref(real) if is_instance_valid(real) else null
+  if is_instance_valid(real):
+   real.modulate.a = 0
+   real.set_meta("flight", ghost.get_instance_id())
+  var tween = UIStyle.animation(ghost)
+  tween.tween_interval(UIStyle.motion(index * 0.035))
+  tween.chain().tween_property(ghost, "position", end.position, UIStyle.motion(0.28)).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+  tween.parallel().tween_property(ghost, "size", end.size, UIStyle.motion(0.28))
+  if not new_rects.has(uid): tween.parallel().tween_property(ghost, "modulate:a", 0.0, UIStyle.motion(0.28))
+  tween.chain().tween_callback(func():
+   if real_ref != null and real_ref.get_ref() != null:
+    var target = real_ref.get_ref()
+    if target.get_meta("flight", 0) == ghost.get_instance_id():
+     target.modulate.a = 1
+     target.remove_meta("flight")
+   ghosts.erase(ghost)
+   ghost.queue_free())
+  index += 1
+ reveal_staged_cards(staged)
+func delayed_zoom(button_ref: WeakRef, c, serial: int):
+ await get_tree().create_timer(0.4).timeout
+ if button_ref.get_ref() != null and serial == hover_serial and not pending and not TouchInput.touch_mode: show_zoom(c)
 func card_clicked(c, zone: String):
+ var player = engine.state.players[human_seat]
+ var blocked = engine.why_not_play(player, c) if zone == "hand" else (engine.why_not_buy(player, c) if zone in ["market", "reserve"] else "")
+ if not blocked.is_empty(): show_notice(blocked)
  if zone in ["market", "reserve", "permanent", "opponent"]:
   inspect_card(c, true)
   return
+ if zone == "hand" and UIStyle.compact() and selected_hand != c:
+  select_hand(c)
+  return
+ var reason = engine.why_not_play(engine.state.players[human_seat], c) if zone == "hand" else ""
+ if not reason.is_empty(): show_notice(reason); return
  if not available(): return
  hide_zoom()
  if zone == "hand":
@@ -505,6 +839,36 @@ func card_clicked(c, zone: String):
   acting = false
 
  redraw()
+func clear_hand_selection():
+ if is_instance_valid(hand_selection): hand_selection.queue_free()
+ hand_selection = null
+ if selected_hand != null and shown_widgets.has(selected_hand.uid): shown_widgets[selected_hand.uid].position.y = 0
+ selected_hand = null
+func select_hand(c):
+ clear_hand_selection()
+ selected_hand = c
+ if shown_widgets.has(c.uid):
+  shown_widgets[c.uid].position.y = -16
+  shown_widgets[c.uid].z_index = 6
+ var panel = UIStyle.panel()
+ hand_selection = panel
+ panel.z_index = 30
+ add_child(panel)
+ panel.position = Vector2(get_viewport_rect().size.x - 520, get_viewport_rect().size.y - 300)
+ panel.custom_minimum_size.x = 480
+ var box = VBoxContainer.new()
+ panel.add_child(box)
+ UIStyle.label(box, CardDB.get_card(c.id).name, 22)
+ var row = HBoxContainer.new()
+ box.add_child(row)
+ var play = UIStyle.button(row, "Play", func():
+  if is_instance_valid(hand_selection): hand_selection.queue_free()
+  hand_selection = null
+  card_clicked(c, "hand"))
+ play.disabled = not engine.can_play(engine.state.players[human_seat], c)
+ UIStyle.primary(play)
+ UIStyle.button(row, "Inspect", func(): clear_hand_selection(); inspect_card(c, true))
+ UIStyle.button(row, "Close", clear_hand_selection)
 func activate_card(c, index: int):
  if not available(): return
  if online_session != null: online_action("activate", c.uid, index); return
@@ -540,7 +904,8 @@ func end_human_turn(automatic: bool = false):
  redraw()
 func drive_reaction(p):
  var driver = BotPlayer.new(engine)
- driver.action_delay = 0.03 if fast else 0.6
+ driver.action_delay = [0.6, 0.15, 0.0][bot_speed]
+ driver.yield_frame = bot_speed == 2
  await driver.take_turn(p)
 func drive_bot():
  if driving or engine.busy or engine.state.finished or engine.reaction_depth > 0: return
@@ -676,8 +1041,17 @@ func track_life():
   if before != p.life:
    Sfx.play("damage" if p.life < before else "life_gain")
    float_life.call_deferred(p.seat, p.life - before)
-   if life_labels.has(p.seat): flash_readout(life_labels[p.seat])
+   if life_labels.has(p.seat):
+    flash_readout(life_labels[p.seat])
+    if p.life < before and Sfx.visual_effects: shake_life.call_deferred(p.seat)
   previous_life[p.seat] = p.life
+func shake_life(seat: int):
+ await get_tree().process_frame
+ if not life_labels.has(seat): return
+ var label = life_labels[seat]
+ var origin = label.position
+ var tween = UIStyle.animation(label)
+ for offset in [5, -5, 3, -3, 0]: tween.tween_property(label, "position", origin + Vector2(0, offset), UIStyle.motion(0.03))
 func float_life(seat: int, amount: int):
  # Container positions settle at the end of the frame. Look up the current
  # label afterward: redraw may have replaced it several times during a play.
@@ -696,9 +1070,12 @@ func float_life(seat: int, amount: int):
  floating.z_index = 40
  add_child(floating)
  floating.global_position = label.global_position
- var tween = floating.create_tween().set_parallel(true)
- tween.tween_property(floating, "position:y", floating.position.y - 65, 0.9)
- tween.tween_property(floating, "modulate:a", 0.0, 0.9)
+ if not Sfx.visual_effects:
+  get_tree().create_timer(0.9).timeout.connect(floating.queue_free)
+  return
+ var tween = UIStyle.animation(floating).set_parallel(true)
+ tween.tween_property(floating, "position:y", floating.position.y - 65, UIStyle.motion(0.9))
+ tween.tween_property(floating, "modulate:a", 0.0, UIStyle.motion(0.9))
  tween.chain().tween_callback(floating.queue_free)
 func hover_border() -> StyleBoxFlat:
  var style = UIStyle.box(Color.TRANSPARENT, UIStyle.CYAN, 12)
@@ -712,11 +1089,14 @@ func append_log(message: String):
   if "Seat %d" % i in message: seat = i
  var display = message
  for i in player_count: display = display.replace("Seat %d" % i, seat_name(i))
- if "eliminat" in message.to_lower(): show_notice(display, 7.0)
+ if "eliminat" in message.to_lower() and online_session == null:
+  Sfx.play("eliminated")
+  show_notice(display, 7.0)
  for verbs in [["plays", "play"], ["buys", "buy"], ["takes", "take"], ["reserves", "reserve"], ["reveals", "reveal"], ["goes", "go"], ["loses", "lose"], ["gains", "gain"], ["discards", "discard"], ["draws", "draw"]]:
   if seat_name(human_seat) == "You" and message.begins_with("Seat %d " % human_seat + verbs[0] + " "):
    display = "You " + verbs[1] + " " + display.substr(("You " + verbs[0] + " ").length())
  var entry = "[color=#%s]%s[/color]\n" % [colors[seat] if seat >= 0 else "a1b1bb", "[color=#536c78]> [/color]" + link_cards(display)]
+ log_ticker.text = display.replace("\n", " ")
  log_entries.append(entry)
  if log_entries.size() > 400:
   log_entries.pop_front()
@@ -725,7 +1105,7 @@ func append_log(message: String):
  else: log_view.append_text(entry)
  for action in ["plays", "buys", "reserves"]:
   if " " + action + " " not in message: continue
-  Sfx.play({"plays": "card_play", "buys": "buy", "reserves": "reserve"}[action])
+  if online_session == null: Sfx.play({"plays": "card_play", "buys": "buy", "reserves": "reserve"}[action])
   if online_session == null and seat != human_seat and seat >= 0:
    var name_part = message.split(" " + action + " ", true, 1)[1]
    for card in card_names:
@@ -762,9 +1142,9 @@ func show_log_card(id: String):
 func clear_spotlights(delay: float):
  for panel in spotlights.duplicate():
   if not is_instance_valid(panel): continue
-  var tween = panel.create_tween()
+  var tween = UIStyle.animation(panel)
   tween.tween_interval(delay)
-  tween.tween_property(panel, "modulate:a", 0.0, 0.3)
+  tween.tween_property(panel, "modulate:a", 0.0, UIStyle.motion(0.3))
   tween.tween_callback(func():
    spotlights.erase(panel)
    if is_instance_valid(panel): panel.queue_free())
@@ -797,52 +1177,142 @@ func spotlight(id: String, caption: String):
  label.mouse_filter = Control.MOUSE_FILTER_IGNORE
  add_child(panel)
  spotlights.append(panel)
- panel.modulate.a = 0
- var tween = panel.create_tween()
- tween.tween_property(panel, "modulate:a", 1.0, 0.2)
+ panel.modulate.a = 0 if Sfx.visual_effects else 1
+ var tween = UIStyle.animation(panel)
+ tween.tween_property(panel, "modulate:a", 1.0, UIStyle.motion(0.2))
  tween.tween_interval(4.6)
- tween.tween_property(panel, "modulate:a", 0.0, 0.2)
+ tween.tween_property(panel, "modulate:a", 0.0, UIStyle.motion(0.2))
  tween.tween_callback(func():
   spotlights.erase(panel)
   if is_instance_valid(panel): panel.queue_free())
 func moved(_card, _from, _to):
- moved_uids[_card.uid] = true
+ if _to == "removed": match_stats.removed(_card.owner)
+ var seat = _card.owner
+ var from_key = _from if _from in ["center_deck", "center_row", "removed"] else "%d:%s" % [seat, _from]
+ var to_key = _to if _to in ["center_deck", "center_row", "removed"] else "%d:%s" % [seat, _to]
+ var origin = moved_uids.get(_card.uid, {}).get("from", {"zone": from_key, "hidden": _from in ["deck", "center_deck"] or (_from == "hand" and seat != human_seat), "id": _card.id})
+ moved_uids[_card.uid] = {"from": origin, "to": {"zone": to_key, "hidden": _to in ["deck", "center_deck"] or (_to == "hand" and seat != human_seat), "id": _card.id}}
  if _to == "hand" and _from == "deck": Sfx.play("card_draw")
  if _from == "discard" and _to == "deck": Sfx.play("shuffle")
- if not is_instance_valid(banner): return
+ if not is_instance_valid(banner) or not Sfx.visual_effects: return
  banner.modulate = Color("e9c778")
- create_tween().tween_property(banner, "modulate", Color.WHITE, 0.25)
+ UIStyle.animation(banner).tween_property(banner, "modulate", Color.WHITE, UIStyle.motion(0.25))
 func game_over(winner):
+ match_stats.finish(winner.seat if winner != null else -1, engine.state.players)
  if online_session != null:
   if online_over: return
   online_over = true
+  engine.state.finished = true
+  engine.state.winner = winner
+  for i in mini(online_final_players.size(), match_stats.seats.size()):
+   match_stats.seats[i].final_life = int(online_final_players[i].life)
+   match_stats.seats[i].final_deck_size = int(online_final_players[i].deck_size)
+  for timer in countdowns.values(): timer.clear()
   online_prompt_id = ""
   if pending: answered.emit(null)
   OnlineAPI.remember({})
- if online_session == null: SaveGame.remove()
+ if online_session == null and not tutorial_mode: SaveGame.remove()
  Sfx.play("win" if winner != null and winner.seat == human_seat else "lose")
  show_result.call_deferred(winner)
 func show_result(winner):
  var dim = ColorRect.new()
+ dim.z_index = 49
  dim.color = Color(0,0,0,0.6)
  dim.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  add_child(dim)
- var panel = UIStyle.panel("// CONNECTION STATUS")
- panel.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
- panel.position -= Vector2(300, 120)
- panel.custom_minimum_size = Vector2(600, 240)
+ dim.modulate.a = 0
+ var transition = UIStyle.animation(dim)
+ transition.tween_property(dim, "modulate:a", 1.0, UIStyle.motion(0.4))
+ var flash = TextureRect.new()
+ flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+ var gradient = Gradient.new()
+ var tint = UIStyle.GREEN if winner != null and winner.seat == human_seat else UIStyle.RED
+ gradient.offsets = PackedFloat32Array([0, 0.55, 1])
+ gradient.colors = PackedColorArray([Color(tint, 0), Color(tint, 0), Color(tint, 0.35)])
+ var vignette = GradientTexture2D.new()
+ vignette.gradient = gradient
+ vignette.fill = GradientTexture2D.FILL_RADIAL
+ vignette.fill_from = Vector2(0.5, 0.5)
+ vignette.fill_to = Vector2(1, 0.5)
+ flash.texture = vignette
+ flash.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+ flash.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+ add_child(flash)
+ var flash_tween = UIStyle.animation(flash)
+ flash_tween.tween_property(flash, "modulate:a", 0.0, UIStyle.motion(0.25))
+ flash_tween.tween_callback(flash.queue_free)
+ var panel = UIStyle.panel("// MATCH SUMMARY")
+ panel.name = "MatchSummary"
+ panel.z_index = 50
+ panel.add_to_group("touch_modal")
  add_child(panel)
+ var scroll = ScrollContainer.new()
+ scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+ panel.add_child(scroll)
+ TouchInput.register_scroll(scroll)
  var box = VBoxContainer.new()
- panel.add_child(box)
- var headline = UIStyle.label(box, "STALEMATE" if winner == null else ("ACCESS GRANTED" if winner.seat == human_seat else "CONNECTION TERMINATED"), 42)
+ box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ box.add_theme_constant_override("separation", 12)
+ scroll.add_child(box)
+ UIStyle.dialog(panel, Vector2(1000, 850))
+ panel.modulate.a = 0
+ panel.scale = Vector2(0.92, 0.92) if Sfx.visual_effects else Vector2.ONE
+ var entrance = UIStyle.animation(panel)
+ entrance.tween_interval(UIStyle.motion(0.4))
+ entrance.tween_property(panel, "modulate:a", 1.0, UIStyle.motion(0.18))
+ entrance.parallel().tween_property(panel, "scale", Vector2.ONE, UIStyle.motion(0.18))
+ var headline = UIStyle.label(box, result_headline(winner), 36)
  headline.add_theme_color_override("font_color", UIStyle.AMBER if winner == null else (UIStyle.GREEN if winner.seat == human_seat else UIStyle.RED))
- UIStyle.label(box, "Connection closed" if winner == null else player_name(winner) + " wins!", 22)
- if winner != null: box.add_child(UIStyle.avatar(seat_heroes[winner.seat]))
- UIStyle.glitch(headline)
+ if winner != null:
+  var hero = HBoxContainer.new()
+  box.add_child(hero)
+  hero.add_child(UIStyle.avatar(seat_heroes[winner.seat], 96))
+  UIStyle.label(hero, seat_name(winner.seat), 28)
+ if match_stats.since_resume: UIStyle.label(box, "Statistics since resume", 22)
+ var rows = GridContainer.new()
+ rows.columns = 5
+ rows.add_theme_constant_override("h_separation", 16)
+ box.add_child(rows)
+ for title in ["Seat", "Life", "Damage", "Bought", "Played"]: UIStyle.label(rows, title, 22)
+ for i in match_stats.seats.size():
+  var stat = match_stats.seats[i]
+  for text in [seat_name(i), str(stat.final_life), str(stat.damage_dealt), str(stat.cards_bought), str(stat.cards_played)]:
+   var label = UIStyle.label(rows, text, 22)
+   label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+   label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+   label.custom_minimum_size.x = 44
+ var stat = match_stats.seats[human_seat]
+ var highlights = UIStyle.label(box, "Biggest hit: %d · Turns: %d · Duration: %d:%02d\nStar card: %s\nPriciest buy: %s (%d Hacking)" % [stat.biggest_hit, stat.turns, int(match_stats.duration) / 60, int(match_stats.duration) % 60, stats_card_name(match_stats.star_card(human_seat)), stats_card_name(stat.priciest_id), maxi(0, stat.priciest_cost)], 22)
+ highlights.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ UIStyle.button(box, "View final deck", func(): view_cards("Your final deck", final_deck()))
+ if not tutorial_mode:
+  var sharing = load("res://scripts/ui/result_share.gd").new()
+  add_child(sharing)
+  sharing.install(box, share_details(winner))
+ else: UIStyle.label(box, "Tutorial · practice game", 22)
  if online_session == null: UIStyle.button(box, "Play Again", restart)
  UIStyle.button(box, "Menu", leave_game.bind(false) if online_session != null else menu)
+ if UIStyle.compact(): UIStyle.touch_fit(panel)
+func result_headline(winner) -> String:
+ if winner == null: return "Stalemate"
+ if winner.seat == human_seat: return "Victory"
+ if engine.state.players[human_seat].is_bot: return seat_name(winner.seat) + " wins"
+ return "Defeat"
+func stats_card_name(id: String) -> String:
+ return str(CardDB.cards[id].name) if CardDB.cards.has(id) else "—"
+func final_deck() -> Array:
+ var p = engine.state.players[human_seat]
+ var cards = p.deck + p.hand + p.discard + p.play_area + p.reserve
+ var pending_cards = cards.duplicate()
+ while not pending_cards.is_empty():
+  var c = pending_cards.pop_back()
+  cards.append_array(c.attached)
+  pending_cards.append_array(c.attached)
+ return cards
+
 func restart():
  var table = load("res://scenes/table.tscn").instantiate()
+ table.tutorial_mode = tutorial_mode
  table.player_count = player_count
  table.difficulty = difficulty
  table.card_pool = engine.state.card_pool
@@ -878,6 +1348,13 @@ func menu():
  scroll.add_child(box)
  UIStyle.button(box, "Resume", close_menu).custom_minimum_size.y = 56
  UIStyle.label(box, "Options", 24)
+ UIStyle.layout_setting(box)
+ if online_session != null:
+  var mute_emotes = CheckButton.new()
+  mute_emotes.text = "Mute emotes"
+  mute_emotes.button_pressed = not emote_ui.enabled()
+  box.add_child(mute_emotes)
+  mute_emotes.toggled.connect(emote_ui.mute)
  for setting in ["muted", "visual_effects", "auto_end_turn", "confirm_end_turn"]:
   var toggle = CheckButton.new()
   toggle.text = {"muted": "Sound enabled", "visual_effects": "Visual effects", "auto_end_turn": "Auto-end turn", "confirm_end_turn": "Confirm end turn"}[setting]
@@ -893,10 +1370,14 @@ func menu():
  volume.max_value = 1.0
  volume.step = 0.01
  volume.value = Sfx.volume
- UIStyle.label(box, "Volume")
- box.add_child(volume)
+ var audio_row = HBoxContainer.new()
+ box.add_child(audio_row)
+ UIStyle.label(audio_row, "SFX", 16)
+ volume.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ audio_row.add_child(volume)
  volume.value_changed.connect(func(value): Sfx.volume = value; Sfx.save())
- if online_session == null: UIStyle.button(box, "Bot speed: " + ("4×" if fast else "1×"), func(): toggle_speed(); close_menu(); menu()).custom_minimum_size.y = 56
+ UIStyle.music_controls(audio_row)
+ if online_session == null: UIStyle.button(box, "Bot speed: " + ["Normal", "Fast", "Instant"][bot_speed], func(): toggle_speed(); close_menu(); menu()).custom_minimum_size.y = 56
  UIStyle.button(box, "Rules", func():
   close_menu()
   rules_overlay = RulesPage.open(self)).custom_minimum_size.y = 56
@@ -923,21 +1404,22 @@ func close_menu():
  game_menu = null
  auto_end_elapsed = 0
 func toggle_speed():
- fast = not fast
- Sfx.bot_fast = fast
+ bot_speed = (bot_speed + 1) % 3
+ Sfx.bot_speed = bot_speed
  Sfx.save()
  sync_options()
 func sync_options():
- speed_button.text = "» 4×" if fast else "» 1×"
+ speed_button.text = "» " + ["Normal", "Fast", "Instant"][bot_speed]
  mute_button.text = "♪ OFF" if Sfx.muted else "♪ ON"
-func can_save() -> bool:
+func can_save_uncached() -> bool:
+ if tutorial_mode: return false
  if online_session != null: return false
  return not saving and not pending and not acting and not driving and SaveGame.safe(engine) and not engine.state.players[human_seat].is_bot and engine.state.players.slice(1).all(func(p): return p.is_bot)
 func save_game() -> bool:
  if not can_save(): return false
  saving = true
  auto_end_elapsed = 0
- var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[human_seat], "fast": fast, "log": "".join(log_entries), "log_entries": log_entries})
+ var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[human_seat], "bot_speed": bot_speed, "fast": fast, "log": "".join(log_entries), "log_entries": log_entries, "match_stats": match_stats.to_dict()})
  saving = false
  return ok
 func auto_save():
@@ -956,7 +1438,7 @@ func leave_game(quit_game: bool):
   if quit_game: get_tree().quit()
   else: get_tree().change_scene_to_file("res://scenes/menu.tscn")
   return
- if not engine.state.finished and not save_game():
+ if not tutorial_mode and not engine.state.finished and not save_game():
   if pending: return
   var answer = await decision("Leave without saving? Progress since the last save will be lost.", ["Leave", "Stay"], [], 1, 1, false)
   if answer != 0: return
@@ -966,7 +1448,7 @@ func leave_game(quit_game: bool):
 func turn_band(p):
  var band = UIStyle.panel()
  band.mouse_filter = Control.MOUSE_FILTER_IGNORE
- band.position = Vector2(-size.x, 360)
+ band.position = Vector2(-size.x if Sfx.visual_effects else 0.0, 360)
  band.size = Vector2(size.x, 100)
  var row = HBoxContainer.new()
  band.add_child(row)
@@ -977,16 +1459,16 @@ func turn_band(p):
  UIStyle.glitch(text)
  text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
  text.add_theme_color_override("font_color", UIStyle.GREEN if p.seat == human_seat else UIStyle.AMBER)
- var t = create_tween()
- t.tween_property(band, "position:x", 0.0, 0.18 if Sfx.visual_effects else 0.0)
+ var t = UIStyle.animation(band)
+ t.tween_property(band, "position:x", 0.0, UIStyle.motion(0.18))
  t.tween_interval(0.85)
- t.tween_property(band, "modulate:a", 0.0, 0.17)
+ t.tween_property(band, "modulate:a", 0.0, UIStyle.motion(0.17))
  t.tween_callback(band.queue_free)
 
 func flash_readout(node: Control):
  if not Sfx.visual_effects: return
  node.modulate = Color(1.5, 1.5, 1.5)
- node.create_tween().tween_property(node, "modulate", Color.WHITE, 0.35)
+ UIStyle.animation(node).tween_property(node, "modulate", Color.WHITE, UIStyle.motion(0.35))
 
 func inspect_card(c, interactive: bool = false):
  hide_zoom()
@@ -997,6 +1479,7 @@ func inspect_card(c, interactive: bool = false):
  inspect_overlay.add_to_group("touch_modal")
  add_child(inspect_overlay)
  var dim = ColorRect.new()
+ dim.z_index = 49
  dim.color = Color(0, 0, 0, 0.7)
  inspect_overlay.add_child(dim)
  UIStyle.viewport_cover(dim)
@@ -1046,6 +1529,9 @@ func inspect_card(c, interactive: bool = false):
   UIStyle.label(box, "ICE: %d · Owner: %s" % [c.counters, seat_name(c.owner)], 18)
   if c.controller != c.owner: UIStyle.label(box, "Controller: " + seat_name(c.controller), 18)
   if c.flags.get("used", false): UIStyle.label(box, "Used this turn", 18)
+ if c is CardInstance:
+  var reason = engine.why_not_play(p, c) if c in p.hand else (engine.why_not_buy(p, c) if c in engine.state.center_row or c in p.reserve else "")
+  if not reason.is_empty(): UIStyle.label(box, reason, 22).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  if c is CardInstance and c in p.hand and data.kind == "Permanent" and not engine.can_play(p, c) and engine.permanents().any(func(x): return x.effect_id() == "Nashville 2600"):
   UIStyle.label(box, "Nashville 2600 is in play: no one can play permanents.", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  if c is CardInstance and available() and c in engine.permanents():
@@ -1062,11 +1548,11 @@ func inspect_card(c, interactive: bool = false):
    if cost > p.hacking: hint = "You need %d more Hacking" % (cost - p.hacking) + (", or reserve it to buy on a later turn" if can_reserve else "")
    elif can_reserve: hint = "If you reserve, you can't buy or acquire anything else this turn"
    if hint != "": UIStyle.label(box, hint, 16).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-  if c in p.hand and engine.can_play(p, c): UIStyle.button(box, "Play", func(): close_inspect(); card_clicked(c, "hand"))
+  if c in p.hand and engine.can_play(p, c): UIStyle.button(box, "Play", func(): close_inspect(); selected_hand = c; card_clicked(c, "hand"))
  UIStyle.button(box, "Close", close_inspect)
  for control in box.get_children():
   if control is Button:
-   control.custom_minimum_size.y = 56
+   control.custom_minimum_size.y = 72 if UIStyle.compact() else 56
    control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
    control.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  var fit_sheet = func():
@@ -1110,6 +1596,13 @@ func _notification(what):
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
 func go_back():
+ if is_instance_valid(emote_ui) and is_instance_valid(emote_ui.popup):
+  emote_ui.close()
+  return
+ if is_instance_valid(tutorial_coach) and not tutorial_coach.stopped:
+  tutorial_coach.skip()
+  return
+ if is_instance_valid(hand_selection): clear_hand_selection(); return
  if is_instance_valid(ban_picker) and ban_picker.close_top(): return
  if is_instance_valid(inspect_overlay): close_inspect()
  elif is_instance_valid(rules_overlay): rules_overlay.queue_free(); rules_overlay = null
@@ -1127,7 +1620,7 @@ func _input(event):
     control.position.y = 0
     control.get_parent().z_index = 0
 
-func nothing_left() -> bool:
+func nothing_left_uncached() -> bool:
  if engine == null or engine.state == null or not available() or acting or driving or engine.reaction_depth > 0 or not engine.state.resolving.is_empty() or is_instance_valid(inspect_overlay): return false
  var p = engine.state.players[human_seat]
  for c in p.hand:
@@ -1140,11 +1633,27 @@ func nothing_left() -> bool:
   for ability in engine.activatable_abilities(p, c):
    if ability.enabled: return false
  return true
+func refresh_action_cache():
+ var key = [state_revision, pending, acting, driving, saving, engine.busy, engine.reaction_depth, is_instance_valid(inspect_overlay), engine.state.turn, engine.state.finished, engine.simultaneous_depth, engine.state.resolving.size(), available()]
+ if key == action_cache_key: return
+ action_cache_key = key
+ cached_save = can_save_uncached()
+ cached_nothing = nothing_left_uncached()
+func can_save() -> bool:
+ if engine == null or engine.state == null: return false
+ refresh_action_cache()
+ return cached_save
+func nothing_left() -> bool:
+ if engine == null or engine.state == null: return false
+ refresh_action_cache()
+ return cached_nothing
 func _process(delta):
+ if engine != null and engine.state != null and not match_stats.finished: match_stats.duration += delta
  if engine == null or engine.state == null: return
+ position_countdowns()
  auto_save()
  update_save_button()
- if saving or is_instance_valid(game_menu) or is_instance_valid(rules_overlay) or not Sfx.auto_end_turn or not nothing_left():
+ if tutorial_mode or saving or is_instance_valid(game_menu) or is_instance_valid(rules_overlay) or not Sfx.auto_end_turn or not nothing_left():
   auto_end_elapsed = 0
   auto_end_turn_number = -1
   return
@@ -1204,18 +1713,20 @@ func show_notice(message: String, duration: float = 4.0):
  text.add_theme_color_override("font_color", UIStyle.AMBER)
  strip.modulate.a = 0.0
  # Place it on the next frame, once the table and the strip have their real sizes (not yet true at game start).
+ var strip_ref = weakref(strip)
  var place = func():
-  if not is_instance_valid(strip): return
+  var current = strip_ref.get_ref()
+  if current == null: return
   var play_width = size.x
   if is_instance_valid(log_view) and log_view.is_visible_in_tree() and log_view.global_position.x - global_position.x > 400:
    play_width = log_view.global_position.x - global_position.x
-  strip.position = Vector2(maxf(20.0, (play_width - strip.size.x) / 2.0), 58)
-  strip.modulate.a = 1.0
+  current.position = Vector2(maxf(20.0, (play_width - current.size.x) / 2.0), 58)
+  current.modulate.a = 1.0
  get_tree().process_frame.connect(place, CONNECT_ONE_SHOT)
  notice = strip
- var tween = strip.create_tween()
+ var tween = UIStyle.animation(strip)
  tween.tween_interval(duration)
- tween.tween_property(notice, "modulate:a", 0.0, 0.5)
+ tween.tween_property(notice, "modulate:a", 0.0, UIStyle.motion(0.5))
  tween.tween_callback(notice.queue_free)
 func report_bug():
  var details = "Seed: %s; Set: %s; Players: %d; Difficulties: %s; Turn: %d\n" % [engine.state.rng.seed, engine.state.card_pool, player_count, str(engine.state.players.map(func(p): return p.difficulty)), engine.state.turn]
@@ -1293,9 +1804,14 @@ func online_action(kind: String, uid = null, index = null):
  redraw()
 func setup_online():
  var client = online_session.client
+ emote_ui = load("res://scripts/ui/emotes.gd").new()
+ emote_ui.table = self
+ add_child(emote_ui)
+ UIStyle.button(menu_button.get_parent(), "Emote", emote_ui.open)
  engine = client.engine
  human_seat = client.seat
  player_count = engine.state.players.size()
+ match_stats.setup(player_count, engine.state.card_pool, engine.state.players.map(func(p): return p.difficulty), engine.state.turn > 1)
  card_pool = engine.state.card_pool
  starting_life = engine.state.starting_life
  for seat in client.seats:
@@ -1313,11 +1829,15 @@ func setup_online():
  client.error.connect(func(reason): show_notice(str(reason)))
  client.prompt.connect(online_prompt)
  client.prompt_done.connect(func(id):
+  if countdowns.has(human_seat): countdowns[human_seat].clear()
   if id == online_prompt_id:
    online_prompt_id = ""
    if pending: answered.emit(null))
  client.event.connect(online_event)
  client.message_received.connect(func(data):
+  if data.get("t") == "game_over": online_final_players = data.get("final_players", [])
+  if data.get("type") == "emote": emote_ui.receive(data)
+  if data.get("t") == "view": apply_countdowns(data.get("timers", []))
   if data.get("t") == "welcome":
    waiting_seats.clear()
    update_waiting_banner())
@@ -1346,6 +1866,9 @@ func online_prompt(id: String, data: Dictionary):
   online_prompt_id = ""
   answered.emit(null)
  online_prompt_id = id
+ if data.has("remaining_seconds"):
+  timer_for(human_seat).configure(float(data.remaining_seconds), 45, "prompt")
+ Sfx.play("your_turn")
  var value
  match data.kind:
   "choose_option", "choose_options":
@@ -1396,7 +1919,14 @@ func update_waiting_banner():
 func online_event(data: Dictionary):
  if engine.state == null: return
  match data.kind:
-  "idle_warning": show_notice("You'll be auto-played in 60 s", 60)
+  "damage_dealt": match_stats.damage(int(data.source), int(data.target), int(data.amount))
+  "damage_taken": match_stats.damage(-1, int(data.seat), int(data.amount))
+  "life_gained": match_stats.gain(int(data.seat), int(data.amount))
+  "purchase_paid": match_stats.bought(int(data.seat), str(data.id), int(data.cost))
+  "removed": match_stats.removed(int(data.seat))
+  "idle_warning":
+   Sfx.play("warning")
+   show_notice("Bot finishes this turn in 60 s; control returns next turn. Three consecutive idle turns make takeover permanent.", 60)
   "waiting":
    waiting_seats[int(data.seat)] = seat_name(int(data.seat))
    update_waiting_banner()
@@ -1404,12 +1934,57 @@ func online_event(data: Dictionary):
    waiting_seats.erase(int(data.seat))
    update_waiting_banner()
   "turn_started":
-   Sfx.play("turn_start")
+   match_stats.turn(int(data.seat))
+   Sfx.play("your_turn" if data.seat == human_seat else "turn_start")
    if data.seat == human_seat: clear_spotlights(1.5)
    turn_band(engine.state.players[data.seat])
   "draw": Sfx.play("card_draw")
   "ice_counter_removed": Sfx.play("ice")
   "played", "bought", "reserved":
-   Sfx.play("card_play" if data.kind == "played" else "buy")
+   if data.kind == "played": match_stats.played(int(data.seat), str(data.id))
+   Sfx.play({"played": "card_play", "bought": "buy", "reserved": "reserve"}[data.kind])
    if data.seat != human_seat: spotlight(str(data.id), seat_name(data.seat))
-  "eliminated": show_notice(seat_name(data.seat) + " eliminated", 7)
+  "eliminated":
+   Sfx.play("eliminated")
+   show_notice(seat_name(data.seat) + " eliminated", 7)
+
+func compact_node_added(node: Node):
+ if UIStyle.compact() and is_ancestor_of(node): UIStyle.touch_fit_id.call_deferred(node.get_instance_id())
+
+func share_details(winner) -> Dictionary:
+ var stat = match_stats.seats[human_seat]
+ var opponents: Array = []
+ var all_bots = true
+ var levels: Array = []
+ for p in engine.state.players:
+  if p.seat == human_seat: continue
+  all_bots = all_bots and p.is_bot
+  var level = BotDifficulty.DISPLAY_NAMES[p.difficulty] if p.is_bot else ""
+  if p.is_bot and level not in levels: levels.append(level)
+  opponents.append(seat_name(p.seat) + (" / " + level if p.is_bot else ""))
+ var hero = seat_heroes[human_seat]
+ return {"headline": result_headline(winner), "victory": winner != null and winner.seat == human_seat, "handle": seat_name(human_seat), "hero": hero, "hero_name": stats_card_name(hero), "life": stat.final_life, "turns": stat.turns, "damage": stat.damage_dealt, "bought": stat.cards_bought, "biggest": stat.biggest_hit, "most_played": match_stats.star_card(human_seat), "most_played_name": stats_card_name(match_stats.star_card(human_seat)), "opponents": opponents, "all_bots": all_bots, "difficulty": "/".join(levels), "pool": engine.state.card_pool, "version": str(ProjectSettings.get_setting("application/config/version")), "date": Time.get_date_string_from_system()}
+
+func timer_for(seat: int):
+ if not countdowns.has(seat):
+  var timer = load("res://scripts/ui/turn_countdown.gd").new()
+  add_child(timer)
+  timer.z_index = 28
+  countdowns[seat] = timer
+ return countdowns[seat]
+func apply_countdowns(timers: Array):
+ var present = []
+ for data in timers:
+  var seat = int(data.get("seat", -1))
+  if seat < 0 or seat >= player_count: continue
+  if seat == human_seat and online_prompt_id != "": continue
+  timer_for(seat).configure(float(data.remaining_seconds), float(data.limit), str(data.kind), seat == human_seat)
+  present.append(seat)
+ for seat in countdowns:
+  if seat not in present and not (seat == human_seat and online_prompt_id != ""): countdowns[seat].clear()
+ position_countdowns()
+func position_countdowns():
+ for seat in countdowns:
+  var timer = countdowns[seat]
+  if seat == human_seat: timer.position = Vector2(30, 142)
+  elif life_labels.has(seat) and is_instance_valid(life_labels[seat]): timer.position = life_labels[seat].global_position - global_position + Vector2(0, 45)

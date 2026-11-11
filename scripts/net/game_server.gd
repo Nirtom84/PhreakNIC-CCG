@@ -12,6 +12,7 @@ var connections: Dictionary = {}
 var authenticated: Dictionary = {}
 var disconnected: Dictionary = {}
 var pending: Dictionary = {}
+var emote_times: Dictionary = {}
 var clock: Callable = func(): return Time.get_ticks_msec() / 1000.0
 var dirty = false
 var running = false
@@ -128,10 +129,27 @@ func _install_engine():
 	engine.turn_ended.connect(func(p): _event({"kind": "turn_ended", "seat": p.seat}))
 	engine.ice_counter_removed.connect(func(c): _event({"kind": "ice_counter_removed", "uid": c.uid}))
 	engine.card_moved.connect(_moved)
+	engine.life_gained.connect(func(p, amount): _event({"kind": "life_gained", "seat": p.seat, "amount": amount}))
+	engine.purchase_paid.connect(func(p, c, cost): _event({"kind": "purchase_paid", "seat": p.seat, "id": c.id, "cost": cost}))
+	engine.card_moved.connect(func(c, _from, to):
+		if to == "removed": _event({"kind": "removed", "seat": c.owner}))
+	engine.damage_resolved.connect(func(p, q, amount, dealing):
+		if not dealing: _event({"kind": "damage_taken", "seat": q.seat, "amount": amount}))
 	engine.card_played.connect(func(p, c): _event({"kind": "played", "seat": p.seat, "uid": c.uid, "id": c.id}))
 	engine.card_bought.connect(func(p, c): _event({"kind": "bought", "seat": p.seat, "uid": c.uid, "id": c.id}))
 	engine.card_reserved.connect(func(p, c): _event({"kind": "reserved", "seat": p.seat, "uid": c.uid, "id": c.id}))
-	engine.game_over.connect(func(winner): dirty = true; _broadcast({"t": "game_over", "winner": winner.seat if winner != null else -1}))
+	engine.game_over.connect(func(winner):
+		dirty = true
+		var final_players = []
+		for p in engine.state.players:
+			var cards = p.deck + p.hand + p.discard + p.play_area + p.reserve
+			var queue = cards.duplicate()
+			while not queue.is_empty():
+				var card = queue.pop_back()
+				cards.append_array(card.attached)
+				queue.append_array(card.attached)
+			final_players.append({"life": p.life, "deck_size": cards.size()})
+		_broadcast({"t": "game_over", "winner": winner.seat if winner != null else -1, "final_players": final_players}))
 func start():
 	running = true
 	await engine.start_turn()
@@ -177,7 +195,11 @@ func _error(transport, reason: String):
 	diag("seat %d refused: %s" % [seat, reason], "error:%d" % seat)
 	transport.send({"t": "error", "reason": reason})
 func _receive(transport, message: Dictionary):
-	if not NetTransport.safe_value(message) or not message.get("t") is String: return
+	if not NetTransport.safe_value(message): return
+	if message.get("type") == "emote":
+		if authenticated.has(transport) and NetTransport.valid_emote(message): receive_emote(authenticated[transport], message.id)
+		return
+	if not message.get("t") is String: return
 	if message.get("t") == "hello":
 		if not message.get("version") is String or message.version != version(): _error(transport, "version mismatch"); return
 		var seat = message.get("seat")
@@ -195,7 +217,10 @@ func _receive(transport, message: Dictionary):
 		_send(seat, {"t": "welcome", "seat": seat, "seats": seats, "version": version(), "card_pool": engine.state.card_pool, "starting_life": engine.state.starting_life})
 		_view(seat)
 		for id in pending:
-			if pending[id].seat == seat: _send(seat, pending[id].data)
+			if pending[id].seat == seat:
+				var prompt_data = pending[id].data.duplicate()
+				prompt_data.remaining_seconds = maxf(0, 45.0 - (now() - pending[id].at))
+				_send(seat, prompt_data)
 			else: _send(seat, {"t": "event", "kind": "waiting", "seat": pending[id].seat, "text": seats[pending[id].seat].name + " is choosing…"})
 		if engine.state.finished: _send(seat, {"t": "game_over", "winner": engine.state.winner.seat if engine.state.winner != null else -1})
 		return
@@ -257,6 +282,8 @@ func ask(seat: int, data: Dictionary, args: Array):
 	data = data.duplicate(true)
 	data.t = "prompt"
 	data.id = id
+	data.remaining_seconds = 45.0
+	data.deadline_unix_ms = int((Time.get_unix_time_from_system() + 45.0) * 1000)
 	var decision = Decision.new()
 	pending[id] = {"seat": seat, "data": data, "args": args, "at": now(), "decision": decision}
 	diag("seat %d prompt %s sent: %s%s" % [seat, id.left(6), prompt_shape(data), "" if connections.has(seat) else " (seat offline)"])
@@ -392,4 +419,22 @@ func _view(seat: int):
 	view_frames[endpoint] = frame
 	var view = NetView.build(engine, seat)
 	view.ready = available(seat)
-	_send(seat, {"t": "view", "state": view})
+	_send(seat, {"t": "view", "state": view, "timers": timer_state()})
+
+func timer_state() -> Array:
+	var timers = []
+	if engine == null or engine.state.finished: return timers
+	for seat in disconnected:
+		if not seats[seat].bot and not _takeover(seat): timers.append({"seat": seat, "kind": "disconnected", "remaining_seconds": maxf(0, 120.0 - (now() - disconnected[seat])), "limit": 120})
+	var p = engine.active()
+	if not seats[p.seat].bot and connections.has(p.seat) and not _takeover(p.seat) and engine.reaction_depth == 0 and not engine.busy and pending.is_empty():
+		timers.append({"seat": p.seat, "kind": "turn", "remaining_seconds": maxf(0, 180.0 - (now() - idle_at)), "limit": 180})
+	return timers
+
+func receive_emote(seat: int, id: int):
+	if seat < 0 or seat >= seats.size() or seats[seat].bot or engine.state.finished or id < 0 or id > 7: return
+	var recent: Array = emote_times.get(seat, []).filter(func(at): return now() - at < 60.0)
+	if recent.size() >= 10 or (not recent.is_empty() and now() - recent[-1] < 3.0): return
+	recent.append(now())
+	emote_times[seat] = recent
+	_broadcast({"type": "emote", "seat": seat, "id": id})

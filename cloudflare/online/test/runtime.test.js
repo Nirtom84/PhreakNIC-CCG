@@ -36,10 +36,10 @@ test('locked admin returns 429 even for the correct key',async()=>{
  const env={ADMIN_KEY:'x'.repeat(32),LOBBY:binding({locked:async()=>true,stats:()=>assert.fail('stats')})};const res=await worker.fetch(new Request('https://server/admin/api/stats',{headers:{Authorization:'Bearer '+env.ADMIN_KEY}}),env);assert.equal(res.status,429);
 });
 test('new seat socket replaces old socket without refreshing activity',async()=>{
- const originalResponse=globalThis.Response,originalPair=globalThis.WebSocketPair;
+ const originalResponse=globalThis.Response,originalPair=globalThis.WebSocketPair,originalNow=Date.now,now=Date.now();Date.now=()=>now;
  class UpgradeResponse extends originalResponse {constructor(body,init){if(init?.status===101){super(null);Object.defineProperty(this,'status',{value:101});this.webSocket=init.webSocket;}else super(body,init);}}
  globalThis.Response=UpgradeResponse;globalThis.WebSocketPair=class {constructor(){this[0]=sock();this[1]=Object.assign(sock(),{accept(){},addEventListener(){}});}};
- try{const r=makeRoom(),old=sock();r.clients.set(old,{seat:1});r.save=async active=>assert(!active);const res=await r.fetch(new Request('https://server/ws/room/AB23?token='+'b'.repeat(32),{headers:{Upgrade:'websocket'}}));assert.equal(res.status,101);assert.deepEqual(old.closed,{code:4000,reason:'replaced'});assert.equal(r.clients.size,1);assert.equal(r.r.lastActivity,123);}finally{globalThis.Response=originalResponse;globalThis.WebSocketPair=originalPair;}
+ try{const r=makeRoom(),old=sock();r.clients.set(old,{seat:1});r.save=async active=>assert(!active);const res=await r.fetch(new Request('https://server/ws/room/AB23?token='+'b'.repeat(32),{headers:{Upgrade:'websocket'}}));assert.equal(res.status,101);assert.deepEqual(old.closed,{code:4000,reason:'replaced'});assert.equal(r.clients.size,1);assert.equal(r.r.lastActivity,123);}finally{globalThis.Response=originalResponse;globalThis.WebSocketPair=originalPair;Date.now=originalNow;}
 });
 
 const {default:site}=await import('../../site/src/index.js');
@@ -104,10 +104,10 @@ test('host disconnect schedules grace and alarm closes only at deadline',async()
  r.r.started=true;await r.alarm();assert.equal(closed,1);
 });
 test('host reconnect cancels pregame grace',async()=>{
- const originalResponse=globalThis.Response,originalPair=globalThis.WebSocketPair;
+ const originalResponse=globalThis.Response,originalPair=globalThis.WebSocketPair,originalNow=Date.now,now=Date.now();Date.now=()=>now;
  globalThis.Response=class extends originalResponse {constructor(body,init){if(init?.status===101){super(null);Object.defineProperty(this,'status',{value:101});}else super(body,init);}};
  globalThis.WebSocketPair=class {constructor(){this[0]=sock();this[1]=Object.assign(sock(),{accept(){},addEventListener(){}});}};
- try{const r=makeRoom();r.r.hostGoneAt=Date.now()-59999;await r.fetch(new Request('https://server/ws/room/AB23?token='+'a'.repeat(32),{headers:{Upgrade:'websocket'}}));assert.equal(r.r.hostGoneAt,undefined);}finally{globalThis.Response=originalResponse;globalThis.WebSocketPair=originalPair;}
+ try{const r=makeRoom();r.r.hostGoneAt=Date.now()-59999;await r.fetch(new Request('https://server/ws/room/AB23?token='+'a'.repeat(32),{headers:{Upgrade:'websocket'}}));assert.equal(r.r.hostGoneAt,undefined);}finally{globalThis.Response=originalResponse;globalThis.WebSocketPair=originalPair;Date.now=originalNow;}
 });
 test('settings broadcast bans and clear bans on pool change',async()=>{
  const r=makeRoom(),host=sock(),messages=[];host.send=v=>messages.push(JSON.parse(v));r.clients.set(host,{seat:0});r.broadcastRoom=Room.prototype.broadcastRoom;
@@ -133,4 +133,28 @@ test('host retains independent bans when switching back to a pool',async()=>{
  await r.message(host,JSON.stringify({t:'lobby',action:'settings',banned:['Mognet']}));
  await r.message(host,JSON.stringify({t:'lobby',action:'settings',card_pool:'2026'}));assert.deepEqual(r.r.banned,['Filler']);
  await r.message(host,JSON.stringify({t:'lobby',action:'settings',card_pool:'2026mog'}));assert.deepEqual(r.r.banned,['Mognet']);
+});
+
+test('site permits result download blobs while still forbidding eval and foreign script hosts',async()=>{
+ const res=await site.fetch(new Request('https://site/icon.png'),{ASSETS:{fetch:async()=>new Response('image')}},{});
+ const csp=res.headers.get('content-security-policy');
+ assert(csp.includes("script-src 'self' 'wasm-unsafe-eval';"));
+ assert(!csp.includes("'unsafe-eval'"));
+ assert(csp.includes("img-src 'self' data: blob:;"));
+ assert(!csp.includes('sandbox'));assert(!csp.includes('navigate-to'));
+ assert(!res.headers.get('permissions-policy').includes('web-share=()'));
+});
+
+test('emotes relay with the authenticated seat, silently drop flood and malformed presets, and reach room sockets',async()=>{
+ const r=makeRoom(),ws=sock(),other=sock(),sent=[],received=[];r.r.started=true;r.link={readyState:1};r.linkSend=m=>sent.push(m);r.clients.set(ws,{seat:0});r.clients.set(other,{seat:1});
+ const original=Date.now;let now=original();Date.now=()=>now;
+ try{
+  for(const id of ['0',-1,8,0.5,null,true])await r.message(ws,JSON.stringify({type:'emote',id}));
+  await r.message(ws,JSON.stringify({type:'emote',id:0,seat:1}));assert.equal(sent.length,0);
+  for(let i=0;i<10;i++){await r.message(ws,JSON.stringify({type:'emote',id:i%8}));for(let j=0;j<100;j++)await r.message(ws,JSON.stringify({type:'emote',id:1}));now+=3000;}
+  assert.equal(sent.length,10);assert.deepEqual(sent[0],{t:'from',seat:0,msg:{type:'emote',id:0}});assert(!ws.closed);
+  await r.message(ws,JSON.stringify({type:'emote',id:0}));assert.equal(sent.length,10);now+=30000;await r.message(ws,JSON.stringify({type:'emote',id:7}));assert.equal(sent.length,11);
+  r.send=(socket,m)=>received.push([socket,m]);await r.linkMessage({t:'to',seat:1,msg:{type:'emote',seat:0,id:7}});assert.deepEqual(received,[[other,{type:'emote',seat:0,id:7}]]);
+  const oversized=sock();r.clients.set(oversized,{seat:1});await r.message(oversized,JSON.stringify({type:'emote',id:'x'.repeat(70000)}));assert.equal(oversized.closed.code,1009);
+ }finally{Date.now=original;}
 });

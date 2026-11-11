@@ -42,7 +42,9 @@ for target in "${targets[@]}"; do
 			fi ;;
 		web)
 			mkdir -p build/web
-			"$GODOT" --headless --path . --export-release "Web" build/web/index.html ;;
+			"$GODOT" --headless --path . --export-release "Web" build/web/index.html
+			# Same-origin helper for sharing the result card (the site CSP forbids eval).
+			cp tools/web/share.js build/web/share.js ;;
 		release)
 			# Packages the builds made above under stable names for GitHub Release assets,
 			# so README links to releases/latest/download/<name> keep working.

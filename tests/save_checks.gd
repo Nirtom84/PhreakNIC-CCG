@@ -190,9 +190,9 @@ func ui():
  auto_end.button_pressed = not auto_end.button_pressed
  verify(settings.auto_end_turn == auto_end.button_pressed, "Auto-end applies live")
  settings.auto_end_turn = false
- var speed = table.fast
+ var speed = table.bot_speed
  table.toggle_speed()
- verify(table.fast != speed and settings.bot_fast == table.fast and ("4×" in table.speed_button.text) == table.fast, "Speed sync")
+ verify(table.bot_speed == (speed + 1) % 3 and settings.bot_speed == table.bot_speed and table.speed_button.text == "» " + ["Normal", "Fast", "Instant"][table.bot_speed], "Speed sync")
  table.pending = true
  table.update_save_button()
  verify(table.save_button.disabled and not table.save_game(), "Dialog save refused and disabled")

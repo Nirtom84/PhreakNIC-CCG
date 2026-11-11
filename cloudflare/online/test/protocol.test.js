@@ -74,3 +74,12 @@ test('Mog variant is accepted for creation and host pool settings',()=>{
  assert.equal(settings({card_pool:'2026mog'},true).card_pool,'2026mog');
  assert.equal(settings({public:true,card_pool:'2026mog',starting_life:0,banned:[]}).card_pool,'2026mog');
 });
+
+test('emotes accept only the eight integer presets and enforce sliding rate limits',async()=>{
+ const {validEmote,emoteRate}=await import('../src/lib/protocol.js');
+ for(let id=0;id<8;id++)assert(validEmote({type:'emote',id}));
+ for(const id of [-1,8,0.1,'1',null,true,{},[],NaN,Infinity,'x'.repeat(70000)])assert(!validEmote({type:'emote',id}));
+ for(const m of [null,[],{type:'emote',id:0,seat:1},{type:'emote',id:0,extra:'x'.repeat(70000)}])assert(!validEmote(m));
+ let stamps=[];for(let i=0;i<10;i++){const r=emoteRate(stamps,i*3000);assert(r.allowed);stamps=r.stamps;assert(!emoteRate(stamps,i*3000+2999).allowed);}
+ assert(!emoteRate(stamps,30000).allowed);assert(emoteRate(stamps,60000).allowed);
+});

@@ -49,6 +49,8 @@ static func build(engine, seat: int) -> Dictionary:
 	for field in PUBLIC_STATE:
 		data[field] = codec.encode(hidden_cards(state.center_deck.size()) if field == "center_deck" else state.get(field))
 	return {"state": data, "objects": codec.records, "seat": seat, "ready": not engine.busy, "counts": {"center_deck": state.center_deck.size(), "players": state.players.map(func(p): return {"deck": p.deck.size(), "hand": p.hand.size()})}}
+# NetClient installs this public state on a GameEngine, including its shared
+# why_not_play / why_not_buy predicates; hidden cards never become buy targets.
 static func apply(view: Dictionary) -> GameState:
 	var codec = SaveGame.new()
 	for record in view.objects:

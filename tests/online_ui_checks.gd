@@ -186,7 +186,7 @@ func run():
  room.server.ask(1, {"kind": "choose_option", "text": "Private choice", "options": ["Secret"]}, [])
  await frames()
  verify(is_instance_valid(table.waiting_banner) and has_label(table.waiting_banner, "Waiting for Guest to choose…"), "Waiting banner appears for other seat")
- room.server._complete(room.server.pending.keys()[0], 0)
+ room.server._complete(room.server.pending.keys().filter(func(id): return room.server.pending[id].data.text == "Private choice")[0], 0)
  await frames()
  verify(not is_instance_valid(table.waiting_banner), "Waiting banner disappears")
  verify(not room.sent.any(func(m): return m.t == "hello"), "room socket never sends hello")
@@ -215,7 +215,7 @@ func run():
  room.server.ask(seat, {"kind": "choose_option", "text": "Timeout", "options": ["First", "Second"]}, [])
  await frames()
  verify(table.pending, "timeout prompt opened")
- var timeout_id = room.server.pending.keys()[0]
+ var timeout_id = room.server.pending.keys().filter(func(id): return room.server.pending[id].data.text == "Timeout")[0]
  room.server._complete(timeout_id, 0)
  await frames()
  verify(not table.pending and not session.client.prompts.has(timeout_id), "prompt_done closes timed out dialog")

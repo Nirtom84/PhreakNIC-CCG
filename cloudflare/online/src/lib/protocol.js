@@ -98,3 +98,10 @@ export function seatRate(state,now,bytes) {
 
 export const hostCloseDue=(r,now=Date.now())=>!r.started&&r.hostGoneAt!=null&&now>=r.hostGoneAt+60000;
 export const hostLeave=(r,seat)=>!r.started&&seat===r.host_seat;
+
+export const validEmote = m => !!m && typeof m==='object' && !Array.isArray(m) && Object.keys(m).length===2 && m.type==='emote' && Number.isInteger(m.id) && m.id>=0 && m.id<8;
+export function emoteRate(stamps,now) {
+ const recent=(stamps||[]).filter(t=>now-t<60000);
+ const allowed=recent.length<10&&(!recent.length||now-recent.at(-1)>=3000);
+ return {allowed,stamps:allowed?[...recent,now]:recent};
+}

@@ -216,5 +216,5 @@ func _receive(message: Dictionary):
 				endpoint.received.emit({"t": "hello", "seat": seat, "token": game.tokens[seat], "version": message.version})
 			elif message.t == "disconnect":
 				if endpoints.has(seat): endpoints[seat].close(); endpoints.erase(seat)
-			elif endpoints.has(seat) and message.get("msg") is Dictionary and message.msg.get("t") in ["action", "answer"]:
+			elif endpoints.has(seat) and message.get("msg") is Dictionary and (message.msg.get("t") in ["action", "answer"] or NetTransport.valid_emote(message.msg)):
 				endpoints[seat].received.emit(message.msg)

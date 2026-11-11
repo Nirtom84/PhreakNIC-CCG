@@ -35,16 +35,30 @@ func _ready():
  row.add_child(art)
  art.add_child(UIStyle.picture(UIStyle.BACK, Vector2(500, 700)))
  if Sfx.visual_effects:
-  var float_tween = create_tween().set_loops()
-  float_tween.tween_property(art, "position:y", 8.0, 3.0).as_relative()
-  float_tween.tween_property(art, "position:y", -8.0, 3.0).as_relative()
+  var float_tween = UIStyle.animation(art, true).set_loops()
+  float_tween.tween_property(art, "position:y", 8.0, UIStyle.motion(3.0)).as_relative()
+  float_tween.tween_property(art, "position:y", -8.0, UIStyle.motion(3.0)).as_relative()
   UIStyle.pulse(art, UIStyle.CYAN.lightened(0.5))
  var menu = VBoxContainer.new()
  menu.custom_minimum_size.x = 900
  menu.add_theme_constant_override("separation", 5)
  # The compact menu fits the supported viewports; avoid native touch-scroll
  # interception around the handle and Hero button.
- row.add_child(menu)
+ if UIStyle.compact():
+  art.hide()
+  row.position = Vector2(32, 32)
+  row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+  row.offset_left = 32
+  row.offset_top = 32
+  row.offset_right = -32
+  row.offset_bottom = -64
+  var scroll = ScrollContainer.new()
+  scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  row.add_child(scroll)
+  scroll.add_child(menu)
+  menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  TouchInput.register_scroll(scroll)
+ else: row.add_child(menu)
  var title = UIStyle.label(menu, "PhreakNIC", 66)
  title.add_theme_color_override("font_color", UIStyle.CYAN)
  title.add_theme_color_override("font_shadow_color", Color(UIStyle.CYAN, 0.5))
@@ -54,10 +68,10 @@ func _ready():
  UIStyle.glitch(title)
  UIStyle.label(menu, "C C G  /  NETWORK DECKBUILDING", 26)
  if Sfx.visual_effects:
-  var glitch = create_tween().set_loops()
+  var glitch = UIStyle.animation(title, true).set_loops()
   glitch.tween_interval(4.2)
-  glitch.tween_property(title, "modulate", UIStyle.AMBER, 0.045)
-  glitch.tween_property(title, "modulate", Color.WHITE, 0.055)
+  glitch.tween_property(title, "modulate", UIStyle.AMBER, UIStyle.motion(0.045))
+  glitch.tween_property(title, "modulate", Color.WHITE, UIStyle.motion(0.055))
  var credit = UIStyle.label(menu, "Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR)", 18)
  credit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  var version = UIStyle.label(self, "v" + str(ProjectSettings.get_setting("application/config/version", "")), 16)
@@ -71,7 +85,7 @@ func _ready():
  terminal.add_theme_color_override("font_color", UIStyle.GREEN)
  if Sfx.visual_effects:
   terminal.visible_characters = 0
-  create_tween().tween_property(terminal, "visible_characters", terminal.text.length(), 1.3)
+  UIStyle.animation(terminal).tween_property(terminal, "visible_characters", terminal.text.length(), UIStyle.motion(1.3))
  UIStyle.label(menu, "// YOUR HANDLE", 18)
  var handle_row = HBoxContainer.new()
  menu.add_child(handle_row)
@@ -184,6 +198,7 @@ func _ready():
  if not OnlineAPI.remembered().is_empty(): UIStyle.button(menu, "Resume online game", func(): open_online(true))
  var help_row = HBoxContainer.new()
  menu.add_child(help_row)
+ UIStyle.button(help_row, "Tutorial", launch_tutorial)
  UIStyle.button(help_row, "Rules", rules)
  UIStyle.button(help_row, "Report a bug", func(): load("res://scripts/ui/bug_report.gd").open())
  var switches = HBoxContainer.new()
@@ -224,6 +239,9 @@ func _ready():
   Sfx.volume = value
   percentage.text = "%d%%" % roundi(value * 100)
   Sfx.save())
+ UIStyle.music_controls(volume_row)
+ UIStyle.layout_setting(volume_row)
+ UIStyle.button(help_row, "Bot speed: " + ["Normal", "Fast", "Instant"][Sfx.bot_speed], func(): Sfx.bot_speed = (Sfx.bot_speed + 1) % 3; Sfx.save(); get_tree().reload_current_scene())
  UIStyle.button(menu, "Quit", func(): get_tree().quit()).visible = not UIStyle.is_web()
  if UIStyle.is_web():
   # Web version only: download the installable app, or browse every release.
@@ -237,7 +255,23 @@ func _ready():
  if OS.has_feature("web") and not invite_consumed:
   invite_consumed = true
   var code = OnlineAPI.invite_code(str(JavaScriptBridge.get_interface("location").href))
-  if not code.is_empty(): open_online.call_deferred(false, code)
+  if not code.is_empty(): open_online.call_deferred(false, code); return
+ if get_tree().current_scene == self and SaveGame.read().is_empty(): offer_tutorial.call_deferred()
+func offer_tutorial():
+ var config = OnlineAPI.settings()
+ if bool(config.get_value("ui", "tutorial_seen", false)): return
+ config.set_value("ui", "tutorial_seen", true)
+ config.save("user://settings.cfg")
+ if await confirm("First time here? Learn the game with a guided practice match.", "Start tutorial", "Maybe later"): launch_tutorial()
+func launch_tutorial():
+ var config = OnlineAPI.settings()
+ config.set_value("ui", "tutorial_seen", true)
+ config.save("user://settings.cfg")
+ var table = load("res://scenes/table.tscn").instantiate()
+ table.tutorial_mode = true
+ get_tree().root.add_child(table)
+ get_tree().current_scene = table
+ queue_free()
 func open_online(resume: bool = false, code: String = ""):
  var online = load("res://scripts/ui/online.gd").new()
  online.default_count = count.get_selected_id()

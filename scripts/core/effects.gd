@@ -171,12 +171,16 @@ func resolve(p, c):
 	if not p.alive or e.state.finished: return
 	if data.kind == "Permanent": c.counters = initial_ice(c.effect_id())
 	await handlers[c.effect_id()].call(p, c)
+var ice_regex: RegEx
+var ice_counts: Dictionary = {}
 func initial_ice(id: String) -> int:
-	var text = e.db().get_card(id).get("text", "")
-	var regex = RegEx.new()
-	regex.compile("comes into play with ([0-9]+) ICE")
-	var found = regex.search(text)
-	return int(found.get_string(1)) if found else 0
+	if ice_counts.has(id): return ice_counts[id]
+	if ice_regex == null:
+		ice_regex = RegEx.new()
+		ice_regex.compile("comes into play with ([0-9]+) ICE")
+	var found = ice_regex.search(e.db().get_card(id).get("text", ""))
+	ice_counts[id] = int(found.get_string(1)) if found else 0
+	return ice_counts[id]
 func row() -> Array: return e.state.center_row.filter(func(c): return c != null)
 func reduce(p, subtype: String, n: int):
 	var mods = p.turn_flags.get("reductions", {})
@@ -255,7 +259,7 @@ func _effect_bedtime_story(p, c):
 func _effect_ben_the_meek(p, c):
 	var option = await e.option(p, "Choose one", ["+3 hacking", "Gain 3 life", "Deal 3 damage"])
 	if option == 0: p.hacking += 3
-	elif option == 1: p.life += 3
+	elif option == 1: add_life(p, 3)
 	else: await e.deal(p, 3, c)
 
 ## Ben the Phreak
@@ -269,7 +273,7 @@ func _effect_bitwize(p, c):
 
 ## Bony
 func _effect_bony(p, c):
-	p.life += 2
+	add_life(p, 2)
 	free_name(p, "@bony")
 
 ## Botnet
@@ -333,7 +337,7 @@ func _effect_clarion_inn_air_conditioning(p, c):
 
 ## Clarion Inn Breakfast
 func _effect_clarion_inn_breakfast(p, c):
-	p.life += 1
+	add_life(p, 1)
 	e.draw(p, 1)
 
 ## Clarion Inn Chandeliers
@@ -356,7 +360,7 @@ func _effect_clarion_inn_staff(p, c):
 ## Corperate Retreat
 func _effect_corperate_retreat(p, c):
 	if e.opponents(p).any(func(q): return p.life > q.life): await e.deal(p, 2, c)
-	else: p.life += 3
+	else: add_life(p, 3)
 
 ## Corporate SWAG Table
 func _effect_corporate_swag_table(p, c):
@@ -403,7 +407,7 @@ func _effect_drunk_riddler(p, c):
 
 ## Egg in Your Soup
 func _effect_egg_in_your_soup(p, c):
-	p.life += 1
+	add_life(p, 1)
 	e.draw(p, 1)
 	for x in e.controlled(p, "The Sandwich Factory"): x.counters += 2
 
@@ -623,7 +627,7 @@ func _effect_mog_s_ice_cream(p, c):
 ## Mogs Pancake Breakfast
 func _effect_mogs_pancake_breakfast(p, c):
 	var n = await spend_number(p, 3, "Pay hacking to gain life")
-	p.life += n
+	add_life(p, n)
 
 ## Nashville 2600
 func _effect_nashville_2600(p, c):
@@ -641,7 +645,7 @@ func _effect_never_gonna_let_you_down(p, c):
 ## nirtom
 func _effect_nirtom(p, c):
 	for q in e.state.players:
-		if q.alive: q.life += 1
+		if q.alive: add_life(q, 1)
 
 ## Nirtom Unleashed
 func _effect_nirtom_unleashed(p, c):
@@ -666,7 +670,7 @@ func _effect_notlarry_cardboard_cutout(p, c):
 func _effect_number_one_phreaknic_rule(p, c):
 	e.draw(p, 2)
 	for q in e.state.players:
-		if q.alive: q.life += 2
+		if q.alive: add_life(q, 2)
 
 ## Nuvious
 func _effect_nuvious(p, c):
@@ -719,7 +723,7 @@ func _effect_payphone_karaoke(p, c):
 	for option in options:
 		if seen.has(option): continue
 		seen[option] = true
-		if option == 0: p.life += 1
+		if option == 0: add_life(p, 1)
 		elif option == 1: e.draw(p, 1)
 		elif option == 2: p.hacking += 1
 
@@ -729,7 +733,7 @@ func _effect_phreakmyst(p, c):
 
 ## PhreakNIC
 func _effect_phreaknic(p, c):
-	p.life += 1
+	add_life(p, 1)
 	e.draw(p, 1)
 	reduce(p, "Legendary", 2)
 
@@ -1014,7 +1018,9 @@ func on_play(p, c):
 		pending.append({"name": "Super r0nk", "commutes": true, "resolve": add_hacking.bind(p, p.turn_flags.super_ronk)})
 	await e.resolve_triggers(pending)
 func add_hacking(p, n: int): p.hacking += n
-func add_life(p, n: int): p.life += n
+func add_life(p, n: int):
+	p.life += n
+	e.life_gained.emit(p, n)
 func combos(p):
 	# Conditional "this turn" abilities wait for their partner, in either play order.
 	var fired = p.turn_flags.get("combos", {})
@@ -1075,7 +1081,7 @@ func bought_self(p, c, destination: Dictionary = {}):
 			for x in await e.choose(p, "Put discard on deck", choices, 0, 1): e.move(x, p.deck, "deck")
 		"hfuller":
 			for q in e.state.players:
-				if q.alive: p.life += q.hand.filter(func(x): return e.db().named(x.id, "Attack")).size()
+				if q.alive: add_life(p, q.hand.filter(func(x): return e.db().named(x.id, "Attack")).size())
 		"mog": await e.remove_choices(p, p.hand + p.discard, 0, 1)
 		"Nuvious":
 			if await e.dec(p).confirm(p, "Discard permanent on buy?"): await e.discard_choices(p, e.permanents())
@@ -1084,7 +1090,7 @@ func bought_self(p, c, destination: Dictionary = {}):
 			await e.simultaneous_loss(p, targets, targets.map(func(q): return q.hand.filter(func(x): return e.db().named(x.id, "Hacker")).size()), c)
 		"Venaul":
 			for q in e.state.players:
-				if q.alive: q.life += 5
+				if q.alive: add_life(q, 5)
 func bought_destination(p, c, permanent, destination: Dictionary):
 	if destination.get("chosen", false): return
 	if permanent.effect_id() == "The Fellowship of the Token Ring" and await e.dec(p).confirm(p, "Put bought hero in hand?"):
@@ -1175,7 +1181,7 @@ func activate(p, c, index: int):
 			"Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4": p.hacking += e.controlled(p, "Mognet").size()
 			"Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4": p.hacking += e.controlled(p, "Botnet").size()
 			"Tableskirts", "Unattended Phone": p.hacking += 1
-			"The Big Dipper": p.life += 1
+			"The Big Dipper": add_life(p, 1)
 			"Payphone": await choice_power(p, c, 2)
 			"Shell Speech": e.draw(p, 1)
 			"Disassembled Sink", "FOTTR Greatest Hits":
@@ -1189,7 +1195,7 @@ func activate(p, c, index: int):
 			"Bribery": await e.deal(p, 1, c)
 			"AI Bens AI Camry":
 				for q in e.opponents(p): await e.discard_choices(q, q.hand)
-			"Fivrr Friendship": p.life += 1
+			"Fivrr Friendship": add_life(p, 1)
 			"White Python Boots": e.draw(p, 1)
 			"The Sandwich Factory": c.counters += 1
 			"Lowes Shopping Cart":
