@@ -452,7 +452,9 @@ func _unhandled_key_input(event):
   get_viewport().set_input_as_handled()
 
 func refresh_avatar():
- var replacement = UIStyle.avatar(Sfx.hero_id)
+ var hero = CardDB.card_id_for_name(Sfx.handle)
+ if hero.is_empty(): hero = Sfx.hero_id
+ var replacement = UIStyle.avatar(hero)
  avatar_preview.get_child(0).texture = replacement.get_child(0).texture
  replacement.free()
 func select_hero(id: String):

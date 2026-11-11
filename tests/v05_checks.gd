@@ -118,6 +118,12 @@ func run():
  verify(menu.avatar_preview.get_child(0).texture is AtlasTexture, "Hero uses cropped art")
  menu.handle_input.text_changed.emit("Custom")
  verify(settings.hero_id.is_empty() and menu.avatar_preview.get_child(0).texture.resource_path == "res://assets/icon/icon.png", "Custom name uses logo")
+ var face_id = root.get_node("CardDB").card_id_for_name("notlarry")
+ if not face_id.is_empty():
+  menu.handle_input.text_changed.emit("notlarry")
+  var face_tex = menu.avatar_preview.get_child(0).texture
+  verify(face_tex is AtlasTexture and face_tex.atlas.resource_path == root.get_node("CardDB").image_path(face_id), "Card-named handle uses that card's art")
+  menu.handle_input.text_changed.emit("Custom")
  settings.hero_id = hero
  settings.handle = root.get_node("CardDB").cards[hero].name
  table.player_count = 4

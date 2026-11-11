@@ -66,6 +66,13 @@ func name_contains(id: String, part: String) -> bool:
 	return id == "What is Truth" or names(id).any(func(n): return part.to_lower() in n.to_lower())
 func names(id: String) -> Array:
 	return [str(get_card(id).get("name", ""))] + get_card(id).get("aliases", [])
+## A card name mapped to its id in the current pool, or "" when no card is named that.
+func card_id_for_name(name: String) -> String:
+	var target = str(name).to_lower().strip_edges()
+	if target.is_empty(): return ""
+	for id in cards:
+		if str(cards[id].name).to_lower() == target: return id
+	return ""
 func in_pool(id: String, pool: String = "2026") -> bool:
 	if not originals.has(id) or pool not in POOLS: return false
 	if pool == "2026mog":
