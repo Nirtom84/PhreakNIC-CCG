@@ -214,7 +214,8 @@ func _ready():
  switches.add_child(confirmation)
  confirmation.toggled.connect(func(enabled): Sfx.confirm_end_turn = enabled; Sfx.save())
  var auto_botnet = CheckButton.new()
- auto_botnet.text = "Auto-activate Botnet, Tableskirts"
+ auto_botnet.text = "Auto-activate"
+ auto_botnet.tooltip_text = "Each of your turns, auto-fire your no-cost, no-decision abilities: Botnet, Mognet, Tableskirts, Unattended Phone, The Big Dipper, Shell Speech"
  auto_botnet.button_pressed = Sfx.auto_botnet
  switches.add_child(auto_botnet)
  auto_botnet.toggled.connect(func(enabled): Sfx.auto_botnet = enabled; Sfx.save())

@@ -163,10 +163,12 @@ func ui():
  table.engine.gain_owner(botnet, hp)
  table.engine.move(botnet, hp.play_area, "play_area")
  var hacking_before = hp.hacking
+ var life_before = hp.life
+ var hand_before = hp.hand.size()
  settings.auto_botnet = true
  await table.auto_activate_botnet()
  var botnets = table.engine.controlled(hp, "Botnet").size()
- verify(hp.hacking == hacking_before + botnets * botnets + hp.play_area.filter(func(c): return c.effect_id() == "Tableskirts").size(), "Auto-activate Botnet/Tableskirts granted the expected hacking")
+ var gain = botnets * botnets + hp.play_area.filter(func(c): return c.effect_id() == "Tableskirts" or c.effect_id() == "Unattended Phone").size(); verify(hp.hacking == hacking_before + gain, "Auto-activate granted +%d hacking" % gain); verify(hp.life == life_before + hp.play_area.filter(func(c): return c.effect_id() == "The Big Dipper").size(), "Auto-activate granted life from The Big Dipper"); verify(hp.hand.size() == hand_before + hp.play_area.filter(func(c): return c.effect_id() == "Shell Speech").size(), "Auto-activate drew cards from Shell Speech")
  settings.save()
  var ab_config = ConfigFile.new()
  ab_config.load("user://settings.cfg")

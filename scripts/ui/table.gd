@@ -871,7 +871,7 @@ func select_hand(c):
  UIStyle.button(row, "Inspect", func(): clear_hand_selection(); inspect_card(c, true))
  UIStyle.button(row, "Close", clear_hand_selection)
 func auto_activate_botnet():
- var ids = ["Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4", "Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4", "Tableskirts"]
+ var ids = ["Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4", "Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4", "Tableskirts", "Unattended Phone", "The Big Dipper", "Shell Speech"]
  var p = engine.state.players[human_seat]
  for _i in range(120):
   if not is_instance_valid(engine) or engine.state == null or engine.state.finished: return
