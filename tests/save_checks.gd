@@ -166,7 +166,7 @@ func ui():
  settings.auto_botnet = true
  await table.auto_activate_botnet()
  var botnets = table.engine.controlled(hp, "Botnet").size()
- verify(hp.hacking == hacking_before + botnets * botnets, "Auto-activate Botnet grants +%d hacking for %d Botnets" % [botnets * botnets, botnets])
+ verify(hp.hacking == hacking_before + botnets * botnets + hp.play_area.filter(func(c): return c.effect_id() == "Tableskirts").size(), "Auto-activate Botnet/Tableskirts granted the expected hacking")
  settings.save()
  var ab_config = ConfigFile.new()
  ab_config.load("user://settings.cfg")
