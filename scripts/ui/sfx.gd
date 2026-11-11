@@ -15,6 +15,7 @@ var music_muted: bool = false
 var music: AudioStreamPlayer
 var auto_end_turn: bool = true
 var confirm_end_turn: bool = true
+var auto_botnet: bool = false
 var starting_life: int = 0
 var card_pool: String = "2026"
 var banned_by_pool: Dictionary = {"2025": [], "2026": [], "2026mog": []}
@@ -41,7 +42,7 @@ func _ready():
  if v is String and CardDB.cards.has(v):
   hero_id = v
   handle = str(CardDB.cards[v].name)
- for entry in [["game", "bot_fast"], ["game", "auto_end_turn"], ["game", "confirm_end_turn"], ["sound", "muted"], ["visual", "effects"]]:
+ for entry in [["game", "bot_fast"], ["game", "auto_end_turn"], ["game", "confirm_end_turn"], ["game", "auto_botnet"], ["sound", "muted"], ["visual", "effects"]]:
   if not config.has_section_key(entry[0], entry[1]): continue
   v = config.get_value(entry[0], entry[1])
   if v is bool: set("visual_effects" if entry[1] == "effects" else entry[1], v)
@@ -73,6 +74,7 @@ func save():
  config.set_value("player", "hero_id", hero_id)
  config.set_value("game", "auto_end_turn", auto_end_turn)
  config.set_value("game", "confirm_end_turn", confirm_end_turn)
+ config.set_value("game", "auto_botnet", auto_botnet)
  config.set_value("game", "starting_life", starting_life)
  config.set_value("game", "bot_speed", bot_speed)
  config.set_value("game", "card_pool", card_pool)

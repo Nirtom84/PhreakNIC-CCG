@@ -213,6 +213,11 @@ func _ready():
  confirmation.button_pressed = Sfx.confirm_end_turn
  switches.add_child(confirmation)
  confirmation.toggled.connect(func(enabled): Sfx.confirm_end_turn = enabled; Sfx.save())
+ var auto_botnet = CheckButton.new()
+ auto_botnet.text = "Auto-activate Botnet"
+ auto_botnet.button_pressed = Sfx.auto_botnet
+ switches.add_child(auto_botnet)
+ auto_botnet.toggled.connect(func(enabled): Sfx.auto_botnet = enabled; Sfx.save())
  var sound = CheckButton.new()
  sound.text = "Sound enabled"
  sound.button_pressed = not Sfx.muted

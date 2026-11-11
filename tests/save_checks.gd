@@ -158,6 +158,21 @@ func ui():
  verify(table.can_save(), "Table safe")
  for card in table.engine.active().hand.duplicate():
   if table.engine.can_play(table.engine.active(), card): await table.engine.play_card(table.engine.active(), card)
+ var hp = table.engine.state.players[table.human_seat]
+ var botnet = table.engine.state.all_cards().filter(func(c): return c.id == "Botnet")[0]
+ table.engine.gain_owner(botnet, hp)
+ table.engine.move(botnet, hp.play_area, "play_area")
+ var hacking_before = hp.hacking
+ settings.auto_botnet = true
+ await table.auto_activate_botnet()
+ var botnets = table.engine.controlled(hp, "Botnet").size()
+ verify(hp.hacking == hacking_before + botnets * botnets, "Auto-activate Botnet grants +%d hacking for %d Botnets" % [botnets * botnets, botnets])
+ settings.save()
+ var ab_config = ConfigFile.new()
+ ab_config.load("user://settings.cfg")
+ verify(ab_config.get_value("game", "auto_botnet", false) == true, "Auto-activate Botnet persists")
+ settings.auto_botnet = false
+ settings.save()
  for viewport_size in [Vector2(1920, 1080), Vector2(2400, 1080), Vector2(1920, 1440)]:
   table.size = viewport_size
   await process_frame
