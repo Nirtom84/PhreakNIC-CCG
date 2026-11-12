@@ -158,6 +158,23 @@ func ui():
  verify(table.can_save(), "Table safe")
  for card in table.engine.active().hand.duplicate():
   if table.engine.can_play(table.engine.active(), card): await table.engine.play_card(table.engine.active(), card)
+ var hp = table.engine.state.players[table.human_seat]
+ var botnet = table.engine.state.all_cards().filter(func(c): return c.id == "Botnet")[0]
+ table.engine.gain_owner(botnet, hp)
+ table.engine.move(botnet, hp.play_area, "play_area")
+ var hacking_before = hp.hacking
+ var life_before = hp.life
+ var hand_before = hp.hand.size()
+ settings.auto_botnet = true
+ await table.auto_activate_botnet()
+ var botnets = table.engine.controlled(hp, "Botnet").size()
+ var gain = botnets * botnets + hp.play_area.filter(func(c): return c.effect_id() == "Tableskirts" or c.effect_id() == "Unattended Phone").size(); verify(hp.hacking == hacking_before + gain, "Auto-activate granted +%d hacking" % gain); verify(hp.life == life_before + hp.play_area.filter(func(c): return c.effect_id() == "The Big Dipper").size(), "Auto-activate granted life from The Big Dipper"); verify(hp.hand.size() == hand_before + hp.play_area.filter(func(c): return c.effect_id() == "Shell Speech").size(), "Auto-activate drew cards from Shell Speech")
+ settings.save()
+ var ab_config = ConfigFile.new()
+ ab_config.load("user://settings.cfg")
+ verify(ab_config.get_value("game", "auto_botnet", false) == true, "Auto-activate Botnet persists")
+ settings.auto_botnet = false
+ settings.save()
  for viewport_size in [Vector2(1920, 1080), Vector2(2400, 1080), Vector2(1920, 1440)]:
   table.size = viewport_size
   await process_frame

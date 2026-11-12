@@ -228,6 +228,7 @@ func _ready():
   if p.seat == human_seat: begin_recap()
   append_log("TURN %d · Seat %d connected" % [engine.state.turn, p.seat])
   turn_band(p)
+  if not tutorial_mode and p.seat == human_seat and Sfx.auto_botnet: auto_activate_botnet()
   redraw())
  engine.turn_ended.connect(func(p):
   if p.seat == human_seat: end_recap_turn())
@@ -878,6 +879,18 @@ func select_hand(c):
  UIStyle.primary(play)
  UIStyle.button(row, "Inspect", func(): clear_hand_selection(); inspect_card(c, true))
  UIStyle.button(row, "Close", clear_hand_selection)
+func auto_activate_botnet():
+ var ids = ["Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4", "Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4", "Tableskirts", "Unattended Phone", "The Big Dipper", "Shell Speech"]
+ var p = engine.state.players[human_seat]
+ for _i in range(120):
+  if not is_instance_valid(engine) or engine.state == null or engine.state.finished: return
+  if available(): break
+  await get_tree().process_frame
+ for c in engine.permanents():
+  if c.controller != p.seat or c.effect_id() not in ids: continue
+  if engine.activatable_abilities(p, c).any(func(a): return a.index == 0 and a.enabled):
+   await activate_card(c, 0)
+ redraw()
 func activate_card(c, index: int):
  if not available(): return
  if online_session != null: online_action("activate", c.uid, index); return
