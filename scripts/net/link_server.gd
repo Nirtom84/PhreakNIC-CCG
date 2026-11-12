@@ -166,7 +166,7 @@ func _receive(message: Dictionary):
 		if not message.get("seats") is Array or message.seats.size() < 2 or message.seats.size() > 4: return
 		for seat in message.seats:
 			if not seat is Dictionary: return
-			if not seat.get("difficulty", 1) is int or seat.get("difficulty", 1) < 0 or seat.get("difficulty", 1) > 2: return
+			if not seat.get("difficulty", 1) is int or seat.get("difficulty", 1) < 0 or seat.get("difficulty", 1) > 3: return
 			if not seat.get("bot", false) is bool: return
 		var pace = message.get("bot_pace", 0.5)
 		if not preload("res://scripts/core/bot_pace.gd").allowed(pace): return

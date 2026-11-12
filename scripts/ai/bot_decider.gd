@@ -2,9 +2,11 @@ class_name BotDecider
 extends Decider
 var engine
 var difficulty: int
+var defcon = false
 func _init(game = null, level: int = 0):
 	engine = game
-	difficulty = level
+	difficulty = mini(level, 2)
+	defcon = level == 3
 func value(card, player = null) -> float:
 	var d = engine.db().get_card(card.id)
 	var text = str(d.text).to_lower()
@@ -80,6 +82,8 @@ func value(card, player = null) -> float:
 		for q in engine.opponents(player): enemy_life = mini(enemy_life, q.life)
 		if enemy_life < 12: score += float(d.damage) * 0.8
 	return score
+func buy_value(card, player) -> float:
+	return value(card, player) + (DefconValues.adjustment(engine, card, player) if defcon else 0.0)
 func choose_option(player, prompt: String, options: Array[String]) -> int:
 	if "simultaneous" in prompt or "attached Action" in prompt:
 		var priorities = ["Clarion Inn Air Conditioning", "Rickroll", "Clarion Inn Storage Closet", "pTFS", "The Book", "Zenthere, Mind Goblin", "The Phreaknic Network", "Military-Grade Card Encapsulation"]
@@ -156,7 +160,7 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 		if not enemies.is_empty(): sorted = enemies
 	var removing = "Remove cards" in prompt or "Discard" in prompt
 	if "Take phone" in prompt or "Take Clarion" in prompt or "Give Rickroll" in prompt: removing = false
-	sorted.sort_custom(func(a, b): return value(a, player) < value(b, player) if removing else value(a, player) > value(b, player))
+	sorted.sort_custom(func(a, b): return removal_value(a, player) < removal_value(b, player) if removing else value(a, player) > value(b, player))
 	if "Remove center" in prompt:
 		sorted.sort_custom(func(a, b): return value(a, player) < value(b, player))
 	if "Remove location counter" in prompt:
@@ -166,10 +170,14 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 	if "Remove cards" in prompt:
 		return thinning_choices(sorted, player, max_n)
 	if "Discard to redraw" in prompt or "Discard for hacking" in prompt:
-		return sorted.filter(func(c): return value(c, player) < 1.5).slice(0, max_n)
+		return sorted.filter(func(c): return (buy_value(c, player) if defcon else value(c, player)) < 1.5).slice(0, max_n)
 	if "Discard hero to add ICE" in prompt: return []
 	if "Copy location" in prompt: return sorted.filter(func(c): return engine.effects.initial_ice(c.effect_id()) > 3).slice(0, 1)
 	return sorted.slice(0, maxi(1, min_n))
+func removal_value(card, player) -> float:
+	if not defcon: return value(card, player)
+	if card.id in ["Hacking", "Damage", "Rickroll"]: return -4.0 if card.id != "Rickroll" else -10.0
+	return buy_value(card, player)
 func thinning_choices(cards: Array, player, count: int) -> Array:
 	# Composition only: never use the order of the deck or opponents' hidden cards.
 	var owned = player.deck + player.hand + player.discard
@@ -187,7 +195,14 @@ func thinning_choices(cards: Array, player, count: int) -> Array:
 	var result: Array = []
 	for c in cards:
 		if result.size() >= count: break
-		if c.id not in ["Hacking", "Damage", "Rickroll"] and value(c, player) >= 1.5: continue
+		if c.id not in ["Hacking", "Damage", "Rickroll"] and (buy_value(c, player) if defcon else value(c, player)) >= 1.5: continue
+		if defcon and c.id not in ["Hacking", "Damage", "Rickroll"]:
+			var d = engine.db().get_card(c.id)
+			var attack = int(d.damage) + (3 if c.id in ["Ben The Meek", "Non-Infringing Game Show", "LAN Party"] else 0)
+			if int(d.hack) > 0 and hacking - int(d.hack) < 6: continue
+			if attack > 0 and damage - attack < 2: continue
+			hacking -= int(d.hack)
+			damage -= attack
 		if c.id == "Hacking":
 			if hacking <= 6 or not engine.controlled(player, "Dick Van Dyke Stamp").is_empty(): continue
 			hacking -= 1
@@ -201,6 +216,17 @@ func choose_player(_player, _prompt: String, players: Array) -> PlayerState:
 	if players.is_empty(): return null
 	if difficulty == 0: return players[engine.rand_range(0, players.size() - 1)]
 	var sorted = players.duplicate()
+	if defcon and players.size() > 1:
+		# Player prompts can also ask for a beneficiary; target only hostile prompts.
+		var prompt = _prompt.to_lower()
+		if "damage" in prompt or "hit" in prompt or "rickroll" in prompt or "attack" in prompt:
+			var search = DefconSearch.new(engine)
+			var killable = sorted.filter(func(q): return q.life + target_ice(q) <= hand_damage(_player))
+			if not killable.is_empty():
+				killable.sort_custom(func(a, b): return a.life + target_ice(a) < b.life + target_ice(b))
+				return killable[0]
+			sorted.sort_custom(func(a, b): return search.strength(engine, a, true) > search.strength(engine, b, true))
+			return sorted[0]
 	sorted.sort_custom(func(a, b): return a.life < b.life)
 	return sorted[0]
 func choose_number(player, prompt: String, allowed: Array[int]) -> int:
@@ -233,3 +259,13 @@ func confirm(player, prompt: String) -> bool:
 func name_a_card(_player, _prompt: String) -> String:
 	# Use public card frequencies; bots do not inspect hidden opponent hands.
 	return "Hacking"
+
+func target_ice(p) -> int:
+	var ice = 0
+	for c in p.play_area:
+		if engine.db().has_subtype(c.effect_id(), "Location"): ice += c.counters
+	return ice
+func hand_damage(p) -> int:
+	var damage = 0
+	for c in p.hand: damage += int(engine.db().get_card(c.id).damage)
+	return damage

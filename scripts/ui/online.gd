@@ -280,7 +280,7 @@ func refresh_rooms():
   var box = section(rooms_box, "// " + str(room.code))
   var row = HBoxContainer.new()
   box.add_child(row)
-  row.add_child(UIStyle.avatar(UIStyle.avatar_id(str(room.seats[0].get("name", "")), str(room.seats[0].get("hero", "")))))
+  row.add_child(UIStyle.avatar(UIStyle.seat_avatar(str(room.seats[0].get("name", "")), str(room.seats[0].get("hero", "")), bool(room.seats[0].get("bot", false)), int(room.seats[0].get("difficulty", -1)))))
   UIStyle.label(row, str(room.host), 26).size_flags_horizontal = Control.SIZE_EXPAND_FILL
   action(row, "Join", request_join.bind(room.code))
   UIStyle.label(box, "%d cards banned" % int(room.get("banned_count", 0)), 18)
@@ -340,7 +340,7 @@ func lobby(room: Dictionary):
   var card = section(main, "")
   var row = HBoxContainer.new()
   card.add_child(row)
-  row.add_child(UIStyle.avatar(UIStyle.avatar_id(str(seat.get("name", "")), str(seat.get("hero", "")))))
+  row.add_child(UIStyle.avatar(UIStyle.seat_avatar(str(seat.get("name", "")), str(seat.get("hero", "")), bool(seat.get("bot", false)), int(seat.get("difficulty", -1)))))
   var dot = UIStyle.label(row, "●", 22)
   dot.add_theme_color_override("font_color", UIStyle.GREEN if seat.get("connected", false) or seat.bot else UIStyle.MUTED)
   dot.tooltip_text = "Connected" if seat.get("connected", false) or seat.bot else "Offline"

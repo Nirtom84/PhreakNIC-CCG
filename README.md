@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.20**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.21**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -69,6 +69,9 @@ godot4.7.1 --path .
 | Script Kiddie | Plays everything, buys the priciest card it can, random choices |
 | Phreak | Values cards, plays draw first, makes sensible choices, uses paid abilities |
 | 31337 Elite | Adds lethal checks, deck thinning, reserving/denying cards and combo hunting |
+| DEFCON | Double starting life; learned card values from self-play; bounded exact lethal check; no hidden information |
+
+The DEFCON avatar is an original skull-and-crossbones drawing.
 
 Games have 2–4 players: you and 1–3 bots at the chosen level. Who goes first is random.
 
@@ -123,6 +126,7 @@ godot4.7.1 --headless --path . -s tests/v16_checks.gd    # bot pace, turn recap,
 godot4.7.1 --headless --path . -s tests/v17_checks.gd    # lifetime stats, stats screen and stats card
 godot4.7.1 --headless --path . -s tests/v18_checks.gd    # per-card Auto toggles (local and online), card-face avatars
 godot4.7.1 --headless --path . -s tests/v20_checks.gd    # backing out of dialogs, grouped card pickers
+godot4.7.1 --headless --path . -s tests/v21_checks.gd    # DEFCON difficulty: per-seat life, avatar, online, learned values
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```
 

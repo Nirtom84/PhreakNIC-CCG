@@ -86,7 +86,7 @@ func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, se
 	var levels = []
 	for i in seats.size():
 		var info = seats[i]
-		info.difficulty = clampi(int(info.difficulty), 0, 2)
+		info.difficulty = clampi(int(info.difficulty), 0, 3)
 		levels.append(info.difficulty if info.bot else -1)
 		tokens.append(Crypto.new().generate_random_bytes(24).hex_encode())
 		disconnected[i] = now()
@@ -369,6 +369,7 @@ func _idle_tick():
 		engine.say(seats[p.seat].name + " was idle; a bot finished their turn")
 func _drive_reaction(p):
 	var driver = BotPlayer.new(engine)
+	driver.search_budget_ms = DefconSearch.SERVER_MS
 	driver.pace_provider = func(): return bot_pace
 	driver.action_completed = _checkpoint
 	await driver.take_turn(p)
@@ -377,6 +378,7 @@ func _drive():
 	driving[depth] = true
 	var p = engine.active()
 	var driver = BotPlayer.new(engine)
+	driver.search_budget_ms = DefconSearch.SERVER_MS
 	driver.pace_provider = func(): return bot_pace
 	driver.action_completed = _checkpoint
 	driver.continue_turn = func(): return seats[p.seat].bot or _takeover(p.seat)
@@ -399,7 +401,7 @@ func restore(data: Dictionary) -> bool:
 	for i in data.seats.size():
 		if not data.seats[i] is Dictionary or not data.tokens[i] is String: return false
 		if not data.seats[i].get("name") is String or not data.seats[i].get("hero") is String or not data.seats[i].get("bot") is bool: return false
-		if not data.seats[i].get("difficulty") is int or data.seats[i].difficulty < 0 or data.seats[i].difficulty > 2: return false
+		if not data.seats[i].get("difficulty") is int or data.seats[i].difficulty < 0 or data.seats[i].difficulty > 3: return false
 		for key in ["name", "hero", "bot", "difficulty"]:
 			if not data.seats[i].has(key): return false
 	bot_pace = Pace.nearest(data.get("bot_pace", 0.5))

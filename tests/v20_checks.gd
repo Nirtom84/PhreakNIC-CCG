@@ -184,7 +184,7 @@ func run():
  table.go_back()
  await frames()
  var options: Array[String] = ["+2 hacking", "Deal 2 damage", "Cancel"]
- for difficulty in 3:
+ for difficulty in 4:
   var bot = BotDecider.new(table.engine, difficulty)
   for i in 100:
    verify(await bot.choose_option(p, "Choose one", options) in [0, 1], "Bot never cancels Payphone")
@@ -215,7 +215,7 @@ func run():
   await frames()
   verify(source.flags.used and not table.engine.activatable_abilities(p, source)[0].enabled, id + " UI real selection consumes use")
   verify(p.hand.size() == before if id == "Disassembled Sink" else table.engine.state.players[1].life == life - 2, id + " UI reward applied")
- for difficulty in 3:
+ for difficulty in 4:
   table.engine.deciders[0] = BotDecider.new(table.engine, difficulty)
   for i in 30:
    phone.flags.used = false

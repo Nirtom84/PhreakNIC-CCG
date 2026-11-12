@@ -113,20 +113,21 @@ func _ready():
  difficulty = OptionButton.new()
  difficulty.visible = false
  for name in BotDifficulty.DISPLAY_NAMES: difficulty.add_item(name)
+ difficulty.select(Sfx.difficulty)
  menu.add_child(difficulty)
  var tiles = HBoxContainer.new()
  tiles.add_theme_constant_override("separation", 12)
  menu.add_child(tiles)
  var group = ButtonGroup.new()
- var accents = [UIStyle.GREEN, UIStyle.AMBER, UIStyle.RED]
- var flavors = ["Borrowed scripts.", "Knows the network.", "Already owns the box."]
- for i in 3:
-  var tile = UIStyle.button(tiles, BotDifficulty.DISPLAY_NAMES[i] + "\n" + flavors[i] + "\n" + "●".repeat(i + 1) + "○".repeat(2 - i), func(): difficulty.select(i))
+ var accents = [UIStyle.GREEN, UIStyle.AMBER, UIStyle.RED, Color.WHITE]
+ var flavors = ["Borrowed scripts.", "Knows the network.", "Already owns the box.", "Double life. No mercy."]
+ for i in 4:
+  var tile = UIStyle.button(tiles, BotDifficulty.DISPLAY_NAMES[i] + "\n" + flavors[i] + "\n" + "●".repeat(i + 1) + "○".repeat(3 - i), func(): difficulty.select(i); Sfx.difficulty = i; Sfx.save())
   tile.toggle_mode = true
   tile.button_group = group
-  tile.button_pressed = i == 0
-  tile.custom_minimum_size = Vector2(280, 110)
-  tile.add_theme_font_size_override("font_size", 18)
+  tile.button_pressed = i == Sfx.difficulty
+  tile.custom_minimum_size = Vector2(215, 110)
+  tile.add_theme_font_size_override("font_size", 22 if UIStyle.compact() else 18)
   tile.add_theme_color_override("font_color", accents[i])
   tile.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, accents[i], 0))
   tile.add_theme_stylebox_override("pressed", UIStyle.box(UIStyle.PANEL.lightened(0.06), accents[i], 10))

@@ -50,6 +50,14 @@ class FakeRoom extends Node:
   # The trusted room authenticates internally. The client socket never sends hello.
   bridge.send({"t": "hello", "seat": index, "token": server.tokens[index], "version": server.version()})
   socket.send({"t": "server", "status": "ok"})
+ func drain():
+  # Bot traces can leave an offline guest's decision pending at teardown.
+  server.running = false
+  server.engine.finish(null)
+  for i in 200:
+   for id in server.pending.keys(): await server._fallback(id)
+   if server.pending.is_empty() and server.driving.is_empty() and server.locks.is_empty(): return
+   await get_tree().process_frame
  func _exit_tree():
   if bridge != null: bridge.close()
   if socket != null: socket.close()
@@ -291,6 +299,8 @@ func run():
  verify(mismatch_ui.message.text == "This game runs version 9.99. Please update", "version mismatch plain message")
  verify(button(mismatch_ui, "Get the latest release") != null, "version release link")
  mismatch_ui.queue_free()
+ await room.drain()
+ verify(room.server.pending.is_empty() and room.server.driving.is_empty() and room.server.locks.is_empty(), "Fake room drains in-flight decisions before deletion")
  room.queue_free()
  api.queue_free()
  await frames()

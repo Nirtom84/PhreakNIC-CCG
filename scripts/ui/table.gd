@@ -108,7 +108,7 @@ func _ready():
  columns.add_child(left)
  var toolbar = HBoxContainer.new()
  left.add_child(toolbar)
- turn_avatar = UIStyle.avatar(UIStyle.avatar_id(Sfx.handle, Sfx.hero_id), 56)
+ turn_avatar = UIStyle.avatar(UIStyle.seat_avatar(Sfx.handle, Sfx.hero_id, false, -1), 56)
  toolbar.add_child(turn_avatar)
  banner = UIStyle.label(toolbar, "Connecting…", 28)
  banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -208,6 +208,7 @@ func _ready():
  if not resume_data.is_empty() and resume_data.table.has("match_stats"):
   var restored_stats = match_stats.from_dict(resume_data.table.match_stats)
   if restored_stats != null: match_stats = restored_stats
+ match_stats.capture_start(engine.state.players)
  engine.card_played.connect(func(p, c): match_stats.played(p.seat, c.id))
  engine.purchase_paid.connect(func(p, c, cost): match_stats.bought(p.seat, c.id, cost))
  engine.life_gained.connect(func(p, amount): match_stats.gain(p.seat, amount))
@@ -265,12 +266,11 @@ func pick_seat_names(game_seed: int):
   seat_heroes.append(hero_ids.get(pick, ""))
 func seat_name(seat: int) -> String:
  return seat_names[seat] if seat < seat_names.size() else ("You" if seat == human_seat else "Bot %d" % seat)
-## A seat's avatar card: a card named after the seat's handle, else the seat's Hero.
+## DEFCON overrides handle matching; other seats use the matching card or Hero.
 func avatar_hero(seat: int) -> String:
- return UIStyle.avatar_id(seat_name(seat), seat_heroes[seat], engine.db())
+ return UIStyle.seat_avatar(seat_name(seat), seat_heroes[seat], engine.state.players[seat].is_bot, engine.state.players[seat].difficulty, engine.db())
 func player_name(p) -> String:
- if online_session != null: return seat_name(p.seat)
- return seat_name(human_seat) if p.seat == human_seat else "%s · %s" % [seat_name(p.seat), BotDifficulty.DISPLAY_NAMES[p.difficulty]]
+ return seat_name(p.seat) if p.seat == human_seat or not p.is_bot else "%s · %s" % [seat_name(p.seat), BotDifficulty.DISPLAY_NAMES[p.difficulty]]
 func available() -> bool:
  if online_session != null: return not online_over and online_session.client.can_act and not pending and online_session.client.prompts.is_empty() and engine.state != null
  return engine != null and engine.is_turn(engine.state.players[human_seat]) and not engine.busy and not pending and (not acting or engine.reaction_depth > 0)
@@ -566,7 +566,7 @@ func readout(parent, icon: String, value: int, font_size: int) -> Label:
  return number
 func seat_area(parent: Node, p, _human: bool):
  if UIStyle.compact():
-  var summary = UIStyle.button(parent, "%s · ♥ %d\nHand %d · Deck %d · Discard %d" % [seat_name(p.seat), p.life, p.hand.size(), p.deck.size(), p.discard.size()], func(): view_cards(seat_name(p.seat) + " · Board", p.play_area + p.reserve + p.discard))
+  var summary = UIStyle.button(parent, "%s · ♥ %d\nHand %d · Deck %d · Discard %d" % [player_name(p), p.life, p.hand.size(), p.deck.size(), p.discard.size()], func(): view_cards(seat_name(p.seat) + " · Board", p.play_area + p.reserve + p.discard))
   var avatar = UIStyle.avatar(avatar_hero(p.seat))
   summary.icon = avatar.get_child(0).texture
   avatar.free()
@@ -610,7 +610,7 @@ func seat_area(parent: Node, p, _human: bool):
  if not p.alive:
   panel.modulate = Color(0.5, 0.5, 0.5)
   name_label.text = "DISCONNECTED · " + seat_name(p.seat)
- badge.add_theme_color_override("font_color", UIStyle.CYAN if human_remote else [UIStyle.GREEN, UIStyle.AMBER, UIStyle.RED][p.difficulty])
+ badge.add_theme_color_override("font_color", UIStyle.CYAN if human_remote else [UIStyle.GREEN, UIStyle.AMBER, UIStyle.RED, Color.WHITE][p.difficulty])
  life_labels[p.seat] = readout(status, "life", p.life, 28)
  var life_frame = life_labels[p.seat].get_parent().get_parent()
  var compact = life_frame.get_theme_stylebox("panel").duplicate()
@@ -1540,7 +1540,7 @@ func show_result(winner):
   var hero = HBoxContainer.new()
   box.add_child(hero)
   hero.add_child(UIStyle.avatar(avatar_hero(winner.seat), 96))
-  UIStyle.label(hero, seat_name(winner.seat), 28)
+  UIStyle.label(hero, player_name(winner), 28)
  if match_stats.since_resume: UIStyle.label(box, "Statistics since resume", 22)
  var rows = GridContainer.new()
  rows.columns = 5
@@ -1549,7 +1549,7 @@ func show_result(winner):
  for title in ["Seat", "Life", "Damage", "Bought", "Played"]: UIStyle.label(rows, title, 22)
  for i in match_stats.seats.size():
   var stat = match_stats.seats[i]
-  for text in [seat_name(i), str(stat.final_life), str(stat.damage_dealt), str(stat.cards_bought), str(stat.cards_played)]:
+  for text in [player_name(engine.state.players[i]), str(stat.final_life), str(stat.damage_dealt), str(stat.cards_bought), str(stat.cards_played)]:
    var label = UIStyle.label(rows, text, 22)
    label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
    label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -2094,6 +2094,7 @@ func setup_online():
  human_seat = client.seat
  player_count = engine.state.players.size()
  match_stats.setup(player_count, engine.state.card_pool, engine.state.players.map(func(p): return p.difficulty), engine.state.turn > 1)
+ match_stats.capture_start(engine.state.players)
  card_pool = engine.state.card_pool
  starting_life = engine.state.starting_life
  for seat in client.seats:

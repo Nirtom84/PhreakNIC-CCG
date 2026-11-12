@@ -12,7 +12,9 @@ func setup(count: int, pool: String, difficulties: Array, resumed = false):
  bot_difficulties = difficulties.duplicate()
  since_resume = resumed
  for i in count:
-  seats.append({"turns": 0, "damage_dealt": 0, "damage_taken": 0, "life_gained": 0, "cards_played": 0, "cards_bought": 0, "hacking_spent": 0, "cards_removed": 0, "biggest_hit": 0, "bought": {}, "played": {}, "most_played_id": "", "priciest_id": "", "priciest_cost": -1, "final_life": 0, "final_deck_size": 0})
+  seats.append({"starting_life": 0, "turns": 0, "damage_dealt": 0, "damage_taken": 0, "life_gained": 0, "cards_played": 0, "cards_bought": 0, "hacking_spent": 0, "cards_removed": 0, "biggest_hit": 0, "bought": {}, "played": {}, "most_played_id": "", "priciest_id": "", "priciest_cost": -1, "final_life": 0, "final_deck_size": 0})
+func capture_start(players: Array):
+ for p in players: seats[p.seat].starting_life = p.starting_life
 func turn(seat: int):
  if seat >= 0 and seat < seats.size(): seats[seat].turns += 1
 func damage(source: int, target: int, amount: int):
@@ -55,6 +57,7 @@ func finish(winner: int, players: Array):
  winner_seat = winner
  finished = true
  for p in players:
+  seats[p.seat].starting_life = p.starting_life
   seats[p.seat].final_life = p.life
   var cards = p.deck + p.hand + p.discard + p.play_area + p.reserve
   var pending = cards.duplicate()
@@ -72,16 +75,17 @@ static func from_dict(data: Dictionary):
  if not data.get("since_resume") is bool or not data.get("finished") is bool: return null
  if data.bot_difficulties.size() != data.seats.size(): return null
  for level in data.bot_difficulties:
-  if not (level is int or level is float) or not is_finite(float(level)) or level != floor(float(level)) or level < -1 or level > 2: return null
+  if not (level is int or level is float) or not is_finite(float(level)) or level != floor(float(level)) or level < -1 or level > 3: return null
  result.setup(data.seats.size(), data.card_pool, data.bot_difficulties.map(func(level): return int(level)), data.since_resume)
  for i in result.seats.size():
   if not data.seats[i] is Dictionary: return null
   for key in result.seats[i]:
-   var value = data.seats[i].get(key, {} if key == "bought" else null)
+   var value = data.seats[i].get(key, {} if key == "bought" else (0 if key == "starting_life" else null))
    var expected = result.seats[i][key]
    if expected is int:
     if not (value is int or value is float) or not is_finite(float(value)) or float(value) != floor(float(value)) or value < {"priciest_cost": -1, "final_life": -100000}.get(key, 0): return null
     value = int(value)
+    if key == "starting_life" and value > 20000: return null
    elif typeof(value) != typeof(expected): return null
    if key in ["played", "bought"]:
     for id in value:

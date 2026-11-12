@@ -120,6 +120,11 @@ static func dialog(p: PanelContainer, dimensions: Vector2 = Vector2(640, 400)):
  content.draw.connect(func(): content.draw_style_box(box(), Rect2(Vector2(-20,-20), content.size + Vector2(40,40))))
  content.resized.connect(content.queue_redraw)
 
+const DEFCON_AVATAR = "@defcon"
+const DEFCON_IMAGE = "res://assets/icon/defcon.png"
+# All seat avatars resolve here before handle matching; humans never use DEFCON.
+static func seat_avatar(handle: String, hero_id: String, is_bot: bool, difficulty: int, catalog = null) -> String:
+ return DEFCON_AVATAR if is_bot and difficulty == BotDifficulty.Level.DEFCON else avatar_id(handle, hero_id, catalog)
 const AVATAR_CROP = Rect2(90, 62, 420, 420)
 static func avatar_id(handle: String, hero_id: String, catalog = null) -> String:
  var book = CardDB if catalog == null else catalog
@@ -131,7 +136,9 @@ static func avatar(card_id: String, width: int = 64) -> Control:
  border.set_content_margin_all(2)
  frame.add_theme_stylebox_override("panel", border)
  var image = picture("res://assets/icon/icon.png", Vector2(width, width))
- if CardDB.cards.has(card_id):
+ if card_id == DEFCON_AVATAR:
+  image.texture = load(DEFCON_IMAGE)
+ elif CardDB.cards.has(card_id):
   var atlas = AtlasTexture.new()
   atlas.atlas = load(CardDB.image_path(card_id))
   atlas.region = AVATAR_CROP

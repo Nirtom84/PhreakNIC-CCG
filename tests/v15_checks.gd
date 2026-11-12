@@ -365,7 +365,7 @@ func stats_checks():
  var dealt = [0, 0]
  engine.damage_dealt.connect(func(p, _q, amount): dealt[p.seat] += amount)
  engine.card_moved.connect(func(c, origin, target):
-  if origin == "center_row" and target == "discard" and c.owner >= 0: purchases[c.owner] += 1)
+  if origin in ["center_row", "reserve"] and target == "discard" and c.owner >= 0: purchases[c.owner] += 1)
  var driver = BotPlayer.new(engine)
  while engine.active().seat != 0 and not engine.state.finished: await driver.take_turn(engine.active())
  # Persist an actual mid-game table payload and load it, rather than only the data codec.
@@ -394,8 +394,8 @@ func stats_checks():
  await process_frame
  for p in engine.state.players:
   var stat = table.match_stats.seats[p.seat]
-  verify(stat.damage_taken == engine.state.starting_life + stat.life_gained - p.life, "Damage and healing reconcile with life")
-  verify(stat.cards_bought == purchases[p.seat], "Purchase count matches row-to-discard moves")
+  verify(stat.damage_taken == p.starting_life + stat.life_gained - p.life, "Damage and healing reconcile with life")
+  verify(stat.cards_bought == purchases[p.seat], "Purchase count matches row/reserve-to-discard moves")
   verify(stat.final_life == p.life and stat.final_deck_size > 0, "Final state recorded")
  verify(table.match_stats.seats[0].damage_dealt == dealt[0] and table.match_stats.seats[1].damage_dealt == dealt[1], "Damage dealt matches engine signal totals")
  var serialized = JSON.parse_string(JSON.stringify(table.match_stats.to_dict()))

@@ -3,7 +3,7 @@ extends RefCounted
 const PATH = "user://savegame.json"
 const VERSION = 1
 const STATE_FIELDS = ["starting_life", "card_pool", "banned", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
-const PLAYER_FIELDS = ["seat", "life", "alive", "is_bot", "difficulty", "deck", "hand", "discard", "play_area", "reserve", "hacking", "played", "turn_flags", "turns"]
+const PLAYER_FIELDS = ["seat", "starting_life", "life", "alive", "is_bot", "difficulty", "deck", "hand", "discard", "play_area", "reserve", "hacking", "played", "turn_flags", "turns"]
 const CARD_FIELDS = ["uid", "id", "owner", "controller", "counters", "attached", "flags"]
 var objects: Array = []
 var records: Array = []
@@ -69,6 +69,7 @@ static func restore(data: Dictionary):
 		var fields = CARD_FIELDS if object is CardInstance else PLAYER_FIELDS
 		var record = data.objects[i].data
 		for field in fields:
+			if field == "starting_life" and not record.has(field): continue
 			if not record.has(field): return null
 			var value = codec.decode(record[field])
 			if typeof(value) != typeof(object.get(field)): return null
@@ -92,7 +93,9 @@ static func restore(data: Dictionary):
 	for i in state.players.size():
 		var player = state.players[i]
 		if not player is PlayerState or player.seat != i: return null
-		if player.difficulty < -1 or player.difficulty > 2: return null
+		if player.difficulty < -1 or player.difficulty > 3: return null
+		if not data.objects[codec.objects.find(player)].data.has("starting_life"): player.starting_life = state.starting_life
+		if player.starting_life < 1 or player.starting_life > 20000: return null
 	for object in codec.objects:
 		if object is CardInstance:
 			if object.counters < 0 or object.counters > 1000000: return null
@@ -236,3 +239,34 @@ static func valid_match_stats(table: Dictionary) -> bool:
 	if not table.match_stats is Dictionary: return false
 	var stats = load("res://scripts/ui/match_stats.gd").from_dict(table.match_stats)
 	return stats != null and stats.seats.size() == table.get("player_count", 0)
+
+# Trusted in-memory copy for AI sandboxes. Uses the same field schema and object
+# identity semantics as snapshot/restore, without serializing or validating a
+# position that the engine already owns. Never use this for disk/network input.
+static func clone_memory(source, include_log: bool = true):
+	var result = GameState.new()
+	var objects = {}
+	for field in STATE_FIELDS:
+		# History is not read by effects/policies; search can omit this growing array.
+		if field == "log" and not include_log: continue
+		result.set(field, copy_value(source.get(field), objects))
+	result.rng.seed = source.rng.seed
+	result.rng.state = source.rng.state
+	return result
+static func copy_value(value, objects: Dictionary):
+	if value is CardInstance or value is PlayerState:
+		if objects.has(value): return objects[value]
+		var result = CardInstance.new() if value is CardInstance else PlayerState.new()
+		objects[value] = result
+		for field in (CARD_FIELDS if value is CardInstance else PLAYER_FIELDS): result.set(field, copy_value(value.get(field), objects))
+		return result
+	if value is Array:
+		# Preserve typed arrays such as the game log.
+		var result = value.duplicate()
+		for i in value.size(): result[i] = copy_value(value[i], objects)
+		return result
+	if value is Dictionary:
+		var result = {}
+		for key in value: result[copy_value(key, objects)] = copy_value(value[key], objects)
+		return result
+	return value

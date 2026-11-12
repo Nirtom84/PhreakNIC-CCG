@@ -40,6 +40,7 @@ func load_auto(config: ConfigFile):
  for group in AUTO_GROUPS.values():
   var value = config.get_value("auto_activate", group, legacy is bool and legacy)
   auto_activate[group] = value if value is bool else false
+var difficulty: int = 0
 var starting_life: int = 0
 var card_pool: String = "2026"
 var banned_by_pool: Dictionary = {"2025": [], "2026": [], "2026mog": []}
@@ -76,6 +77,8 @@ func _ready():
  music_volume = valid_volume(v, 0.35)
  v = config.get_value("sound", "music_muted", false)
  music_muted = v if v is bool else false
+ v = config.get_value("game", "difficulty", 0)
+ if v is int and v >= 0 and v <= 3: difficulty = v
  v = config.get_value("game", "starting_life", 0)
  if v is int and v >= 0 and v <= 10000: starting_life = v
  for selected_pool in ["2025", "2026", "2026mog"]:
@@ -101,6 +104,7 @@ func save():
  config.set_value("game", "confirm_end_turn", confirm_end_turn)
  if config.has_section_key("game", "auto_botnet"): config.erase_section_key("game", "auto_botnet")
  for group in AUTO_GROUPS.values(): config.set_value("auto_activate", group, auto_enabled(group))
+ config.set_value("game", "difficulty", difficulty)
  config.set_value("game", "starting_life", starting_life)
  config.set_value("game", "bot_pace", bot_pace)
  config.set_value("game", "card_pool", card_pool)

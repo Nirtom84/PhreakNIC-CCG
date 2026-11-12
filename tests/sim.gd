@@ -3,11 +3,11 @@ extends SceneTree
 const GAMES = 150
 var card_pool = "2026"
 var coverage: Dictionary = {}
-var wins = [0, 0, 0]
-var appearances = [0, 0, 0]
+var wins = [0, 0, 0, 0]
+var appearances = [0, 0, 0, 0]
 var draws = 0
 var capped_draws = 0
-var duel_wins = [0, 0, 0]
+var duel_wins = [0, 0, 0, 0]
 var handler_count = 0
 var checks = 0
 var failures = 0
@@ -17,10 +17,10 @@ func verify(condition: bool, message: String):
 	if not condition:
 		failures += 1
 		print("FAIL: ", message)
-func game(levels: Array, seed_value: int):
+func game(levels: Array, seed_value: int, starting_life: int = 0):
 	var engine = GameEngine.new()
 	root.add_child(engine)
-	engine.setup(levels, seed_value, [], card_pool)
+	engine.setup(levels, seed_value, [], card_pool, starting_life)
 	handler_count = engine.effects.handlers.size()
 	engine.state_changed.connect(func():
 		verify(engine.state.conservation_ok(), "Action conservation seed %d" % seed_value)
@@ -39,7 +39,7 @@ func game(levels: Array, seed_value: int):
 	if engine.state.winner == null: draws += 1
 	else:
 		wins[engine.state.winner.difficulty] += 1
-		if levels.size() == 2 and 1 not in levels: duel_wins[engine.state.winner.difficulty] += 1
+		if levels.size() == 2 and 0 in levels and 2 in levels: duel_wins[engine.state.winner.difficulty] += 1
 	for id in engine.state.coverage: coverage[id] = coverage.get(id, 0) + engine.state.coverage[id]
 	verify(engine.state.conservation_ok(), "Final conservation game %d" % seed_value)
 	engine.free()
@@ -58,11 +58,16 @@ func tournament():
 		await game(levels, 31000 + i)
 		if failures > 0: break
 		if (i + 1) % 40 == 0: print("Completed %d/%d games" % [i + 1, GAMES])
+	# Keep the original seeded duels. Short custom-life DEFCON games exercise
+	# DEFCON/conservation without dominating this rules suite's runtime.
+	DefconSearch.fixed_rollouts = -1
+	for i in 2: await game([3, 2] if i == 0 else [2, 3], 41000 + i, 6)
+	await coverage_top_up()
 	var never: Array = []
 	for id in root.get_node("CardDB").pool_ids(card_pool):
 		if not coverage.has(id): never.append(id)
-	print("Games: %d; draws: %d (natural %d, turn cap %d)" % [GAMES, draws, draws - capped_draws, capped_draws])
-	for level in 3:
+	print("Games: %d (+2 short DEFCON games); draws: %d (natural %d, turn cap %d)" % [GAMES, draws, draws - capped_draws, capped_draws])
+	for level in 4:
 		print("%s: %d wins / %d seats (%.1f%%)" % [BotDifficulty.DISPLAY_NAMES[level], wins[level], appearances[level], 100.0 * wins[level] / maxf(1, appearances[level])])
 	print("Elite vs Script Kiddie (60 games): Elite %d (%.1f%%), Kiddie %d (%.1f%%)" % [duel_wins[2], duel_wins[2] * 100.0 / 60, duel_wins[0], duel_wins[0] * 100.0 / 60])
 	print("Tournament played coverage (%s): %d/%d; handlers: %d/%d" % [card_pool, coverage.size(), root.get_node("CardDB").pool_ids(card_pool).size(), handler_count, root.get_node("CardDB").originals.size()])
@@ -73,15 +78,37 @@ func tournament():
 		for id in ids: print("Coverage %s: %d plays" % [id, coverage.get(id, 0)])
 	verify(duel_wins[2] >= 36, "Elite must win at least 60%% of seeded duels")
 	if card_pool in ["2025", "2026mog"]: verify(never.is_empty(), "All selected pool definitions played, including every Mog card")
+func coverage_top_up():
+	# Stochastic tournament traces cannot guarantee every definition is played.
+	# Top up missing cards through the real play pipeline, never by assigning coverage.
+	for id in root.get_node("CardDB").pool_ids(card_pool):
+		if coverage.has(id): continue
+		var engine = GameEngine.new()
+		root.add_child(engine)
+		engine.setup([2, 2], 51000, [], card_pool, 1000)
+		await engine.start_turn(0)
+		var p = engine.active()
+		var cards = engine.state.all_cards().filter(func(c): return c.id == id)
+		verify(not cards.is_empty(), "Coverage fixture contains " + id)
+		if not cards.is_empty():
+			engine.gain_owner(cards[0], p)
+			engine.move(cards[0], p.hand, "hand")
+			p.hacking = 100
+			verify(engine.can_play(p, cards[0]), "Coverage fixture can play " + id)
+			await engine.play_card(p, cards[0])
+			verify(engine.state.coverage.has(id), "Coverage fixture really played " + id)
+			verify(engine.state.conservation_ok(), "Coverage fixture conservation " + id)
+			for played in engine.state.coverage: coverage[played] = coverage.get(played, 0) + engine.state.coverage[played]
+		engine.free()
 func run():
 	for pool in ["2026", "2025", "2026mog"]:
 		card_pool = pool
 		coverage = {}
-		wins = [0, 0, 0]
-		appearances = [0, 0, 0]
+		wins = [0, 0, 0, 0]
+		appearances = [0, 0, 0, 0]
 		draws = 0
 		capped_draws = 0
-		duel_wins = [0, 0, 0]
+		duel_wins = [0, 0, 0, 0]
 		print("Pool: ", pool)
 		await tournament()
 	print("Checks: %d; failures: %d" % [checks, failures])

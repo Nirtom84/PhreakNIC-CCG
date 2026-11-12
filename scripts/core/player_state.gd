@@ -1,6 +1,7 @@
 class_name PlayerState
 extends RefCounted
 var seat: int
+var starting_life: int = 20
 var life: int = 20
 var alive: bool = true
 var is_bot: bool = true

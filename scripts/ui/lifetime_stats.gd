@@ -42,7 +42,7 @@ func read():
  for k in ["modes", "difficulties", "players", "sets", "heroes", "stars", "played", "bought"]:
   var source = raw.get(k, {})
   if not source is Dictionary: continue
-  var allowed = {"modes": ["local", "online_humans", "online_bots"], "difficulties": ["0", "1", "2"], "players": ["2", "3", "4"], "sets": ["2025", "2026", "2026mog"], "heroes": heroes(), "stars": CardDB.originals.keys(), "played": CardDB.originals.keys(), "bought": CardDB.originals.keys()}[k]
+  var allowed = {"modes": ["local", "online_humans", "online_bots"], "difficulties": ["0", "1", "2", "3"], "players": ["2", "3", "4"], "sets": ["2025", "2026", "2026mog"], "heroes": heroes(), "stars": CardDB.originals.keys(), "played": CardDB.originals.keys(), "bought": CardDB.originals.keys()}[k]
   for id in allowed:
    if not source.has(id): continue
    if k in ["stars", "played", "bought"]: data[k][id] = number(source[id])

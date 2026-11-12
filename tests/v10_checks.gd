@@ -152,7 +152,8 @@ func run():
  server.queue_free()
  await frames()
  # Stop the driver immediately after removal, before it can play the freed permanent.
- for difficulty in [0, 1, 2]:
+ DefconSearch.fixed_rollouts = 1
+ for difficulty in [0, 1, 2, 3]:
   var e = GameEngine.new()
   root.add_child(e)
   e.setup([difficulty, difficulty], 42)

@@ -56,7 +56,7 @@ export function settings(v, partial=false) {
   }
   return out;
 }
-export function difficulty(n) { if (!Number.isInteger(n) || n<0 || n>2) fail('difficulty'); return n; }
+export function difficulty(n) { if (!Number.isInteger(n) || n<0 || n>3) fail('difficulty'); return n; }
 export function creation(v) {
   const who=identity(v), config=settings(v);
   if (!Array.isArray(v.seats) || v.seats.length<2 || v.seats.length>4) fail('seats');

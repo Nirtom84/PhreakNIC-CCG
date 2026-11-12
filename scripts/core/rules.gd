@@ -73,7 +73,8 @@ func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_p
 	deciders = choices.duplicate()
 	for seat in difficulties.size():
 		var p = PlayerState.new(seat)
-		p.life = state.starting_life
+		p.starting_life = state.starting_life * (2 if difficulties[seat] == BotDifficulty.Level.DEFCON else 1)
+		p.life = p.starting_life
 		p.difficulty = difficulties[seat]
 		p.is_bot = difficulties[seat] >= 0
 		state.players.append(p)

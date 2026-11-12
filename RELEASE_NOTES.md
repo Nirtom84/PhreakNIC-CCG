@@ -1,5 +1,20 @@
 # Release Notes
 
+## v0.21 — DEFCON difficulty, bots that reserve
+**New difficulty: DEFCON**
+- A fourth bot level above 31337 Elite, built to be very hard to beat. Pick it on the main menu or for bot seats in online games.
+- A DEFCON bot starts with **twice** everyone else's life (48 against your 24 in a standard two-player game).
+- It plays smarter than Elite: it learned which cards win from 40,000 games against itself, and it works out exactly whether it can finish you this turn.
+- It plays fair: it never sees your hand or the order of any deck. Its turns are as quick as Elite's.
+- DEFCON bots wear a skull-and-crossbones avatar.
+- In testing it beat Elite in 80–87% of games and Script Kiddie in 99%.
+
+**Bots reserve cards**
+- Bots now use the reserve mechanic at every level. Elite holds a strong card it can't afford yet, or one that would complete an opponent's combo; Phreak reserves when it has nothing good to buy; Script Kiddie reserves at random now and then.
+
+**Lifetime stats**
+- Games against DEFCON get their own row.
+
 ## v0.20 — Back out of dialogs, clearer card pickers
 **Changed your mind?**
 - Click or tap outside a dialog to back out, the same as Escape or the phone's back button. If the choice is required, the dialog stays and says "This choice can't be skipped".
