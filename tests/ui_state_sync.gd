@@ -44,16 +44,17 @@ func respond(table):
    if box.get_child(0).text.contains("damage incoming"):
     box.get_child(box.get_child_count() - 1).pressed.emit()
     continue
-   var grid = box.get_child(3).get_child(0)
-   var done = box.get_child(4)
+   var grid = box.get_node("DecisionScroll").get_child(0)
+   var offered = grid.get_meta("decision_buttons", grid.get_children())
+   var done = box.get_node("DecisionDone")
    if done.visible:
     var text: String = box.get_child(2).text
     var minimum = int(text.trim_prefix("Select ").split("–")[0])
-    if optional_one and minimum == 0 and grid.get_child_count() > 0: minimum = 1
-    for i in minimum: grid.get_child(i).pressed.emit()
+    if optional_one and minimum == 0 and offered.size() > 0: minimum = 1
+    for i in minimum: offered[i].pressed.emit()
     assert(not done.disabled)
     done.pressed.emit()
-   elif grid.get_child_count() > 0: grid.get_child(0).pressed.emit()
+   elif offered.size() > 0: offered[0].pressed.emit()
 func sync(table):
  var e = table.engine
  var p = e.state.players[0]

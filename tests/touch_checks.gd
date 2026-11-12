@@ -140,7 +140,7 @@ func run():
  table.decision("Inspect choice", [], choices, 0, 1, true)
  await settle()
  dialog = table.get_child(table.get_child_count() - 1)
- grid = dialog.get_child(0).get_child(3).get_child(0)
+ grid = dialog.get_child(0).get_node("DecisionScroll").get_child(0)
  button = grid.get_child(7)
  point = button.get_global_rect().get_center()
  finger(point, true)
@@ -165,8 +165,7 @@ func run():
  table.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
  verify(table.pending and table.inspect_overlay == null, "Back from inspect preserves pending decision")
  table.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
- verify(table.pending, "Back ignores a pending decision")
- dialog.get_child(0).get_child(4).pressed.emit()
+ verify(not table.pending, "Back cancels an optional pending decision")
  await settle()
  table.log_view.clear()
  table.log_view.scroll_following = false

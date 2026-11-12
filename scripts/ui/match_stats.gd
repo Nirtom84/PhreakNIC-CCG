@@ -80,7 +80,7 @@ static func from_dict(data: Dictionary):
    var value = data.seats[i].get(key, {} if key == "bought" else null)
    var expected = result.seats[i][key]
    if expected is int:
-    if not (value is int or value is float) or not is_finite(float(value)) or float(value) != floor(float(value)) or value < (-1 if key == "priciest_cost" else 0): return null
+    if not (value is int or value is float) or not is_finite(float(value)) or float(value) != floor(float(value)) or value < {"priciest_cost": -1, "final_life": -100000}.get(key, 0): return null
     value = int(value)
    elif typeof(value) != typeof(expected): return null
    if key in ["played", "bought"]:

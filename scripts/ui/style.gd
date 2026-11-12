@@ -303,3 +303,29 @@ static func music_controls(parent: Control):
  # Follow the drag live, but write the settings file once, on release.
  slider.value_changed.connect(func(value): Sfx.music_volume = value; Sfx.apply_music())
  slider.drag_ended.connect(func(_changed): Sfx.save())
+
+# Only a short, stationary press and release on the dim area is an outside click.
+# Screen gestures own their stream; TouchInput handles the paired emulated mouse.
+static func outside_close(panel: Control, content: Control, close: Callable):
+ panel.mouse_filter = Control.MOUSE_FILTER_STOP
+ var gesture = {"down": false, "origin": Vector2.ZERO, "at": 0, "moved": false}
+ panel.gui_input.connect(func(event):
+  if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION: return
+  if (event is InputEventScreenTouch or event is InputEventScreenDrag) and event.index != 0: return
+  var down = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed)
+  var up = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed) or (event is InputEventScreenTouch and not event.pressed)
+  if not (event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag): return
+  var point = panel.get_global_transform() * event.position
+  var inside = content.get_global_rect().grow(20).has_point(point)
+  if down:
+   gesture.down = not inside
+   gesture.origin = point
+   gesture.at = Time.get_ticks_msec()
+   gesture.moved = false
+  elif event is InputEventMouseMotion or event is InputEventScreenDrag:
+   if point.distance_to(gesture.origin) > 24: gesture.moved = true
+  elif up:
+   var clicked = gesture.down and not inside and not gesture.moved and point.distance_to(gesture.origin) <= 24 and Time.get_ticks_msec() - gesture.at < 450
+   gesture.down = false
+   if clicked: close.call()
+  panel.accept_event())

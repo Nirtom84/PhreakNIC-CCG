@@ -8,6 +8,7 @@ static func open(parent: Control) -> Control:
  var box = VBoxContainer.new()
  overlay.add_child(box)
  UIStyle.dialog(overlay, Vector2(1100, 900))
+ UIStyle.outside_close(overlay, box, overlay.queue_free)
  var text = RichTextLabel.new()
  text.bbcode_enabled = true
  text.size_flags_vertical = Control.SIZE_EXPAND_FILL

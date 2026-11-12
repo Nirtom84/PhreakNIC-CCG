@@ -40,6 +40,7 @@ var seed_value: int = 0
 var pending: bool = false
 # Answer the Back button / Escape gives the open dialog: its Cancel-like option, or null when Back should do nothing.
 var back_answer = null
+var decision_back: Callable
 var acting: bool = false
 var driving: bool = false
 var body: VBoxContainer
@@ -1031,33 +1032,113 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  var prompt_label = UIStyle.rich_label(box, escaped(prompt), 26)
  var search = LineEdit.new()
  search.placeholder_text = "Search all card names…"
+ if UIStyle.compact():
+  search.custom_minimum_size.y = 72
+  search.add_theme_font_size_override("font_size", 22)
  search.visible = searchable
  box.add_child(search)
  var counter = UIStyle.label(box, "Select %d–%d" % [min_n, max_n])
  counter.visible = multi
  var scroll = ScrollContainer.new()
+ scroll.name = "DecisionScroll"
  TouchInput.register_scroll(scroll)
  scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
  box.add_child(scroll)
+ var sections = VBoxContainer.new()
+ sections.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ scroll.add_child(sections)
  var grid = GridContainer.new()
  grid.columns = mini(cards.size(), 7) if not cards.is_empty() else (2 if options.size() > 6 else 1)
  grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
- scroll.add_child(grid)
+ sections.add_child(grid)
  var selected: Array = []
  var buttons: Array = []
  var done = Button.new()
- done.text = "Confirm selection"
+ done.name = "DecisionDone"
+ done.text = "Close" if max_n == 0 else ("Choose none" if min_n == 0 else "Confirm selection")
  done.disabled = min_n > 0
  done.visible = multi
  box.add_child(done)
  var rows = ceili(float(cards.size() if not cards.is_empty() else options.size()) / grid.columns)
- var dimensions = Vector2(grid.columns * 178, rows * 241 + 120) if not cards.is_empty() else Vector2(640, rows * 60 + 65)
+ # Cards from several zones are shown as headed sections: size the dialog for each section's own rows.
+ var headers = 0
+ if not cards.is_empty():
+  var where = locations()
+  var per_zone = {}
+  for c in cards:
+   var zone = where.get(c.uid, {}).get("zone", "other")
+   per_zone[zone] = int(per_zone.get(zone, 0)) + 1
+  if per_zone.size() > 1:
+   headers = per_zone.size()
+   rows = 0
+   for zone in per_zone: rows += ceili(float(per_zone[zone]) / grid.columns)
+ var dimensions = Vector2(grid.columns * 178, rows * 241 + 120 + headers * 44) if not cards.is_empty() else Vector2(640, rows * 60 + 65)
  # Give the wrapping prompt its real width up front; at width 0 it wraps per character and asks for a huge height.
  prompt_label.custom_minimum_size.x = mini(int(dimensions.x), int(get_viewport_rect().size.x) - 120)
  # Option buttons claim their height, so a two-line prompt grows the box instead of squeezing the buttons into a scroll.
  if cards.is_empty(): scroll.custom_minimum_size.y = mini(rows * 60, 480)
  UIStyle.dialog(overlay, dimensions)
  UIStyle.primary(done)
+ var hint = UIStyle.label(box, "This choice can't be skipped", 22)
+ hint.name = "DecisionHint"
+ hint.visible = false
+ decision_back = func():
+  if back_answer != null: answered.emit(back_answer)
+  elif multi and min_n == 0: answered.emit([])
+  else:
+   hint.visible = true
+   box.set_meta("skip_flash", true)
+   box.queue_redraw()
+   box.modulate = Color(1, 0.65, 0.65)
+   var flash = UIStyle.animation(box)
+   flash.tween_property(box, "modulate", Color.WHITE, UIStyle.motion(0.3))
+   flash.tween_callback(func(): box.set_meta("skip_flash", false); box.queue_redraw())
+ box.draw.connect(func():
+  if box.get_meta("skip_flash", false):
+   var border = UIStyle.box(Color.TRANSPARENT, UIStyle.RED, 12)
+   border.set_border_width_all(3)
+   box.draw_style_box(border, Rect2(Vector2(-20, -20), box.size + Vector2(40, 40))))
+ UIStyle.outside_close(overlay, box, func(): decision_back.call())
+ var zone_map = locations()
+ var groups = {}
+ var targets = {}
+ var section_nodes = []
+ for c in cards:
+  var zone = zone_map.get(c.uid, {}).get("zone", "other")
+  if not groups.has(zone): groups[zone] = []
+  groups[zone].append(c)
+ var order = []
+ for seat in [human_seat] + range(engine.state.players.size()).filter(func(n): return n != human_seat):
+  for zone in ["hand", "discard", "deck", "play_area", "reserve"]: order.append("%d:%s" % [seat, zone])
+ order.append_array(["center_row", "center_deck", "removed", "other"])
+ for zone in groups:
+  if zone not in order: order.append(zone)
+ if groups.size() > 1:
+  grid.visible = false
+  for zone in order:
+   if not groups.has(zone): continue
+   var section = VBoxContainer.new()
+   section.name = "DecisionSection"
+   section.set_meta("decision_section", true)
+   section.set_meta("zone", zone)
+   sections.add_child(section)
+   UIStyle.label(section, "// %s · %d" % [decision_zone_name(zone).to_upper(), groups[zone].size()], 22).add_theme_color_override("font_color", UIStyle.CYAN)
+   var zone_grid = GridContainer.new()
+   zone_grid.columns = grid.columns
+   section.add_child(zone_grid)
+   section_nodes.append(section)
+   targets[zone] = zone_grid
+ elif groups.size() == 1:
+  var zone = groups.keys()[0]
+  if zone in ["%d:hand" % human_seat, "%d:discard" % human_seat]:
+   var subtitle = UIStyle.label(box, "From " + decision_zone_name(zone).to_lower(), 22)
+   subtitle.name = "DecisionZoneSubtitle"
+   box.move_child(subtitle, 3)
+ if groups.size() <= 1:
+  sections.remove_child(grid)
+  scroll.remove_child(sections)
+  sections.queue_free()
+  scroll.add_child(grid)
  for i in range(cards.size() if not cards.is_empty() else options.size()):
   var b = Button.new()
   b.toggle_mode = multi
@@ -1078,13 +1159,15 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
     if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_RIGHT and event.pressed: inspect_card(cards[i]))
    b.mouse_exited.connect(hide_zoom)
   else:
-   b.custom_minimum_size.y = 56
+   b.custom_minimum_size.y = 72 if UIStyle.compact() else 56
    b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
    b.text = str(options[i]).replace("{H}", "").replace("{D}", "")
    if "{H}" in str(options[i]) or "{D}" in str(options[i]):
     b.icon = load("res://assets/icons/hack.png" if "{H}" in str(options[i]) else "res://assets/icons/damage.png")
     b.add_theme_constant_override("icon_max_width", 26)
-  grid.add_child(b)
+  var zone = zone_map.get(cards[i].uid, {}).get("zone", "other") if not cards.is_empty() else "other"
+  targets.get(zone, grid).add_child(b)
+  if not cards.is_empty(): b.set_meta("uid", cards[i].uid)
   buttons.append(b)
   b.pressed.connect(func():
    Sfx.play("button")
@@ -1094,17 +1177,32 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
    elif selected.size() < max_n: selected.append(i)
    else: b.button_pressed = false
    counter.text = "Selected %d / %d–%d" % [selected.size(), min_n, max_n]
-   done.disabled = selected.size() < min_n or selected.size() > max_n)
+   done.disabled = selected.size() < min_n or selected.size() > max_n
+   done.text = "Choose none" if selected.is_empty() and min_n == 0 else "Confirm selection")
+ grid.set_meta("decision_buttons", buttons)
+ if is_instance_valid(sections) and not sections.is_queued_for_deletion(): sections.set_meta("decision_buttons", buttons)
  search.text_changed.connect(func(value):
-  for i in buttons.size(): buttons[i].visible = value.to_lower() in str(options[i]).to_lower())
+  for i in buttons.size(): buttons[i].visible = value.to_lower() in (str(options[i]) if cards.is_empty() else str(engine.db().get_card(cards[i].id).name)).to_lower()
+  for section in section_nodes:
+   section.visible = section.get_child(1).get_children().any(func(b): return b.visible))
  done.pressed.connect(func(): answered.emit(selected.duplicate()))
  var result = await answered
+ decision_back = Callable()
  back_answer = null
  remove_child(overlay)
  overlay.queue_free()
  pending = false
  redraw()
  return result
+func decision_zone_name(zone: String) -> String:
+ var names = {"hand": "hand", "discard": "discard pile", "deck": "deck", "play_area": "in play", "reserve": "reserve"}
+ if ":" in zone:
+  var parts = zone.split(":")
+  var seat = int(parts[0])
+  if parts[1] not in names: return "Other"
+  if seat == human_seat: return "In play (yours)" if parts[1] == "play_area" else "Your " + names[parts[1]]
+  return seat_name(seat) + "'s " + names[parts[1]]
+ return {"center_row": "Center Row", "center_deck": "Center Deck", "removed": "Removed from game"}.get(zone, "Other")
 func view_cards(title: String, cards: Array):
  if pending or engine.busy or driving or acting: return
  await decision(title, ["Close"] if cards.is_empty() else [], cards, 0, 0, true)
@@ -1507,10 +1605,9 @@ func menu():
  blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  blocker.add_to_group("touch_modal")
  add_child(blocker)
- blocker.gui_input.connect(func(event):
-  if (event is InputEventMouseButton or event is InputEventScreenTouch) and event.pressed: close_menu())
  var panel = UIStyle.panel("// GAME MENU")
  blocker.add_child(panel)
+ UIStyle.outside_close(blocker, panel, close_menu)
  panel.mouse_filter = Control.MOUSE_FILTER_STOP
  var right = menu_button.global_position.x + menu_button.size.x
  panel.position = Vector2(maxf(16, right - 500), menu_button.global_position.y + menu_button.size.y + 8)
@@ -1750,11 +1847,7 @@ func inspect_card(c, interactive: bool = false):
  box.minimum_size_changed.connect(fit_sheet)
  dim.resized.connect(fit_sheet)
  fit_sheet.call_deferred()
- dim.gui_input.connect(func(event):
-  if (event is InputEventScreenTouch or event is InputEventMouseButton):
-   dim.accept_event()
-   if event.pressed: dim.set_meta("closing", true)
-   elif dim.has_meta("closing"): close_inspect())
+ UIStyle.outside_close(dim, panel, close_inspect)
 func sheet_activate(c, index: int):
  close_inspect()
  await activate_card(c, index)
@@ -1790,7 +1883,7 @@ func go_back():
  elif is_instance_valid(rules_overlay): rules_overlay.queue_free(); rules_overlay = null
  elif is_instance_valid(game_menu): close_menu()
  elif pending:
-  if back_answer != null: answered.emit(back_answer)
+  if decision_back.is_valid(): decision_back.call()
  else: menu()
 
 func _input(event):

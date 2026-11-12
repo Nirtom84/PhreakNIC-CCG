@@ -67,6 +67,7 @@ func open_bans(pool: String, value: Array, callback: Callable = Callable(), read
  if not readonly: UIStyle.button(row, "Clear all", func(): banned.clear(); publish()).custom_minimum_size.y = 56
  UIStyle.button(row, "Done", overlay.queue_free).custom_minimum_size.y = 56
  UIStyle.dialog(overlay, Vector2(1160, 920))
+ UIStyle.outside_close(overlay, box, overlay.queue_free)
  refresh()
  return overlay
 func toggle_card(id: String):

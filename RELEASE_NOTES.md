@@ -1,5 +1,18 @@
 # Release Notes
 
+## v0.20 — Back out of dialogs, clearer card pickers
+**Changed your mind?**
+- Click or tap outside a dialog to back out, the same as Escape or the phone's back button. If the choice is required, the dialog stays and says "This choice can't be skipped".
+- Optional card pickers show a **Choose none** button until you select a card.
+- Backing out no longer uses up the ability. You can open Disassembled Sink, FOTTR Greatest Hits, Payphone, Candy Factory, Clarion Inn Chandeliers or Tennessee Department of Health, change your mind, and still use it later that turn.
+- The inspect view, in-game menu, rules page, ban picker and Hero picker also close when you click outside them.
+
+**Hand and discard pile separated**
+- When a card picker offers cards from more than one place, they are grouped under headers such as "YOUR HAND · 5" and "YOUR DISCARD PILE · 4", so identical Hackers and Attacks are no longer mixed together.
+
+**Fix**
+- A player finishing below zero life could make a saved game lose its match stats.
+
 ## v0.19 — Flesh Oprah prompt
 **Fix**
 - **Flesh Oprah:** the card lets you remove it to buy O.P.R.A.H. for free, which only works on an O.P.R.A.H. you can buy (in the Center Row or your reserve). The prompt used to offer this even when there was none, so the card could be removed for nothing. It now warns you first: "O.P.R.A.H. is not in the Center Row or your reserve right now. Remove this card anyway?"

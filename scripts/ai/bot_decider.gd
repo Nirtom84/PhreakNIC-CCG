@@ -87,6 +87,9 @@ func choose_option(player, prompt: String, options: Array[String]) -> int:
 		for name in priorities:
 			if name in options: return options.find(name)
 		return 0
+	# Payphone may be cancelled by humans, but a bot must resolve its free power.
+	if prompt == "Choose one" and options.size() == 3 and options[2] == "Cancel" and options[0] == "+2 hacking" and options[1] == "Deal 2 damage":
+		return engine.rand_range(0, 1) if difficulty == 0 else 1
 	if difficulty == 0: return engine.rand_range(0, options.size() - 1)
 	if prompt.begins_with("Choose pile"):
 		# The split dialog contains stable ids, allowing equal evaluation of each pile.

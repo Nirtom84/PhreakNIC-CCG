@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.19**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.20**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -122,6 +122,7 @@ godot4.7.1 --headless --path . -s tests/v15_checks.gd    # card movement, phone 
 godot4.7.1 --headless --path . -s tests/v16_checks.gd    # bot pace, turn recap, host-set online bot pace
 godot4.7.1 --headless --path . -s tests/v17_checks.gd    # lifetime stats, stats screen and stats card
 godot4.7.1 --headless --path . -s tests/v18_checks.gd    # per-card Auto toggles (local and online), card-face avatars
+godot4.7.1 --headless --path . -s tests/v20_checks.gd    # backing out of dialogs, grouped card pickers
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```
 

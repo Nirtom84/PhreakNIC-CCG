@@ -88,9 +88,10 @@ func respond(table):
    if box.get_child(0).text.contains("damage incoming"):
     box.get_child(box.get_child_count() - 1).pressed.emit()
    elif box.get_child_count() >= 5:
-    var grid = box.get_child(3).get_child(0)
-    var done = box.get_child(4)
-    if grid.get_child_count() > 0: grid.get_child(0).pressed.emit()
+    var grid = box.get_node("DecisionScroll").get_child(0)
+    var offered = grid.get_meta("decision_buttons", grid.get_children())
+    var done = box.get_node("DecisionDone")
+    if offered.size() > 0: offered[0].pressed.emit()
     if done.visible: done.pressed.emit()
 func has_label(node, text):
  if node is Label and node.text == text: return true

@@ -11,13 +11,14 @@ func answer():
 		var overlay = table.get_child(table.get_child_count() - 1)
 		if not overlay is PanelContainer: continue
 		var box = overlay.get_child(0)
-		var grid = box.get_child(3).get_child(0)
-		var done = box.get_child(4)
+		var grid = box.get_node("DecisionScroll").get_child(0)
+		var offered = grid.get_meta("decision_buttons", grid.get_children())
+		var done = box.get_node("DecisionDone")
 		if done.visible:
 			var minimum = int(box.get_child(2).text.trim_prefix("Select ").split("–")[0])
-			for i in minimum: grid.get_child(i).pressed.emit()
+			for i in minimum: offered[i].pressed.emit()
 			done.pressed.emit()
-		elif grid.get_child_count() > 0: grid.get_child(0).pressed.emit()
+		elif offered.size() > 0: offered[0].pressed.emit()
 func run():
 	var args = OS.get_cmdline_user_args()
 	var out: String = args[0]

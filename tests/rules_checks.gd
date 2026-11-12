@@ -5,6 +5,7 @@ var test
 var e
 class FixedDecider extends Decider:
 	var requested_id: String = ""
+	var choose_none: bool = false
 	var yes: bool = true
 	var selected_option: int = 0
 	var named_id: String = "Hacking"
@@ -15,6 +16,7 @@ class FixedDecider extends Decider:
 		return yes
 	func choose_option(_p, _prompt: String, _choices: Array[String]) -> int: return selected_option
 	func choose_cards(_p, _prompt: String, cards: Array, min_n: int, max_n: int) -> Array:
+		if choose_none and min_n == 0: return []
 		for c in cards:
 			if c.id == requested_id: return [c]
 		return cards.slice(0, min_n if min_n > 0 else mini(1, max_n))
@@ -56,6 +58,33 @@ func card(id: String, zone: String = "hand", seat: int = 0):
 	return null
 func check(condition: bool, message: String): test.verify(condition, message)
 func run():
+	for id in ["Disassembled Sink", "FOTTR Greatest Hits", "Payphone"]:
+		await fixture()
+		var player = e.active()
+		var source = card(id, "play_area")
+		var decider = e.deciders[0]
+		decider.choose_none = true
+		decider.selected_option = 2
+		await e.activate(player, source)
+		check(not source.flags.used and e.activatable_abilities(player, source)[0].enabled, id + " cancellation preserves use")
+		decider.choose_none = false
+		decider.selected_option = 0
+		var hand_size = player.hand.size()
+		var removed_size = e.state.removed.size()
+		var hacking = player.hacking
+		var life = e.state.players[1].life
+		await e.activate(player, source)
+		check(source.flags.used and not e.activatable_abilities(player, source)[0].enabled, id + " real action consumes use")
+		check(not await e.activate(player, source), id + " rejects repeat activation this turn")
+		if id == "Payphone":
+			check(player.hacking == hacking + 2, "Payphone hacking option")
+			source.flags.used = false
+			decider.selected_option = 1
+			await e.activate(player, source)
+			check(e.state.players[1].life == life - 2 and source.flags.used, "Payphone damage option")
+		else:
+			check(e.state.removed.size() == removed_size + 1, id + " removes card")
+			check(player.hand.size() == hand_size if id == "Disassembled Sink" else e.state.players[1].life == life - 2, id + " applies reward")
 	await fixture()
 	var p = e.active()
 	var q = e.state.players[1]

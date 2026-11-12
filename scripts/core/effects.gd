@@ -197,10 +197,13 @@ func spend_number(p, maximum: int, prompt: String) -> int:
 	if n not in allowed: n = 0
 	p.hacking -= n
 	return n
-func choice_power(p, c, n: int):
-	var option = await e.option(p, "Choose one", ["+%d hacking" % n, "Deal %d damage" % n])
+func choice_power(p, c, n: int, cancellable := false):
+	var options: Array[String] = ["+%d hacking" % n, "Deal %d damage" % n]
+	if cancellable: options.append("Cancel")
+	var option = await e.option(p, "Choose one", options)
 	if option == 0: p.hacking += n
-	else: await e.deal(p, n, c)
+	elif option == 1: await e.deal(p, n, c)
+	return option
 func copied(p, original, host):
 	# Copy text only; name/type/cost checks continue to see the copying Action.
 	var virtual = CardInstance.new(-original.uid, host.id, p.seat)
@@ -1186,11 +1189,13 @@ func activate(p, c, index: int):
 			"Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4": p.hacking += e.controlled(p, "Botnet").size()
 			"Tableskirts", "Unattended Phone": p.hacking += 1
 			"The Big Dipper": add_life(p, 1)
-			"Payphone": await choice_power(p, c, 2)
+			"Payphone":
+				if await choice_power(p, c, 2, true) == 2: c.flags.used = false
 			"Shell Speech": e.draw(p, 1)
 			"Disassembled Sink", "FOTTR Greatest Hits":
 				var removed = await e.remove_choices(p, p.hand, 0, 1)
-				if not removed.is_empty():
+				if removed.is_empty(): c.flags.used = false
+				else:
 					if id == "Disassembled Sink": e.draw(p, 1)
 					else: await e.deal(p, 2, c)
 	elif PAID.has(id):
@@ -1217,7 +1222,8 @@ func activate(p, c, index: int):
 				e.remove(c)
 				await e.deal(p, 2, c)
 			"Clarion Inn Chandeliers":
-				var selected = await e.choose(p, "Recover removed card", e.state.removed)
+				# Nothing is paid or removed until a card is picked, so a human may back out (bots always pick).
+				var selected = await e.choose(p, "Recover removed card", e.state.removed, 1 if p.is_bot else 0, 1)
 				if not selected.is_empty():
 					if selected[0].owner == p.seat or e.can_acquire(p):
 						e.remove(c)
@@ -1230,7 +1236,7 @@ func activate(p, c, index: int):
 					c.counters += 1
 			"Tennessee Department of Health":
 				var choices = e.permanents().filter(func(x): return e.db().has_subtype(x.effect_id(), "Location") and x.counters > 0)
-				for x in await e.choose(p, "Remove location counter", choices):
+				for x in await e.choose(p, "Remove location counter", choices, 1 if p.is_bot else 0, 1):
 					x.counters -= 1
 					await e.counter_removed(x)
 

@@ -43,6 +43,7 @@ func open(selected: Callable) -> Control:
   button.add_theme_constant_override("icon_max_width", 160)
  UIStyle.button(box, "Back", overlay.queue_free)
  UIStyle.dialog(overlay, Vector2(1100, 900))
+ UIStyle.outside_close(overlay, box, overlay.queue_free)
 
  return overlay
 
@@ -67,6 +68,7 @@ func inspect_hero(id: String):
  box.add_child(UIStyle.picture(CardDB.image_path(id), Vector2(480, 656)))
  UIStyle.button(box, "Close", overlay.queue_free)
  UIStyle.dialog(overlay, Vector2(520, 750))
+ UIStyle.outside_close(overlay, box, overlay.queue_free)
 
 func close_top() -> bool:
  while not overlays.is_empty():
