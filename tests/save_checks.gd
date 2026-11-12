@@ -165,15 +165,15 @@ func ui():
  var hacking_before = hp.hacking
  var life_before = hp.life
  var hand_before = hp.hand.size()
- settings.auto_botnet = true
- await table.auto_activate_botnet()
+ for group in settings.AUTO_GROUPS.values(): settings.auto_activate[group] = true
+ while await table.auto_step(true): pass
  var botnets = table.engine.controlled(hp, "Botnet").size()
  var gain = botnets * botnets + hp.play_area.filter(func(c): return c.effect_id() == "Tableskirts" or c.effect_id() == "Unattended Phone").size(); verify(hp.hacking == hacking_before + gain, "Auto-activate granted +%d hacking" % gain); verify(hp.life == life_before + hp.play_area.filter(func(c): return c.effect_id() == "The Big Dipper").size(), "Auto-activate granted life from The Big Dipper"); verify(hp.hand.size() == hand_before + hp.play_area.filter(func(c): return c.effect_id() == "Shell Speech").size(), "Auto-activate drew cards from Shell Speech")
  settings.save()
  var ab_config = ConfigFile.new()
  ab_config.load("user://settings.cfg")
- verify(ab_config.get_value("game", "auto_botnet", false) == true, "Auto-activate Botnet persists")
- settings.auto_botnet = false
+ verify(ab_config.get_value("auto_activate", "Botnet", false) == true, "Auto-activate Botnet persists")
+ settings.auto_activate.clear()
  settings.save()
  for viewport_size in [Vector2(1920, 1080), Vector2(2400, 1080), Vector2(1920, 1440)]:
   table.size = viewport_size

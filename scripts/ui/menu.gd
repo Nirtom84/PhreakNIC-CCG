@@ -89,7 +89,7 @@ func _ready():
  UIStyle.label(menu, "// YOUR HANDLE", 18)
  var handle_row = HBoxContainer.new()
  menu.add_child(handle_row)
- avatar_preview = UIStyle.avatar(Sfx.hero_id)
+ avatar_preview = UIStyle.avatar(UIStyle.avatar_id(Sfx.handle, Sfx.hero_id))
  handle_row.add_child(avatar_preview)
  handle_input = LineEdit.new()
  handle_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -214,12 +214,6 @@ func _ready():
  confirmation.button_pressed = Sfx.confirm_end_turn
  switches.add_child(confirmation)
  confirmation.toggled.connect(func(enabled): Sfx.confirm_end_turn = enabled; Sfx.save())
- var auto_botnet = CheckButton.new()
- auto_botnet.text = "Auto-activate"
- auto_botnet.tooltip_text = "Each of your turns, auto-fire your no-cost, no-decision abilities: Botnet, Mognet, Tableskirts, Unattended Phone, The Big Dipper, Shell Speech"
- auto_botnet.button_pressed = Sfx.auto_botnet
- switches.add_child(auto_botnet)
- auto_botnet.toggled.connect(func(enabled): Sfx.auto_botnet = enabled; Sfx.save())
  var sound = CheckButton.new()
  sound.text = "Sound enabled"
  sound.button_pressed = not Sfx.muted
@@ -316,8 +310,7 @@ func go_back():
  else: get_tree().quit()
 
 func refresh_avatar():
- var hero = CardDB.card_id_for_name(Sfx.handle)
- if hero.is_empty(): hero = Sfx.hero_id
+ var hero = UIStyle.avatar_id(Sfx.handle, Sfx.hero_id)
  var replacement = UIStyle.avatar(hero)
  avatar_preview.get_child(0).texture = replacement.get_child(0).texture
  replacement.free()

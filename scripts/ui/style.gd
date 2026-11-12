@@ -121,6 +121,10 @@ static func dialog(p: PanelContainer, dimensions: Vector2 = Vector2(640, 400)):
  content.resized.connect(content.queue_redraw)
 
 const AVATAR_CROP = Rect2(90, 62, 420, 420)
+static func avatar_id(handle: String, hero_id: String, catalog = null) -> String:
+ var book = CardDB if catalog == null else catalog
+ var matched = book.card_id_for_name(handle)
+ return hero_id if matched.is_empty() else matched
 static func avatar(card_id: String, width: int = 64) -> Control:
  var frame = PanelContainer.new()
  var border = box(BACKGROUND, CYAN, 0)

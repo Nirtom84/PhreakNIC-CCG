@@ -1,5 +1,17 @@
 # Changelog
 
+## v0.18 — Auto-activate and card-face avatars
+Both additions in this version started as pull requests from **@mogorman**. Thank you!
+
+**Auto toggle on cards** (idea and first version by @mogorman)
+- Permanents with a free once-per-turn ability now carry an **Auto** toggle: Botnet, Mognet, Tableskirts, Unattended Phone, The Big Dipper and Shell Speech. Turn it on and the card activates by itself on each of your turns.
+- The toggle is per card name (switching one Botnet switches them all), is remembered between games, and is off until you turn it on.
+- Botnet and Mognet wait while you still have a playable copy in hand, so you never lose Hacking by firing early. If you end your turn with one waiting, it fires first.
+- Works in games against bots and in online games.
+
+**Card-face avatars** (by @mogorman)
+- If your handle is the name of a card (for example `notlarry`), your avatar is that card's art. This shows at the table, in the menu preview, in the online lobby and on the result and stats cards.
+
 ## v0.17 — Lifetime stats
 **Your stats**
 - The game now keeps your record on your device: games, wins, win rate, best streak and time played, split into games against bots, online against players and online against bots, with breakdowns by bot difficulty, card set and table size.

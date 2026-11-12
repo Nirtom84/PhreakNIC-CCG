@@ -107,7 +107,7 @@ func _ready():
  columns.add_child(left)
  var toolbar = HBoxContainer.new()
  left.add_child(toolbar)
- turn_avatar = UIStyle.avatar(Sfx.hero_id, 56)
+ turn_avatar = UIStyle.avatar(UIStyle.avatar_id(Sfx.handle, Sfx.hero_id), 56)
  toolbar.add_child(turn_avatar)
  banner = UIStyle.label(toolbar, "Connecting…", 28)
  banner.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -228,7 +228,6 @@ func _ready():
   if p.seat == human_seat: begin_recap()
   append_log("TURN %d · Seat %d connected" % [engine.state.turn, p.seat])
   turn_band(p)
-  if not tutorial_mode and p.seat == human_seat and Sfx.auto_botnet: auto_activate_botnet()
   redraw())
  engine.turn_ended.connect(func(p):
   if p.seat == human_seat: end_recap_turn())
@@ -267,8 +266,7 @@ func seat_name(seat: int) -> String:
  return seat_names[seat] if seat < seat_names.size() else ("You" if seat == human_seat else "Bot %d" % seat)
 ## A seat's avatar card: a card named after the seat's handle, else the seat's Hero.
 func avatar_hero(seat: int) -> String:
- var match = CardDB.card_id_for_name(seat_name(seat))
- return match if not match.is_empty() else seat_heroes[seat]
+ return UIStyle.avatar_id(seat_name(seat), seat_heroes[seat], engine.db())
 func player_name(p) -> String:
  if online_session != null: return seat_name(p.seat)
  return seat_name(human_seat) if p.seat == human_seat else "%s · %s" % [seat_name(p.seat), BotDifficulty.DISPLAY_NAMES[p.difficulty]]
@@ -536,6 +534,9 @@ func redraw_now():
  last_locations = next_locations
  if not moves.is_empty(): animate_moves(moves, old_rects, old_anchors, old_locations, next_locations)
  track_life()
+ auto_notice()
+ # Run outside synchronous rebuilds and engine state_changed callbacks.
+ auto_step.call_deferred()
  if online_session == null and auto_drive and engine.active().is_bot and not driving and not engine.busy and not engine.state.finished: drive_bot.call_deferred()
 func region(parent, node, pos: Vector2, dimensions: Vector2, title: String = ""):
  if title.is_empty():
@@ -657,7 +658,8 @@ func card_widget(c, zone: String, width: int) -> Control:
  var human = engine.state.players[human_seat]
  var legal = engine.can_play(human, c) if zone == "hand" else engine.can_buy(human, c)
  var abilities_key = engine.activatable_abilities(human, c) if zone == "permanent" else []
- var key = [c, c.id, c.effect_id(), zone, width, legal, c.counters, str(abilities_key), engine.effective_cost(human, c), available() if zone == "permanent" else true]
+ var auto_group = Sfx.AUTO_GROUPS.get(c.effect_id(), "") if zone == "permanent" and c.controller == human_seat else ""
+ var key = [Sfx.auto_enabled(auto_group), c, c.id, c.effect_id(), zone, width, legal, c.counters, str(abilities_key), engine.effective_cost(human, c), available() if zone == "permanent" else true]
  if rebuilding and widget_cache.has(c.uid):
   var previous = widget_cache[c.uid]
   if is_instance_valid(previous) and previous.get_meta("visual_key") == key:
@@ -740,6 +742,26 @@ func card_widget(c, zone: String, width: int) -> Control:
    b.disabled = not available() or not ability.enabled
    b.add_theme_font_size_override("font_size", 12)
    b.tooltip_text = ability.label
+ if not auto_group.is_empty():
+  # Desktop: the rig row has room for one button row only, so the toggle sits on the foot of the card art.
+  # Phone: the board popup has the height for a full-size button under the card.
+  var toggle = UIStyle.button(box if UIStyle.compact() else button, "Auto: on" if Sfx.auto_enabled(auto_group) else "Auto: off", func():
+   Sfx.auto_activate[auto_group] = not Sfx.auto_enabled(auto_group)
+   Sfx.save()
+   redraw())
+  toggle.name = "AutoActivate"
+  toggle.toggle_mode = true
+  toggle.button_pressed = Sfx.auto_enabled(auto_group)
+  toggle.custom_minimum_size.y = 72 if UIStyle.compact() else 26
+  if not UIStyle.compact():
+   toggle.add_theme_font_size_override("font_size", 12)
+   toggle.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
+   toggle.offset_top = -26
+   var plate = UIStyle.box(Color(UIStyle.BACKGROUND, 0.92), UIStyle.GREEN if Sfx.auto_enabled(auto_group) else UIStyle.MUTED, 0)
+   plate.set_content_margin_all(2)
+   for state in ["normal", "hover", "pressed"]: toggle.add_theme_stylebox_override(state, plate)
+   toggle.add_theme_color_override("font_color", UIStyle.GREEN if Sfx.auto_enabled(auto_group) else UIStyle.MUTED)
+   toggle.add_theme_color_override("font_pressed_color", UIStyle.GREEN if Sfx.auto_enabled(auto_group) else UIStyle.MUTED)
  if zone == "market" or zone == "reserve":
   var cost = HBoxContainer.new()
   if UIStyle.compact():
@@ -879,18 +901,57 @@ func select_hand(c):
  UIStyle.primary(play)
  UIStyle.button(row, "Inspect", func(): clear_hand_selection(); inspect_card(c, true))
  UIStyle.button(row, "Close", clear_hand_selection)
-func auto_activate_botnet():
- var ids = ["Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4", "Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4", "Tableskirts", "Unattended Phone", "The Big Dipper", "Shell Speech"]
+var auto_turn: int = -1
+var auto_sent: Dictionary = {}
+var auto_inflight: bool = false
+var auto_ending: bool = false
+var auto_tip_shown: bool:
+ get: return Sfx.auto_tip_shown
+ set(value): Sfx.auto_tip_shown = value
+signal auto_view_received
+var auto_view_seen: bool = false
+func auto_ready() -> bool:
+ return engine != null and engine.state != null and not tutorial_mode and not engine.state.finished and engine.active().seat == human_seat and available() and not acting and not is_instance_valid(inspect_overlay) and not is_instance_valid(game_menu) and not is_instance_valid(rules_overlay)
+func auto_candidate(ignore_hold: bool = false):
  var p = engine.state.players[human_seat]
- for _i in range(120):
-  if not is_instance_valid(engine) or engine.state == null or engine.state.finished: return
-  if available(): break
-  await get_tree().process_frame
  for c in engine.permanents():
-  if c.controller != p.seat or c.effect_id() not in ids: continue
-  if engine.activatable_abilities(p, c).any(func(a): return a.index == 0 and a.enabled):
-   await activate_card(c, 0)
+  var group = Sfx.AUTO_GROUPS.get(c.effect_id(), "")
+  if c.controller != human_seat or not Sfx.auto_enabled(group) or auto_sent.has(c.uid): continue
+  if not engine.activatable_abilities(p, c).any(func(a): return a.index == 0 and a.enabled): continue
+  if not ignore_hold and group in ["Botnet", "Mognet"] and p.hand.any(func(h): return engine.db().named(h.effect_id(), group) and engine.can_play(p, h)): continue
+  return c
+ return null
+func auto_step(ignore_hold: bool = false):
+ # Called every frame: with every Auto toggle off (the default) it costs one dictionary scan.
+ if not Sfx.auto_activate.values().has(true): return false
+ if not auto_ready() or auto_inflight or (auto_ending and not ignore_hold): return false
+ if auto_turn != engine.state.turn:
+  auto_turn = engine.state.turn
+  auto_sent.clear()
+ var c = auto_candidate(ignore_hold)
+ if c == null: return false
+ # Record before sending: an online acknowledgement may arrive after more redraws.
+ auto_sent[c.uid] = true
+ auto_inflight = true
+ await activate_card(c, 0)
+ if online_session != null:
+  # Wait for the server's next view, but never forever: a refused action sends none,
+  # and a stuck flag here would also block End Turn.
+  auto_view_seen = false
+  auto_view_received.connect(func(): auto_view_seen = true, CONNECT_ONE_SHOT)
+  var deadline = Time.get_ticks_msec() + 3000
+  while not auto_view_seen and Time.get_ticks_msec() < deadline and is_inside_tree(): await get_tree().process_frame
+ auto_inflight = false
  redraw()
+ return true
+func auto_notice():
+ if auto_tip_shown or tutorial_mode or engine.state.finished: return
+ for c in engine.permanents():
+  var group = Sfx.AUTO_GROUPS.get(c.effect_id(), "")
+  if c.controller == human_seat and not group.is_empty() and not Sfx.auto_enabled(group):
+   auto_tip_shown = true
+   show_notice("Tip: tap Auto on %s to activate it by itself each turn" % engine.db().get_card(c.id).name)
+   return
 func activate_card(c, index: int):
  if not available(): return
  if online_session != null: online_action("activate", c.uid, index); return
@@ -911,7 +972,13 @@ func play_all(basics: bool = false):
  acting = false
  redraw()
 func end_human_turn(automatic: bool = false):
- if not available(): return
+ if not available() or auto_inflight or auto_ending: return
+ auto_ending = true
+ while await auto_step(true):
+  if not auto_ready():
+   auto_ending = false
+   return
+ auto_ending = false
  if not automatic and Sfx.confirm_end_turn and not nothing_left():
   var p = engine.state.players[human_seat]
   var n = p.hand.filter(func(c): return engine.can_play(p, c)).size()
@@ -1769,6 +1836,7 @@ func _process(delta):
   if recap_elapsed >= 20: dismiss_recap()
  if engine != null and engine.state != null and not match_stats.finished: match_stats.duration += delta
  if engine == null or engine.state == null: return
+ if not synchronous_redraw: auto_step()
  position_countdowns()
  auto_save()
  update_save_button()
@@ -1944,7 +2012,9 @@ func setup_online():
  connection_dot.tooltip_text = online_session.status
  connection_dot.add_theme_color_override("font_color", UIStyle.GREEN if online_session.status == "Connected" else UIStyle.AMBER)
  speed_button.visible = false
- client.view_changed.connect(redraw)
+ client.view_changed.connect(func():
+  auto_view_received.emit()
+  redraw())
  for text in client.log_history: append_log(text)
  client.log.connect(append_log)
  client.error.connect(func(reason): show_notice(str(reason)))

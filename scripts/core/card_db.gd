@@ -70,9 +70,12 @@ func names(id: String) -> Array:
 func card_id_for_name(name: String) -> String:
 	var target = str(name).to_lower().strip_edges()
 	if target.is_empty(): return ""
+	var found = ""
 	for id in cards:
-		if str(cards[id].name).to_lower() == target: return id
-	return ""
+		if str(cards[id].name).to_lower() != target: continue
+		if has_subtype(id, "Hero"): return id
+		if found.is_empty(): found = id
+	return found
 func in_pool(id: String, pool: String = "2026") -> bool:
 	if not originals.has(id) or pool not in POOLS: return false
 	if pool == "2026mog":

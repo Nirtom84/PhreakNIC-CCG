@@ -30,7 +30,16 @@ var music_muted: bool = false
 var music: AudioStreamPlayer
 var auto_end_turn: bool = true
 var confirm_end_turn: bool = true
-var auto_botnet: bool = false
+const AUTO_GROUPS = {"Botnet": "Botnet", "Botnet1": "Botnet", "Botnet2": "Botnet", "Botnet3": "Botnet", "Botnet4": "Botnet", "Mognet": "Mognet", "Mognet1": "Mognet", "Mognet2": "Mognet", "Mognet3": "Mognet", "Mognet4": "Mognet", "Tableskirts": "Tableskirts", "Unattended Phone": "Unattended Phone", "The Big Dipper": "The Big Dipper", "Shell Speech": "Shell Speech"}
+var auto_activate: Dictionary = {}
+var auto_tip_shown: bool = false
+func auto_enabled(group: String) -> bool: return auto_activate.get(group, false) == true
+func load_auto(config: ConfigFile):
+ auto_activate.clear()
+ var legacy = config.get_value("game", "auto_botnet", false)
+ for group in AUTO_GROUPS.values():
+  var value = config.get_value("auto_activate", group, legacy is bool and legacy)
+  auto_activate[group] = value if value is bool else false
 var starting_life: int = 0
 var card_pool: String = "2026"
 var banned_by_pool: Dictionary = {"2025": [], "2026": [], "2026mog": []}
@@ -57,10 +66,11 @@ func _ready():
  if v is String and CardDB.cards.has(v):
   hero_id = v
   handle = str(CardDB.cards[v].name)
- for entry in [["game", "auto_end_turn"], ["game", "confirm_end_turn"], ["game", "auto_botnet"], ["sound", "muted"], ["visual", "effects"]]:
+ for entry in [["game", "auto_end_turn"], ["game", "confirm_end_turn"], ["sound", "muted"], ["visual", "effects"]]:
   if not config.has_section_key(entry[0], entry[1]): continue
   v = config.get_value(entry[0], entry[1])
   if v is bool: set("visual_effects" if entry[1] == "effects" else entry[1], v)
+ load_auto(config)
  bot_pace = migrated_pace(config)
  v = config.get_value("sound", "music_volume", 0.35)
  music_volume = valid_volume(v, 0.35)
@@ -89,7 +99,8 @@ func save():
  config.set_value("player", "hero_id", hero_id)
  config.set_value("game", "auto_end_turn", auto_end_turn)
  config.set_value("game", "confirm_end_turn", confirm_end_turn)
- config.set_value("game", "auto_botnet", auto_botnet)
+ if config.has_section_key("game", "auto_botnet"): config.erase_section_key("game", "auto_botnet")
+ for group in AUTO_GROUPS.values(): config.set_value("auto_activate", group, auto_enabled(group))
  config.set_value("game", "starting_life", starting_life)
  config.set_value("game", "bot_pace", bot_pace)
  config.set_value("game", "card_pool", card_pool)

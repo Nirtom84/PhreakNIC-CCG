@@ -66,7 +66,8 @@ static func build_card(d: Dictionary) -> SubViewport:
   build_stats(canvas, d)
   return viewport
  card_label(canvas, d.headline, Rect2(48, 78, 860, 96), 72, UIStyle.GREEN if d.victory else UIStyle.RED).autowrap_mode = TextServer.AUTOWRAP_OFF
- var hero = UIStyle.picture(CardDB.image_path(d.hero), Vector2(205, 280)) if CardDB.cards.has(d.hero) else UIStyle.avatar(d.hero, 205)
+ var avatar_id = UIStyle.avatar_id(d.handle, d.hero)
+ var hero = UIStyle.picture(CardDB.image_path(avatar_id), Vector2(205, 280)) if CardDB.cards.has(avatar_id) else UIStyle.avatar(avatar_id, 205)
  hero.position = Vector2(48, 190)
  hero.size = Vector2(205, 280)
  canvas.add_child(hero)
@@ -179,7 +180,8 @@ func save_image() -> bool:
 
 static func build_stats(canvas: Control, d: Dictionary):
  card_label(canvas, d.headline, Rect2(48, 86, 860, 80), 52, UIStyle.GREEN)
- var hero = UIStyle.picture(CardDB.image_path(d.hero), Vector2(205, 280)) if CardDB.originals.has(d.hero) else UIStyle.avatar(d.hero, 205)
+ var avatar_id = UIStyle.avatar_id(d.handle, d.hero)
+ var hero = UIStyle.picture(CardDB.image_path(avatar_id), Vector2(205, 280)) if CardDB.originals.has(avatar_id) else UIStyle.avatar(avatar_id, 205)
  hero.position = Vector2(48, 190)
  hero.size = Vector2(205, 280)
  canvas.add_child(hero)

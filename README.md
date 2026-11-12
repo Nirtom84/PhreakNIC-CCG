@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.17**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.18**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -15,6 +15,7 @@ _Screenshots are from the current version and are refreshed with every release._
 - **Phones:** a phone layout switches on automatically (larger cards and buttons, the log as a drawer; tap a card, then **Play**). Change it under Settings → Layout.
 - **Not sure why a card won't play?** Tap it: the game says why.
 - **After a game:** a match summary with every player's stats, and a result card you can save as an image or share (X, Bluesky, Reddit, Facebook, Discord, or your phone's share sheet in a browser).
+- **Auto toggle:** cards like Botnet and Tableskirts have an **Auto** switch so their once-per-turn ability fires by itself.
 - **Stats:** the **Stats** button shows your lifetime record (kept on your device only), with a card you can save or share.
 - **Watching the bots:** their plays show as a row of cards, and stay as a recap at the start of your turn until your first click. **Bot pace** sets how fast they play (Instant up to 5 seconds per card).
 - **Options:** bot pace, music and sound volume, and a "Visual effects" switch that turns off all animation.
@@ -120,6 +121,7 @@ godot4.7.1 --headless --path . -s tests/v08_checks.gd    # card sheet, Play Basi
 godot4.7.1 --headless --path . -s tests/v15_checks.gd    # card movement, phone layout, match stats and sharing, tutorial, countdown, emotes
 godot4.7.1 --headless --path . -s tests/v16_checks.gd    # bot pace, turn recap, host-set online bot pace
 godot4.7.1 --headless --path . -s tests/v17_checks.gd    # lifetime stats, stats screen and stats card
+godot4.7.1 --headless --path . -s tests/v18_checks.gd    # per-card Auto toggles (local and online), card-face avatars
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```
 
