@@ -105,8 +105,8 @@ func _ready():
    handle_input.text = filtered
    handle_input.caret_column = mini(caret, filtered.length())
   Sfx.hero_id = ""
-  refresh_avatar()
   Sfx.handle = Sfx.clean_handle(filtered)
+  refresh_avatar()
   Sfx.save())
  handle_input.focus_exited.connect(func(): handle_input.text = Sfx.handle)
  UIStyle.label(menu, "// SELECT YOUR ADVERSARY", 18)
@@ -310,7 +310,9 @@ func go_back():
  else: get_tree().quit()
 
 func refresh_avatar():
- var replacement = UIStyle.avatar(Sfx.hero_id)
+ var hero = CardDB.card_id_for_name(Sfx.handle)
+ if hero.is_empty(): hero = Sfx.hero_id
+ var replacement = UIStyle.avatar(hero)
  avatar_preview.get_child(0).texture = replacement.get_child(0).texture
  replacement.free()
 func select_hero(id: String):

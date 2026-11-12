@@ -264,6 +264,10 @@ func pick_seat_names(game_seed: int):
   seat_heroes.append(hero_ids.get(pick, ""))
 func seat_name(seat: int) -> String:
  return seat_names[seat] if seat < seat_names.size() else ("You" if seat == human_seat else "Bot %d" % seat)
+## A seat's avatar card: a card named after the seat's handle, else the seat's Hero.
+func avatar_hero(seat: int) -> String:
+ var match = CardDB.card_id_for_name(seat_name(seat))
+ return match if not match.is_empty() else seat_heroes[seat]
 func player_name(p) -> String:
  if online_session != null: return seat_name(p.seat)
  return seat_name(human_seat) if p.seat == human_seat else "%s · %s" % [seat_name(p.seat), BotDifficulty.DISPLAY_NAMES[p.difficulty]]
@@ -360,7 +364,7 @@ func redraw_now():
  banner.text = "Your turn" if engine.active().seat == human_seat else player_name(engine.active()) + " is hacking…"
  banner.text += "  /  TURN %02d" % engine.state.turn
  banner.add_theme_color_override("font_color", UIStyle.GREEN if engine.active().seat == human_seat else UIStyle.AMBER)
- var avatar_source = UIStyle.avatar(seat_heroes[engine.active().seat])
+ var avatar_source = UIStyle.avatar(avatar_hero(engine.active().seat))
  turn_avatar.get_child(0).texture = avatar_source.get_child(0).texture
  avatar_source.free()
  var width = get_viewport_rect().size.x - (382 if log_open and not UIStyle.compact() else 64) - safe_extra.x - safe_extra.y
@@ -469,7 +473,7 @@ func redraw_now():
  region(canvas, status, Vector2(0, rig_y + (102 if compact and not empty_rig else 70)) if compact or empty_rig else Vector2(width - 780, rig_y), Vector2(width, 100) if compact or empty_rig else Vector2(780, 194), "// " + seat_name(human_seat).to_upper() + " / SYSTEM STATUS")
  var stats = HBoxContainer.new()
  status.add_child(stats)
- stats.add_child(UIStyle.avatar(seat_heroes[human_seat], 56))
+ stats.add_child(UIStyle.avatar(avatar_hero(human_seat), 56))
  life_labels[human_seat] = readout(stats, "life", p.life, 40)
  anchor("hack", readout(stats, "hack", p.hacking, 40))
  anchor("life", life_labels[human_seat])
@@ -560,7 +564,7 @@ func readout(parent, icon: String, value: int, font_size: int) -> Label:
 func seat_area(parent: Node, p, _human: bool):
  if UIStyle.compact():
   var summary = UIStyle.button(parent, "%s · ♥ %d\nHand %d · Deck %d · Discard %d" % [seat_name(p.seat), p.life, p.hand.size(), p.deck.size(), p.discard.size()], func(): view_cards(seat_name(p.seat) + " · Board", p.play_area + p.reserve + p.discard))
-  var avatar = UIStyle.avatar(seat_heroes[p.seat])
+  var avatar = UIStyle.avatar(avatar_hero(p.seat))
   summary.icon = avatar.get_child(0).texture
   avatar.free()
   summary.expand_icon = true
@@ -592,7 +596,7 @@ func seat_area(parent: Node, p, _human: bool):
  panel.add_child(box)
  var status = HBoxContainer.new()
  box.add_child(status)
- status.add_child(UIStyle.avatar(seat_heroes[p.seat], 40))
+ status.add_child(UIStyle.avatar(avatar_hero(p.seat), 40))
  var name_label = UIStyle.label(status, seat_name(p.seat), 20)
  name_label.custom_minimum_size.x = 80
  name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1357,7 +1361,7 @@ func show_result(winner):
  if winner != null:
   var hero = HBoxContainer.new()
   box.add_child(hero)
-  hero.add_child(UIStyle.avatar(seat_heroes[winner.seat], 96))
+  hero.add_child(UIStyle.avatar(avatar_hero(winner.seat), 96))
   UIStyle.label(hero, seat_name(winner.seat), 28)
  if match_stats.since_resume: UIStyle.label(box, "Statistics since resume", 22)
  var rows = GridContainer.new()
@@ -1550,7 +1554,7 @@ func turn_band(p):
  band.size = Vector2(size.x, 100)
  var row = HBoxContainer.new()
  band.add_child(row)
- row.add_child(UIStyle.avatar(seat_heroes[p.seat]))
+ row.add_child(UIStyle.avatar(avatar_hero(p.seat)))
  add_child(band)
  var text = UIStyle.label(row, ("YOUR TURN" + (" · " + seat_name(human_seat).to_upper() if not Sfx.handle.is_empty() else "")) if p.seat == human_seat else seat_name(p.seat).to_upper() + " IS HACKING…", 48)
  text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
