@@ -1,5 +1,26 @@
 # Release Notes
 
+## v0.23 — Soundtrack by bitwize
+**Music**
+- The game now has a full chiptune soundtrack composed by **bitwize**: 16 looping themes and two stings, replacing the single placeholder loop.
+- The music follows the game, using bitwize's cue sheet:
+  - **Main Theme** on the menu, rules page and Hero picker; **PhreakNIC** in the online lobby.
+  - **Starter Deck** while everyone is healthy. The Center Row theme takes over when any player drops to 10 life or below, and its tenser second half at 5 or below.
+  - Permanents bring their own themes while they are in play: The Fellowship of the Token Ring, the Botnet cards, The Clarion Inn, Nashville 2600, The Juice, Military-Grade Card Encapsulation, pTFS and CTF Bangers. With several in play the themes take turns.
+  - Playing **O.P.R.A.H.**, **Oprah Wonka** or **PhreakNIC** plays that card's theme for the rest of the turn.
+  - **Time Travel** plays through the extra turn, and **TOCTOU** cuts in when it saves a player.
+  - The Clarion Inn theme plays its collapse ending when the Inn leaves play.
+  - A win plays **Access Granted**; a loss plays **Connection Terminated**.
+- Tracks crossfade, and the Music slider in Settings controls the volume as before.
+- Online games play the same cues. The music only reacts to what every player can see, never to hidden cards.
+
+**Download size**
+- The soundtrack adds about 20 MB to the Windows, Linux and Android downloads.
+- The browser version does not download it up front: each track is fetched the first time it plays, so the first load is no bigger than before.
+
+**Credits**
+- Music by bitwize. The main menu footer now says so.
+
 ## v0.22 — Phone fix: buy reserved cards
 **Fix (phones)**
 - On the phone layout, **Open board** only showed your rig and reserved cards: there was no way to buy a card you had reserved, or to use a permanent's ability. Tapping a card there now opens its action sheet with **Buy** or the ability buttons. Thanks to the Discord tester who reported it from Firefox on Android.

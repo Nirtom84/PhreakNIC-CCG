@@ -1,5 +1,6 @@
 class_name GameEngine
 extends Node
+signal soundtrack_event(kind, seat)
 signal card_played(player, card)
 signal card_bought(player, card)
 signal purchase_paid(player, card, cost)
@@ -434,6 +435,7 @@ func eliminate(p, forced: bool = false):
 	if not reactions.is_empty() and await dec(p).confirm(p, "Use TOCTOU to avoid losing?"):
 		remove(reactions[0])
 		p.life = 1
+		soundtrack_event.emit("toctou", p.seat)
 		await reaction_turn(p)
 		return
 	p.alive = false

@@ -14,6 +14,7 @@ func _ready():
  if "--server" in OS.get_cmdline_user_args():
   get_tree().change_scene_to_file.call_deferred("res://scenes/server.tscn")
   return
+ Sfx.set_context("menu")
  get_tree().auto_accept_quit = true
  CardDB.select_pool(Sfx.card_pool)
  hero_picker = load("res://scripts/ui/hero_picker.gd").new()
@@ -77,9 +78,10 @@ func _ready():
  var version = UIStyle.label(self, "v" + str(ProjectSettings.get_setting("application/config/version", "")), 16)
  version.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
  version.position -= Vector2(110, 40)
- var digitized = UIStyle.label(self, "Digitized by Nirtom & Claude", 16)
+ var digitized = UIStyle.label(self, "Digitized by Nirtom & Claude\nMusic by bitwize" if UIStyle.compact() else "Digitized by Nirtom & Claude · Music by bitwize", 16)
  digitized.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
- digitized.position += Vector2(110, -40)
+ digitized.position += Vector2(16, -40)
+ digitized.add_theme_font_size_override("font_size", 13 if UIStyle.compact() else 16)
  digitized.modulate.a = 0.75
  var terminal = UIStyle.label(menu, "> CONNECT / SHUFFLE / HACK ▌", 22)
  terminal.add_theme_color_override("font_color", UIStyle.GREEN)

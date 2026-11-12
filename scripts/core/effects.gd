@@ -1218,6 +1218,7 @@ func activate(p, c, index: int):
 			"Time Travel":
 				e.remove(c)
 				e.state.extra_turns.append(p.seat)
+				e.soundtrack_event.emit("time_travel", p.seat)
 			"Shell Speech":
 				e.remove(c)
 				await e.deal(p, 2, c)

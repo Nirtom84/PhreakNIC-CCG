@@ -27,7 +27,7 @@ func pace_option(parent: Node, value: float, changed: Callable) -> OptionButton:
  return choice
 var music_volume: float = 0.35
 var music_muted: bool = false
-var music: AudioStreamPlayer
+var music: Node
 var auto_end_turn: bool = true
 var confirm_end_turn: bool = true
 const AUTO_GROUPS = {"Botnet": "Botnet", "Botnet1": "Botnet", "Botnet2": "Botnet", "Botnet3": "Botnet", "Botnet4": "Botnet", "Mognet": "Mognet", "Mognet1": "Mognet", "Mognet2": "Mognet", "Mognet3": "Mognet", "Mognet4": "Mognet", "Tableskirts": "Tableskirts", "Unattended Phone": "Unattended Phone", "The Big Dipper": "The Big Dipper", "Shell Speech": "Shell Speech"}
@@ -84,7 +84,7 @@ func _ready():
  for selected_pool in ["2025", "2026", "2026mog"]:
   var bans = config.get_value("game", "banned_" + selected_pool, [])
   if bans is Array and bans.size() <= 150: set_banned(selected_pool, bans)
- if DisplayServer.get_name() == "headless": return
+ if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server") or "--server" in OS.get_cmdline_user_args(): return
  for bus in ["SFX", "Music"]:
   if AudioServer.get_bus_index(bus) < 0:
    AudioServer.add_bus()
@@ -147,22 +147,26 @@ static func pitch_for(sound: String, sample: float) -> float:
 func music_audible() -> bool:
  return not music_muted and music_volume > 0
 func apply_music():
- # A silenced track is paused rather than decoded at -80 dB.
- if not is_instance_valid(music): return
- music.volume_db = linear_to_db(maxf(music_volume, 0.001))
- music.stream_paused = not music_audible()
+ if is_instance_valid(music): music.volume(music_volume, music_audible())
 func start_music():
- if DisplayServer.get_name() == "headless": return
+ if DisplayServer.get_name() == "headless" or OS.has_feature("dedicated_server") or "--server" in OS.get_cmdline_user_args(): return
  if not is_instance_valid(music):
-  music = AudioStreamPlayer.new()
-  music.bus = "Music"
-  music.stream = load("res://assets/sounds/music_loop.ogg")
-  music.stream.loop = true
+  music = load("res://scripts/ui/music_director.gd").new()
   add_child(music)
- if not music.playing and not music.stream_paused: music.play()
+  music.set_context("menu")
  apply_music()
+func set_context(value: String):
+ if is_instance_valid(music): music.set_context(value)
+func set_table_state(value: Dictionary):
+ if is_instance_valid(music): music.set_table_state(value)
+func menu_overlay(overlay: Control):
+ if is_instance_valid(music): music.menu_overlay(overlay)
+func sting(win: bool):
+ if is_instance_valid(music): music.sting(win)
 func _input(event):
  # Browsers only allow audio after a gesture; one is enough.
  if event is InputEventMouseButton or event is InputEventScreenTouch or event is InputEventKey:
   start_music()
-  if is_instance_valid(music) and music.playing: set_process_input(false)
+  if is_instance_valid(music):
+   music.unlock()
+   set_process_input(false)

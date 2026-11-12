@@ -11,6 +11,7 @@ export default {
     let response;try{response=await handlers.fetch(request,env,ctx);}catch{response=new Response('Internal error',{status:500});}
     let out=new Response(response.body,response);
     for(const [k,v]of Object.entries(security))out.headers.set(k,v);
+    if(/^\/music\/[^/]+\.ogg$/.test(new URL(request.url).pathname) && out.ok) out.headers.set('cache-control','public, max-age=2592000');
     if(out.headers.get('content-type')?.includes('text/html')){
       const nonce=crypto.randomUUID().replaceAll('-','');out.headers.set('Content-Security-Policy',security['Content-Security-Policy'].replace("script-src 'self'","script-src 'self' 'nonce-"+nonce+"'"));
       out.headers.set('cache-control','no-store');out.headers.delete('etag');out.headers.delete('content-length');

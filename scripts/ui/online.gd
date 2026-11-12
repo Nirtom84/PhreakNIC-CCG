@@ -39,6 +39,7 @@ var join_anyway: Button
 var identity_panel: Control
 var identity_prompted = false
 func _ready():
+ Sfx.set_context("lobby")
  set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  UIStyle.apply(self)
  UIStyle.background(self)

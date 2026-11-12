@@ -17,6 +17,7 @@ func open(selected: Callable) -> Control:
  overlays.append(overlay)
  overlay.add_to_group("touch_modal")
  add_child(overlay)
+ Sfx.menu_overlay(overlay)
  overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  var box = VBoxContainer.new()
  overlay.add_child(box)

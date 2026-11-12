@@ -64,10 +64,15 @@ func run():
   verify(is_equal_approx(script.pitch_for(sound, 0), 0.94) and is_equal_approx(script.pitch_for(sound, 1), 1.06), "Pitch varies: " + sound)
  for sound in ["win", "lose", "turn_start", "your_turn", "warning", "eliminated", "damage", "life_gain", "hack", "ice"]:
   verify(script.pitch_for(sound, 0) == 1 and script.pitch_for(sound, 1) == 1, "Stable pitch: " + sound)
- for sound in ["your_turn.wav", "eliminated.wav", "warning.wav", "music_loop.ogg"]:
+ for sound in ["your_turn.wav", "eliminated.wav", "warning.wav"]:
   verify(ResourceLoader.exists("res://assets/sounds/" + sound), "New audio imported: " + sound)
- var music = load("res://assets/sounds/music_loop.ogg")
- verify(music.loop and is_equal_approx(music.get_length(), 32.0), "Music loops for 32 seconds")
+ var music = load("res://assets/music/main_theme.ogg")
+ verify(music is AudioStreamOggVorbis, "Soundtrack imported")
+ var director = load("res://scripts/ui/music_director.gd").new()
+ director.cache.main_theme = music
+ director.configure("main_theme")
+ verify(music.loop and is_equal_approx(music.loop_offset, float(director.cues.main_theme.loop_offset)), "Music uses runtime cue loop offset")
+ director.free()
  verify(settings.pool.is_empty() and settings.music == null, "Headless creates no audio players")
  settings.visual_effects = false
  verify(style.motion(0.6) == 0, "Reduced motion")

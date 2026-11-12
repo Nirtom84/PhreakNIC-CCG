@@ -74,6 +74,8 @@ var incoming_source: String = "another player"
 var table_rule_uids: Array = []
 var safe_extra = Vector2.ZERO
 func _ready():
+ # Leaves the result-screen state behind after Play Again; the first redraw supplies the cue.
+ Sfx.set_context("table")
  if tutorial_mode:
   player_count = 2
   difficulty = 0
@@ -209,7 +211,10 @@ func _ready():
   var restored_stats = match_stats.from_dict(resume_data.table.match_stats)
   if restored_stats != null: match_stats = restored_stats
  match_stats.capture_start(engine.state.players)
- engine.card_played.connect(func(p, c): match_stats.played(p.seat, c.id))
+ engine.card_played.connect(func(p, c):
+  match_stats.played(p.seat, c.id)
+  music_event("played", p.seat, str(CardDB.get_card(c.id).name)))
+ engine.soundtrack_event.connect(func(kind, seat): music_event(kind, seat))
  engine.purchase_paid.connect(func(p, c, cost): match_stats.bought(p.seat, c.id, cost))
  engine.life_gained.connect(func(p, amount): match_stats.gain(p.seat, amount))
  engine.damage_resolved.connect(func(p, q, amount, dealing): match_stats.damage(p.seat if dealing else -1, q.seat, amount))
@@ -222,6 +227,7 @@ func _ready():
    incoming_source = CardDB.cards[source_card.id].name + " / " + seat_name(source_player.seat) if source_card != null else seat_name(source_player.seat))
  engine.card_moved.connect(moved)
  engine.turn_started.connect(func(p):
+  music_event("turn_started", p.seat)
   match_stats.turn(p.seat)
   opening_rickroll = null
   for card in engine.state.center_row:
@@ -232,6 +238,7 @@ func _ready():
   turn_band(p)
   redraw())
  engine.turn_ended.connect(func(p):
+  music_event("turn_ended", p.seat)
   if p.seat == human_seat: end_recap_turn())
  engine.game_over.connect(game_over)
  if resume_data.is_empty(): append_log("Network ready · %d players connected" % player_count)
@@ -330,6 +337,7 @@ func toggle_log():
  config.save("user://settings.cfg")
  redraw()
 func redraw_now():
+ if engine != null and engine.state != null: Sfx.set_table_state(music_public_state())
  UIStyle.touch_fit(self)
  clear_hand_selection()
  state_revision += 1
@@ -1510,6 +1518,7 @@ func record_lifetime():
   key = "online:%s:%s" % [room.get("code", ""), room.get("started_at", room.get("seed", get_instance_id()))]
  load("res://scripts/ui/lifetime_stats.gd").new().record(match_stats, human_seat, seat_heroes[human_seat], mode, key)
 func show_result(winner):
+ Sfx.sting(human_seat >= 0 and winner != null and winner.seat == human_seat)
  record_lifetime()
  var dim = ColorRect.new()
  dim.z_index = 49
@@ -1986,6 +1995,11 @@ func install_page_listeners():
 func page_hidden():
  if UIStyle.is_web(): save_game()
 func _exit_tree():
+ var next_screen = get_tree().current_scene
+ var next_script = next_screen.get_script() if is_instance_valid(next_screen) else null
+ # Play Again swaps in a fresh table, which has already claimed the music: don't cut to the menu theme under it.
+ if next_script != get_script() or next_screen == self:
+  Sfx.set_context("lobby" if next_script != null and next_script.resource_path == "res://scripts/ui/online.gd" else "menu")
  if online_session != null: online_session.disconnect_game()
  if not UIStyle.is_web() or page_window == null: return
  page_window.document.removeEventListener("visibilitychange", visibility_callback)
@@ -2241,17 +2255,22 @@ func online_event(data: Dictionary):
   "waiting_done":
    waiting_seats.erase(int(data.seat))
    update_waiting_banner()
+  "soundtrack": music_event(str(data.cue), int(data.seat))
   "turn_started":
+   music_event("turn_started", int(data.seat))
    match_stats.turn(int(data.seat))
    Sfx.play("your_turn" if data.seat == human_seat else "turn_start")
    if data.seat == human_seat: begin_recap()
    turn_band(engine.state.players[data.seat])
   "turn_ended":
+   music_event("turn_ended", int(data.seat))
    if data.seat == human_seat: end_recap_turn()
   "draw": Sfx.play("card_draw")
   "ice_counter_removed": Sfx.play("ice")
   "played", "bought", "reserved":
-   if data.kind == "played": match_stats.played(int(data.seat), str(data.id))
+   if data.kind == "played":
+    match_stats.played(int(data.seat), str(data.id))
+    music_event("played", int(data.seat), str(CardDB.get_card(str(data.id)).name))
    Sfx.play({"played": "card_play", "bought": "buy", "reserved": "reserve"}[data.kind])
    if data.seat != human_seat: spotlight(str(data.id), seat_name(data.seat))
   "eliminated":
@@ -2298,3 +2317,39 @@ func position_countdowns():
   var timer = countdowns[seat]
   if seat == human_seat: timer.position = Vector2(30, 142)
   elif life_labels.has(seat) and is_instance_valid(life_labels[seat]): timer.position = life_labels[seat].global_position - global_position + Vector2(0, 45)
+
+# Only public board values and public events enter the soundtrack state.
+var music_played: Dictionary = {}
+var music_toctou = -1
+var music_time_owner = -1
+var music_time_started = false
+func music_event(kind: String, seat: int, card_name = ""):
+ match kind:
+  "played":
+   if not music_played.has(seat): music_played[seat] = []
+   music_played[seat].append(card_name)
+  "toctou": music_toctou = seat
+  "time_travel":
+   music_time_owner = seat
+   music_time_started = false
+  "turn_started":
+   music_played.erase(seat)
+   if music_time_owner == seat:
+    music_time_started = true
+    if is_instance_valid(Sfx.music): Sfx.music.restart_time_travel()
+  "turn_ended":
+   music_played.erase(seat)
+   if music_toctou == seat: music_toctou = -1
+   if music_time_owner == seat and music_time_started:
+    music_time_owner = -1
+    music_time_started = false
+ if engine != null and engine.state != null: Sfx.set_table_state(music_public_state())
+func music_public_state() -> Dictionary:
+ var public_players: Array = []
+ var names: Array = []
+ for p in engine.state.players:
+  public_players.append({"life": p.life, "alive": p.alive})
+  for c in p.play_area:
+   var card = CardDB.get_card(c.id)
+   if card.get("kind", "") == "Permanent": names.append(str(card.name))
+ return {"players": public_players, "permanents": names, "played": music_played.get(engine.state.active_seat, []).duplicate(), "toctou": music_toctou >= 0, "time_travel": music_time_owner >= 0}

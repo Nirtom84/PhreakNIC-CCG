@@ -129,6 +129,7 @@ func _install_engine():
 	engine.state_changed.connect(func(): dirty = true; _eliminations())
 	engine.log_message.connect(func(text): _broadcast({"t": "log", "text": text, "seat": engine.state.active_seat}))
 	engine.damage_dealt.connect(func(p, q, amount): _event({"kind": "damage_dealt", "source": p.seat, "target": q.seat, "amount": amount}))
+	engine.soundtrack_event.connect(func(kind, seat): _event({"kind": "soundtrack", "cue": kind, "seat": seat}))
 	engine.turn_started.connect(_turn_started)
 	engine.turn_ended.connect(func(p): _event({"kind": "turn_ended", "seat": p.seat}))
 	engine.ice_counter_removed.connect(func(c): _event({"kind": "ice_counter_removed", "uid": c.uid}))

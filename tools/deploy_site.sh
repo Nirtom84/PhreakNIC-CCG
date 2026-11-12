@@ -29,6 +29,7 @@ KEY="web/$VERSION/index.wasm"
 PCK_KEY="web/$VERSION/index.pck"
 
 # Keep the big engine and data files out of the static assets.
+# music/*.ogg stays in static assets (same-origin lazy soundtrack downloads).
 printf 'index.wasm\nindex.pck\n.assetsignore\n' > build/web/.assetsignore
 # Expand the path now: the script changes directory before it exits.
 assetsignore_path="$PWD/build/web/.assetsignore"

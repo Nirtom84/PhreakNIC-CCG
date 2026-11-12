@@ -1,0 +1,192 @@
+{
+  "main_theme": {
+    "file": "main_theme.ogg",
+    "loop_offset": 73.06389583333333,
+    "length": 152.99575,
+    "outro": "main_theme_out.ogg",
+    "title": "Main Theme",
+    "track": 1,
+    "looping": true,
+    "outro_length": 24.46025
+  },
+  "starter_deck": {
+    "file": "starter_deck.ogg",
+    "loop_offset": 57.32447916666667,
+    "length": 150.07033333333334,
+    "outro": "starter_deck_out.ogg",
+    "title": "Starter Deck",
+    "track": 2,
+    "looping": true,
+    "outro_length": 22.561666666666667
+  },
+  "center_row_amber": {
+    "file": "center_row_amber.ogg",
+    "loop_offset": 15.034541666666666,
+    "length": 58.328354166666664,
+    "outro": null,
+    "title": "Center Row",
+    "track": 3,
+    "looping": true,
+    "outro_length": 0.0
+  },
+  "center_row_red": {
+    "file": "center_row_red.ogg",
+    "loop_offset": 19.691729166666665,
+    "length": 58.97597916666667,
+    "outro": "center_row_red_out.ogg",
+    "title": "Center Row",
+    "track": 3,
+    "looping": true,
+    "outro_length": 28.855666666666668
+  },
+  "the_fellowship": {
+    "file": "the_fellowship.ogg",
+    "loop_offset": 47.124916666666664,
+    "length": 136.8351875,
+    "outro": "the_fellowship_out.ogg",
+    "title": "The Fellowship",
+    "track": 4,
+    "looping": true,
+    "outro_length": 41.9888125
+  },
+  "botnet": {
+    "file": "botnet.ogg",
+    "loop_offset": 20.141125,
+    "length": 111.3860625,
+    "outro": "botnet_out.ogg",
+    "title": "Botnet",
+    "track": 5,
+    "looping": true,
+    "outro_length": 67.3899375
+  },
+  "the_clarion_inn": {
+    "file": "the_clarion_inn.ogg",
+    "loop_offset": 29.253208333333333,
+    "length": 116.701,
+    "outro": "the_clarion_inn_out.ogg",
+    "title": "The Clarion Inn",
+    "track": 6,
+    "looping": true,
+    "outro_length": 65.147
+  },
+  "nashville_2600": {
+    "file": "nashville_2600.ogg",
+    "loop_offset": 72.08225,
+    "length": 101.51704166666667,
+    "outro": "nashville_2600_out.ogg",
+    "title": "Nashville 2600",
+    "track": 7,
+    "looping": true,
+    "outro_length": 77.28295833333334
+  },
+  "the_juice": {
+    "file": "the_juice.ogg",
+    "loop_offset": 20.4966875,
+    "length": 83.1735625,
+    "outro": "the_juice_out.ogg",
+    "title": "The Juice",
+    "track": 8,
+    "looping": true,
+    "outro_length": 2.2184375
+  },
+  "military_grade_card_encapsulation": {
+    "file": "military_grade_card_encapsulation.ogg",
+    "loop_offset": 29.824479166666666,
+    "length": 73.69979166666667,
+    "outro": "military_grade_card_encapsulation_out.ogg",
+    "title": "Military-Grade Card Encapsulation",
+    "track": 9,
+    "looping": true,
+    "outro_length": 32.62020833333333
+  },
+  "oprah": {
+    "file": "oprah.ogg",
+    "loop_offset": 59.49514583333333,
+    "length": 154.36620833333333,
+    "outro": "oprah_out.ogg",
+    "title": "O.P.R.A.H.",
+    "track": 10,
+    "looping": true,
+    "outro_length": 25.225791666666666
+  },
+  "time_travel": {
+    "file": "time_travel.ogg",
+    "loop_offset": 33.087916666666665,
+    "length": 135.15979166666668,
+    "outro": "time_travel_out.ogg",
+    "title": "Time Travel",
+    "track": 11,
+    "looping": true,
+    "outro_length": 43.664208333333335
+  },
+  "phreaknic": {
+    "file": "phreaknic.ogg",
+    "loop_offset": 13.910958333333333,
+    "length": 64.41354166666666,
+    "outro": "phreaknic_out.ogg",
+    "title": "PhreakNIC",
+    "track": 12,
+    "looping": true,
+    "outro_length": 15.890458333333333
+  },
+  "ptfs": {
+    "file": "ptfs.ogg",
+    "loop_offset": 16.637458333333335,
+    "length": 75.51020833333334,
+    "outro": "ptfs_out.ogg",
+    "title": "pTFS",
+    "track": 13,
+    "looping": true,
+    "outro_length": 2.201791666666667
+  },
+  "ctf_bangers": {
+    "file": "ctf_bangers.ogg",
+    "loop_offset": 68.985,
+    "length": 156.71127083333334,
+    "outro": "ctf_bangers_out.ogg",
+    "title": "CTF Bangers",
+    "track": 14,
+    "looping": true,
+    "outro_length": 22.928729166666667
+  },
+  "oprah_wonka": {
+    "file": "oprah_wonka.ogg",
+    "loop_offset": 38.97375,
+    "length": 68.382375,
+    "outro": "oprah_wonka_out.ogg",
+    "title": "Oprah Wonka",
+    "track": 15,
+    "looping": true,
+    "outro_length": 110.609625
+  },
+  "toctou": {
+    "file": "toctou.ogg",
+    "loop_offset": 128.94427083333332,
+    "length": 160.05408333333332,
+    "outro": "toctou_out.ogg",
+    "title": "TOCTOU Photo-Finish",
+    "track": 16,
+    "looping": true,
+    "outro_length": 11.377916666666666
+  },
+  "access_granted": {
+    "file": "access_granted.ogg",
+    "loop_offset": 0.0,
+    "length": 19.992,
+    "outro": null,
+    "title": "ACCESS GRANTED",
+    "track": 17,
+    "looping": false,
+    "outro_length": 0.0
+  },
+  "connection_terminated": {
+    "file": "connection_terminated.ogg",
+    "loop_offset": 0.0,
+    "length": 20.424,
+    "outro": null,
+    "title": "CONNECTION TERMINATED",
+    "track": 18,
+    "looping": false,
+    "outro_length": 0.0
+  }
+}

@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.22**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.23**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -88,7 +88,9 @@ The in-game Rules screen has a player-friendly summary. Implementation notes are
 - `scripts/ui/`, `scenes/` — menu and game table
 
 ## Sound
-Retro sounds and an optional ambient music loop each have their own volume control in the menu, plus a table mute button. Regenerate the sound and music files from the project root with `python3 tools/make_sounds.py`.
+Music by bitwize. The dynamic soundtrack follows public life totals, permanents and played cards: life-tension and permanent themes rotate after two loops, turn cards and TOCTOU take priority, and results play a single win/loss sting. Music crossfades beneath the effects with a separate volume and mute control. Web builds download and cache tracks on demand from the same origin.
+
+Regenerate retro sound effects with `python3 tools/make_sounds.py`. Build the soundtrack from the read-only composer sources with `python3 tools/build_music.py` (requires ffmpeg); see [tools/MUSIC.md](tools/MUSIC.md) for sample boundaries, options and WAV replacement notes. Source MP3s are never included in the project.
 
 ## Building Linux, Windows, Android and Web versions
 ```bash
@@ -127,6 +129,7 @@ godot4.7.1 --headless --path . -s tests/v17_checks.gd    # lifetime stats, stats
 godot4.7.1 --headless --path . -s tests/v18_checks.gd    # per-card Auto toggles (local and online), card-face avatars
 godot4.7.1 --headless --path . -s tests/v20_checks.gd    # backing out of dialogs, grouped card pickers
 godot4.7.1 --headless --path . -s tests/v21_checks.gd    # DEFCON difficulty: per-seat life, avatar, online, learned values
+godot4.7.1 --headless --path . -s tests/v23_checks.gd    # Dynamic soundtrack: public selection, clocks, files and export exclusions
 godot4.7.1 --headless --path . -s tests/v22_checks.gd    # Phone board: buy a reserved card or use a permanent from Open board
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```

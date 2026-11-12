@@ -44,7 +44,9 @@ for target in "${targets[@]}"; do
 			mkdir -p build/web
 			"$GODOT" --headless --path . --export-release "Web" build/web/index.html
 			# Same-origin helper for sharing the result card (the site CSP forbids eval).
-			cp tools/web/share.js build/web/share.js ;;
+			cp tools/web/share.js build/web/share.js
+			mkdir -p build/web/music
+			cp assets/music/*.ogg build/web/music/ ;;
 		release)
 			# Packages the builds made above under stable names for GitHub Release assets,
 			# so README links to releases/latest/download/<name> keep working.

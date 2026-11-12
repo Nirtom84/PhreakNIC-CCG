@@ -5,6 +5,7 @@ static func open(parent: Control) -> Control:
  overlay.add_to_group("touch_modal")
  overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  parent.add_child(overlay)
+ Sfx.menu_overlay(overlay)
  var box = VBoxContainer.new()
  overlay.add_child(box)
  UIStyle.dialog(overlay, Vector2(1100, 900))
