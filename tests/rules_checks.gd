@@ -222,6 +222,27 @@ func run():
 		check((fore in p.deck) == (order == 0) and fore not in p.discard, "Controller selects Fore04 destination by trigger order")
 		check(e.dec(p).confirmations == (["Put bought card on deck?"] if order == 0 else ["Put bought hero in hand?"]), "Second destination prompt suppressed")
 		check(moves.size() == 2, "Fore04 moves once into discard and redirects only once")
+	# Flesh Oprah: the free buy needs a buyable O.P.R.A.H.; with none, the prompt must say so.
+	await fixture()
+	p = e.active()
+	for c in e.state.center_row.duplicate():
+		if c != null and c.id == "O.P.R.A.H.": e.move(c, e.state.center_deck, "center_deck")
+	var flesh = card("Flesh Oprah")
+	e.dec(p).yes = false
+	e.dec(p).confirmations.clear()
+	await e.play_card(p, flesh)
+	check(e.dec(p).confirmations.size() == 1 and "not in the Center Row" in e.dec(p).confirmations[0], "Flesh Oprah warns when no O.P.R.A.H. can be bought")
+	check(flesh not in e.state.removed and not p.turn_flags.get("free_names", []).has("O.P.R.A.H."), "Declining keeps Flesh Oprah and grants nothing")
+	await fixture()
+	p = e.active()
+	var oprah = card("O.P.R.A.H.", "reserve")
+	flesh = card("Flesh Oprah")
+	e.dec(p).yes = true
+	e.dec(p).confirmations.clear()
+	await e.play_card(p, flesh)
+	check(e.dec(p).confirmations == ["Remove this for a free O.P.R.A.H.?"] and flesh in e.state.removed, "Flesh Oprah offers the plain prompt when O.P.R.A.H. is buyable")
+	p.hacking = 0
+	check(await e.buy_card(p, oprah) and oprah.owner == p.seat and oprah not in p.reserve, "The free O.P.R.A.H. buy works with no Hacking")
 	await fixture(3)
 	p = e.active()
 	q = e.state.players[1]

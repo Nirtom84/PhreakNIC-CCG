@@ -1,4 +1,11 @@
-# Changelog
+# Release Notes
+
+## v0.19 — Flesh Oprah prompt
+**Fix**
+- **Flesh Oprah:** the card lets you remove it to buy O.P.R.A.H. for free, which only works on an O.P.R.A.H. you can buy (in the Center Row or your reserve). The prompt used to offer this even when there was none, so the card could be removed for nothing. It now warns you first: "O.P.R.A.H. is not in the Center Row or your reserve right now. Remove this card anyway?"
+
+**Housekeeping**
+- The changelog file is now called `RELEASE_NOTES.md`.
 
 ## v0.18 — Auto-activate and card-face avatars
 Both additions in this version started as pull requests from **@mogorman**. Thank you!

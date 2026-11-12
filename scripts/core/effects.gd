@@ -462,7 +462,11 @@ func _effect_fivrr_friendship(p, c):
 
 ## Flesh Oprah
 func _effect_flesh_oprah(p, c):
-	if await e.dec(p).confirm(p, "Remove this for a free O.P.R.A.H.?"):
+	# The free buy only works on an O.P.R.A.H. that can be bought (Center Row or your reserve).
+	# Say so when there is none, instead of letting the card be removed for nothing by surprise.
+	var buyable = (e.state.center_row + p.reserve).any(func(x): return x != null and e.db().named(x.effect_id(), "O.P.R.A.H."))
+	var prompt = "Remove this for a free O.P.R.A.H.?" if buyable else "O.P.R.A.H. is not in the Center Row or your reserve right now. Remove this card anyway? You only get the free buy if one turns up this turn."
+	if await e.dec(p).confirm(p, prompt):
 		e.remove(c)
 		free_name(p, "O.P.R.A.H.")
 
