@@ -1597,7 +1597,7 @@ func show_result(winner):
   sharing.install(box, share_details(winner))
  else: UIStyle.label(box, "Tutorial · practice game", 22)
  if online_session == null: UIStyle.button(box, "Play Again", restart)
- UIStyle.button(box, "Menu", leave_game.bind(false) if online_session != null else menu)
+ UIStyle.button(box, "Leave game" if online_session != null else "Main menu", leave_game.bind(false))
  if UIStyle.compact(): UIStyle.touch_fit(panel)
 func result_headline(winner) -> String:
  if winner == null: return "Stalemate"

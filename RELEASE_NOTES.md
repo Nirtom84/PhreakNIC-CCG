@@ -1,5 +1,9 @@
 # Release Notes
 
+## v0.24 — Fix: Menu button after a game
+**Fix**
+- At the end of an offline game, the **Menu** button on the summary opened the in-game menu behind the summary instead of leaving. It now goes straight back to the main menu, and is labelled **Main menu**.
+
 ## v0.23 — Soundtrack by bitwize
 **Music**
 - The game now has a full chiptune soundtrack composed by **bitwize**: 16 looping themes and two stings, replacing the single placeholder loop.

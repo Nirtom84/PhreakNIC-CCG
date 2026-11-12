@@ -413,7 +413,10 @@ func stats_checks():
  collect_buttons(summary, buttons)
  # Visibility clipping is tested separately by phone checks; find every summary button here.
  var deck_button = find_text(summary, "View final deck")
- verify(deck_button != null and find_text(summary, "Play Again") != null and find_text(summary, "Menu") != null, "Summary navigation and final deck controls")
+ var leave_button = find_text(summary, "Main menu")
+ verify(deck_button != null and find_text(summary, "Play Again") != null and leave_button != null, "Summary navigation and final deck controls")
+ # The summary's button must leave for the main menu, not open the in-game menu behind the summary.
+ verify(leave_button != null and leave_button.pressed.get_connections().any(func(c): return c.callable.get_method() == &"leave_game") and not leave_button.pressed.get_connections().any(func(c): return c.callable.get_method() == &"menu"), "Summary Main menu button leaves the game")
  verify(find_text(summary, "Life") != null and find_text(summary, "Damage") != null and find_text(summary, "Bought") != null and find_text(summary, "Played") != null, "Summary seat columns")
  deck_button.pressed.emit()
  await process_frame
