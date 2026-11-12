@@ -458,7 +458,7 @@ func redraw_now():
  anchor("%d:play_area" % human_seat, board_scroll)
  anchor("%d:resolving" % human_seat, board_scroll)
  if compact and not empty_rig:
-  UIStyle.button(board, "Rig: %d · Reserved: %d · Open board" % [p.play_area.size(), p.reserve.size()], func(): view_cards("Your rig & reserved", p.play_area + p.reserve))
+  UIStyle.button(board, "Rig: %d · Reserved: %d · Open board" % [p.play_area.size(), p.reserve.size()], open_board)
  else:
   for c in p.play_area: board.add_child(card_widget(c, "permanent", 100))
   for c in p.reserve: board.add_child(card_widget(c, "reserve", 100))
@@ -1039,6 +1039,10 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  box.add_child(search)
  var counter = UIStyle.label(box, "Select %d–%d" % [min_n, max_n])
  counter.visible = multi
+ if multi and max_n == 0:
+  # Nothing to select in a viewer: say what a tap does instead of "Select 0–0".
+  counter.text = "Tap a card to buy or use it" if board_viewer else "Tap a card to inspect it"
+  counter.visible = not cards.is_empty()
  var scroll = ScrollContainer.new()
  scroll.name = "DecisionScroll"
  TouchInput.register_scroll(scroll)
@@ -1049,7 +1053,7 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
  scroll.add_child(sections)
  var grid = GridContainer.new()
  grid.columns = mini(cards.size(), 7) if not cards.is_empty() else (2 if options.size() > 6 else 1)
- grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL if cards.is_empty() or grid.columns * 178 >= 420 else Control.SIZE_SHRINK_CENTER
  sections.add_child(grid)
  var selected: Array = []
  var buttons: Array = []
@@ -1072,7 +1076,9 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
    headers = per_zone.size()
    rows = 0
    for zone in per_zone: rows += ceili(float(per_zone[zone]) / grid.columns)
- var dimensions = Vector2(grid.columns * 178, rows * 241 + 120 + headers * 44) if not cards.is_empty() else Vector2(640, rows * 60 + 65)
+ # Phone buttons and text are taller, and a one-card dialog is too narrow for its title: without the extra room
+ # the card row is squeezed into a sliver that is hard to scroll.
+ var dimensions = Vector2(maxi(grid.columns * 178, 420), rows * 241 + (200 if UIStyle.compact() else 120) + headers * 44) if not cards.is_empty() else Vector2(640, rows * 60 + 65)
  # Give the wrapping prompt its real width up front; at width 0 it wraps per character and asks for a huge height.
  prompt_label.custom_minimum_size.x = mini(int(dimensions.x), int(get_viewport_rect().size.x) - 120)
  # Option buttons claim their height, so a two-line prompt grows the box instead of squeezing the buttons into a scroll.
@@ -1172,7 +1178,10 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
   b.pressed.connect(func():
    Sfx.play("button")
    if not multi: answered.emit(i); return
-   if max_n == 0 and not cards.is_empty(): inspect_card(cards[i]); return
+   if max_n == 0 and not cards.is_empty():
+    if board_viewer: board_pick = cards[i]; answered.emit([])
+    else: inspect_card(cards[i])
+    return
    if i in selected: selected.erase(i)
    elif selected.size() < max_n: selected.append(i)
    else: b.button_pressed = false
@@ -1206,6 +1215,20 @@ func decision_zone_name(zone: String) -> String:
 func view_cards(title: String, cards: Array):
  if pending or engine.busy or driving or acting: return
  await decision(title, ["Close"] if cards.is_empty() else [], cards, 0, 0, true)
+# Phone layout folds the rig and reserve behind one button. A viewer alone would leave no way to buy a
+# reserved card or use a permanent's ability, so a tap closes the viewer and opens that card's action sheet.
+var board_viewer = false
+var board_pick = null
+func open_board():
+ if pending or engine.busy or driving or acting: return
+ var p = engine.state.players[human_seat]
+ board_viewer = true
+ board_pick = null
+ await decision("Your rig & reserved", [], p.play_area + p.reserve, 0, 0, true)
+ board_viewer = false
+ var picked = board_pick
+ board_pick = null
+ if picked != null and (picked in p.play_area or picked in p.reserve): inspect_card(picked, true)
 func show_zoom(c):
  if TouchInput.touch_mode: return
  hide_zoom()

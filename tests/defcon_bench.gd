@@ -3,11 +3,24 @@ var drivers: Array = []
 var game
 var turn_ms: Array = []
 var failures = 0
+# Offline per-seat table swaps. Restore after nested reaction turns as well.
+var seat_tables: Array = []
+var candidate_seat = 0
+func snapshot_values(): return [DefconValues.weights, DefconValues.bonus_weights, DefconValues.settings]
+func restore_values(tables):
+ DefconValues.weights = tables[0]
+ DefconValues.bonus_weights = tables[1]
+ DefconValues.settings = tables[2]
 func _initialize(): run.call_deferred()
 func drive(p):
+ var saved = []
+ if not seat_tables.is_empty():
+  saved = snapshot_values()
+  restore_values(seat_tables[0 if p.seat == candidate_seat else 1])
  var started = Time.get_ticks_usec()
  var own_turn = p.turns
  await drivers[p.seat].take_turn(p)
+ if not saved.is_empty(): restore_values(saved)
  if p.difficulty == 3:
   var elapsed = (Time.get_ticks_usec() - started) / 1000.0
   turn_ms.append(elapsed)
@@ -23,6 +36,11 @@ func run():
  var count = int(OS.get_environment("DEFCON_GAMES")) if OS.has_environment("DEFCON_GAMES") else 200
  DefconSearch.fixed_rollouts = int(OS.get_environment("DEFCON_COUNT")) if OS.has_environment("DEFCON_COUNT") else -1
  if OS.has_environment("DEFCON_WEIGHTS"): DefconValues.load_weights(OS.get_environment("DEFCON_WEIGHTS"))
+ if OS.has_environment("DEFCON_OPPONENT_WEIGHTS"):
+  var candidate = snapshot_values()
+  DefconValues.load_weights(OS.get_environment("DEFCON_OPPONENT_WEIGHTS"))
+  seat_tables = [candidate, snapshot_values()]
+  restore_values(candidate)
  if OS.has_environment("DEFCON_SCALE"): DefconValues.scale = float(OS.get_environment("DEFCON_SCALE"))
  if OS.has_environment("DEFCON_THRESHOLD"): DefconValues.settings.threshold = JSON.parse_string(OS.get_environment("DEFCON_THRESHOLD"))
  if OS.has_environment("DEFCON_MARGIN"): DefconValues.settings.reserve_margin = float(OS.get_environment("DEFCON_MARGIN"))
@@ -42,17 +60,23 @@ func run():
     game = GameEngine.new()
     root.add_child(game)
     var seat = i % seats
+    candidate_seat = seat
     var levels = []
     # DEFCON_OPPONENT picks the other seats' level (0 Script Kiddie, 1 Phreak, 2 Elite; default Elite).
-    for j in seats: levels.append(3 if j == seat else (int(OS.get_environment("DEFCON_OPPONENT")) if OS.has_environment("DEFCON_OPPONENT") else 2))
+    for j in seats: levels.append(3 if j == seat or not seat_tables.is_empty() else (int(OS.get_environment("DEFCON_OPPONENT")) if OS.has_environment("DEFCON_OPPONENT") else 2))
     game.setup(levels, seed_start + i, [], pool)
+    if not seat_tables.is_empty():
+     for p in game.state.players:
+      p.life = game.state.starting_life
+      p.starting_life = game.state.starting_life
     if not bonus:
      game.state.players[seat].life = game.state.starting_life
      game.state.players[seat].starting_life = game.state.starting_life
     drivers = []
     for j in seats: drivers.append(BotPlayer.new(game))
     game.turn_driver = drive
-    await game.start_turn()
+    if seat_tables.is_empty(): await game.start_turn()
+    else: await game.start_turn((i / seats) % seats)
     for turn in 200:
      if game.state.finished or game.state.turn > 200: break
      await drive(game.active())

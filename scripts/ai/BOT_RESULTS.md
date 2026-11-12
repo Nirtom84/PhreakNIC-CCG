@@ -389,3 +389,17 @@ neither training, tuning nor the validation table (so these are free of selectio
 
 Skill alone holds up (both lower bounds above 50%). With double life DEFCON beats Elite in 80–87% of games,
 short of the 90% target on both pools.
+
+## 2026-11-12 — Million-game DEFCON self-play (v0.22)
+1,000,000 games of DEFCON against itself with double life in every seat and 25% random buys: 400k two-player, 300k three-player, 300k four-player, half on each card set (seeds 60,000,000–65,149,999). No conservation failures or errors; 1,135 games hit the 200-turn cap.
+
+Card values fitted from the run were benchmarked against the shipped DEFCON at equal life (1,000 games per row, candidate in a rotating seat):
+
+| Seats | Pool | Candidate win rate (95% Wilson) | Break-even |
+|---|---|---|---|
+| 2 | 2025 | 47.4% (44.3%–50.5%) | 50% |
+| 2 | 2026 | 41.3% (38.3%–44.4%) | 50% |
+| 4 | 2025 | 20.6% (18.2%–23.2%) | 25% |
+| 4 | 2026 | 20.7% (18.3%–23.3%) | 25% |
+
+Verdict: not better than shipped; `data/defcon_weights.json` is unchanged. Procedure: `tools/DEFCON_TRAINING.md`.

@@ -1,5 +1,14 @@
 # Release Notes
 
+## v0.22 — Phone fix: buy reserved cards
+**Fix (phones)**
+- On the phone layout, **Open board** only showed your rig and reserved cards: there was no way to buy a card you had reserved, or to use a permanent's ability. Tapping a card there now opens its action sheet with **Buy** or the ability buttons. Thanks to the Discord tester who reported it from Firefox on Android.
+- Small card windows (one or two cards) were squeezed so the card was cut off and hard to scroll. They now show the whole card.
+- Card viewers say what a tap does instead of "Select 0–0".
+
+**Behind the scenes**
+- DEFCON played a million games against itself (Nirtom vs Reps4Thor, joined by Bitwize and 5ud0 in bigger games) to see whether it could learn better card values. It couldn't: the new values lost to the current ones, so DEFCON is unchanged. The tools for that run are now in the repo.
+
 ## v0.21 — DEFCON difficulty, bots that reserve
 **New difficulty: DEFCON**
 - A fourth bot level above 31337 Elite, built to be very hard to beat. Pick it on the main menu or for bot seats in online games.

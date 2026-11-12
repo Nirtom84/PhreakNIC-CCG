@@ -28,18 +28,29 @@ for pool in ['2025', '2026']:
  for f in files:
   data = json.loads(Path(f).read_text())
   if data['pool'] != pool: continue
-  result['training'].append({k: data[k] for k in ['pool', 'iteration', 'seed', 'games', 'epsilon']})
+  result['training'].append({k: data[k] for k in ['pool', 'iteration', 'seed', 'games', 'epsilon', 'seats'] if k in data})
   for k, v in data['stats'].items():
    dest = stats.setdefault(k, {'games': 0, 'wins': 0, 'tempo': 0})
    for metric in dest: dest[metric] += v[metric]
-  for id, phase, options, win, tempo in data['samples']:
+  if 'fit' in data:
+   # Self-play stores already-centred X'X / X'y, never per-game rows.
+   source_ids = data['fit']['ids']
+   for phase, sufficient in enumerate(data['fit']['phases']):
+    for pair, value in sufficient['xx'].items():
+     i, j = map(int, pair.split(','))
+     if source_ids[i] in index and source_ids[j] in index:
+      matrices[phase][index[source_ids[i]], index[source_ids[j]]] += value
+    for id, value in sufficient['xy'].items():
+     if id in index: targets[phase][index[id]] += value
+    count += sufficient['count']
+  for id, phase, options, win, tempo in data.get('samples', []):
    if id not in index: continue
    options = [x for x in options if x in index] + ['__stop__']
    x = np.zeros(n)
    for option in options: x[index[option]] -= 1 / len(options)
    x[index[id]] += 1
    matrices[phase] += np.outer(x, x)
-   targets[phase] += x * ((win - .5) + .15 * tempo)
+   targets[phase] += x * ((win - 1 / data.get('seats', 2)) + .15 * tempo)
    count += 1
  if count == 0: raise ValueError(f'No randomized samples for {pool}')
  coefficients = [np.linalg.solve(m, y) for m, y in zip(matrices, targets)]
