@@ -92,3 +92,19 @@ test('bot pace validates exact numeric choices and defaults only absent creation
 });
 
 test('DEFCON bot difficulty survives room creation and summary',()=>{const r=creation({...input(),seats:[{bot:false,difficulty:0},{bot:true,difficulty:3}]});assert.equal(difficulty(3),3);assert.equal(summary(r).seats[1].difficulty,3);});
+
+test('custom pool and bounded deck codes',async()=>{
+ const {deckSubmission,settings}=await import('../src/lib/protocol.js');const {deflateSync}=await import('node:zlib');
+ const encode=d=>'PNDK1.'+deflateSync(typeof d==='string'?d:JSON.stringify(d)).toString('base64url');
+ const deck={name:'Tag Team',cards:Object.fromEntries(Array.from({length:15},(_,i)=>['card'+i,4]))};
+ assert.equal(settings({card_pool:'custom'},true).card_pool,'custom');assert.deepEqual(await deckSubmission(encode(deck)),{name:'Tag Team',count:60,code:encode(deck)});
+ assert.equal((await deckSubmission(encode({...deck,name:'a\u0000b'}))).name,'ab');
+ for(const code of ['WRONG.x','PNDK1.!','PNDK1.'+'a'.repeat(8192),'PNDK1.a','PNDK1.aaaa',encode('x'.repeat(9000)),encode('{'),encode({...deck,name:''}),encode({...deck,name:'x'.repeat(41)}),encode({...deck,cards:[]}),encode({...deck,cards:{a:4}}),encode({...deck,cards:{...deck.cards,a:5}}),encode({...deck,cards:{...deck.cards,a:1.5}}),encode({...deck,cards:Object.fromEntries(Array.from({length:201},(_,i)=>['c'+i,1]))}),encode({...deck,cards:Object.fromEntries(Array.from({length:51},(_,i)=>['c'+i,4]))})])await assert.rejects(()=>deckSubmission(code));
+});
+test('D20 highest wins; tied submitters reroll and lower scores remain fallback candidates',async()=>{
+ const {deckRanking,d20}=await import('../src/lib/protocol.js');const seats=['a','b','c'].map(name=>({name,deck:{}}));let rolls=[15,15,9,4,11];const r=deckRanking(seats,()=>rolls.shift());assert.deepEqual(r.order,[1,0,2]);assert(r.lines.join(' ').includes('Tie at 15'));assert(r.lines.join(' ').includes('a 4, b 11'));
+ assert.deepEqual(deckRanking([seats[0],{bot:true,deck:{}}]),{order:[0],groups:[[0]],lines:[]});let bytes=[255,239];assert.equal(d20({getRandomValues:a=>{a[0]=bytes.shift();return a;}}),20);
+});
+test('lower D20 ties wait for fallback instead of rolling with the highest group',async()=>{
+ const {deckRanking}=await import('../src/lib/protocol.js');let rolls=[20,8,8];const seats=['winner','a','b'].map(name=>({name,deck:{}}));const r=deckRanking(seats,()=>rolls.shift());assert.deepEqual(r.groups,[[0],[1,2]]);assert.equal(r.lines.length,1);let rerolls=[4,11];const next=deckRanking(seats,()=>rerolls.shift(),r.groups[1]);assert.deepEqual(next.order,[2,1]);
+});

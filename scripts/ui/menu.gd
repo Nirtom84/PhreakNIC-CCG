@@ -10,12 +10,16 @@ var count: OptionButton
 var hero_picker
 var ban_picker
 var bans_button: Button
+var custom_tile: Button
+var custom_deck: Dictionary = {}
+const DECK_BUILDER = preload("res://scripts/ui/deck_builder.gd")
 func _ready():
  if "--server" in OS.get_cmdline_user_args():
   get_tree().change_scene_to_file.call_deferred("res://scenes/server.tscn")
   return
  Sfx.set_context("menu")
  get_tree().auto_accept_quit = true
+ resolve_custom_deck()
  CardDB.select_pool(Sfx.card_pool)
  hero_picker = load("res://scripts/ui/hero_picker.gd").new()
  add_child(hero_picker)
@@ -26,7 +30,7 @@ func _ready():
  UIStyle.background(self)
  var row = HBoxContainer.new()
  row.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
- row.position = Vector2(-780, -465)
+ row.position = Vector2(-780, -510)
  row.size = Vector2(1560, 930)
  row.add_theme_constant_override("separation", 70)
  add_child(row)
@@ -168,6 +172,14 @@ func _ready():
   tile.add_theme_font_size_override("font_size", 16)
   tile.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, UIStyle.CYAN, 0))
   tile.add_theme_stylebox_override("pressed", UIStyle.box(UIStyle.PANEL.lightened(0.06), UIStyle.CYAN, 10))
+ custom_tile = UIStyle.button(sets, "", choose_custom_deck)
+ custom_tile.toggle_mode = true
+ custom_tile.custom_minimum_size = Vector2(550, 34)
+ custom_tile.add_theme_font_size_override("font_size", 16)
+ custom_tile.clip_text = true
+ custom_tile.button_group = pool_group
+ custom_tile.button_pressed = Sfx.card_pool == "custom"
+ refresh_custom_tile()
  var life_row = HBoxContainer.new()
  menu.add_child(life_row)
  UIStyle.label(life_row, "Starting life", 18)
@@ -190,7 +202,7 @@ func _ready():
   var state = SaveGame.restore(saved.game)
   var age = maxi(0, int(Time.get_unix_time_from_system()) - int(saved.get("saved_at", 0)))
   var saved_life = int(saved.table.get("starting_life", state.starting_life if state.starting_life != (24 if state.players.size() == 2 else 10 * state.players.size()) else 0))
-  var resume_label = UIStyle.label(menu, "vs %s (%s) · %s · Turn %d · saved %d min ago" % [saved.table.seat_names[1], BotDifficulty.DISPLAY_NAMES[state.players[1].difficulty], UIStyle.pool_label(state.card_pool) + (" · %d life" % saved_life if saved_life != 0 else ""), state.turn, age / 60], 18)
+  var resume_label = UIStyle.label(menu, "vs %s (%s) · %s · Turn %d · saved %d min ago" % [saved.table.seat_names[1], BotDifficulty.DISPLAY_NAMES[state.players[1].difficulty], UIStyle.pool_label(state.card_pool, state.custom_deck) + (" · %d life" % saved_life if saved_life != 0 else ""), state.turn, age / 60], 18)
   resume_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  for action in actions.get_children(): action.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  var start_button = UIStyle.button(actions, "Start Game  →", start)
@@ -199,10 +211,11 @@ func _ready():
  UIStyle.primary(start_button)
  UIStyle.button(actions, "Play online", open_online)
  if not OnlineAPI.remembered().is_empty(): UIStyle.button(menu, "Resume online game", func(): open_online(true))
- var help_row = HBoxContainer.new()
+ var help_row = HFlowContainer.new()
  menu.add_child(help_row)
  UIStyle.button(help_row, "Tutorial", launch_tutorial)
  UIStyle.button(help_row, "Rules", rules)
+ UIStyle.button(help_row, "Decks (experimental)", open_decks)
  UIStyle.button(help_row, "Stats", func(): load("res://scripts/ui/stats_screen.gd").open(self))
  UIStyle.button(help_row, "Report a bug", func(): load("res://scripts/ui/bug_report.gd").open())
  var switches = HBoxContainer.new()
@@ -290,8 +303,10 @@ func launch(resume: Dictionary = {}):
  table.resume_data = resume
  table.player_count = count.get_selected_id()
  table.difficulty = difficulty.selected
+ resolve_custom_deck()
  table.card_pool = Sfx.card_pool
- table.banned = Sfx.banned_cards(Sfx.card_pool)
+ table.custom_deck = custom_deck.duplicate(true) if Sfx.card_pool == "custom" else {}
+ table.banned = [] if Sfx.card_pool == "custom" else Sfx.banned_cards(Sfx.card_pool)
  table.starting_life = Sfx.starting_life
  get_tree().root.add_child(table)
  get_tree().current_scene = table
@@ -305,8 +320,12 @@ func _notification(what):
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
 func refresh_bans():
- if is_instance_valid(bans_button): bans_button.text = "Banned cards: %d" % Sfx.banned_cards(Sfx.card_pool).size()
+ if is_instance_valid(bans_button):
+  bans_button.visible = Sfx.card_pool != "custom"
+  bans_button.text = "Banned cards: %d" % Sfx.banned_cards(Sfx.card_pool).size()
 func go_back():
+ for child in get_children():
+  if child.get_script() == DECK_BUILDER: child.back(); return
  if is_instance_valid(ban_picker) and ban_picker.close_top(): return
  if is_instance_valid(hero_picker) and hero_picker.close_top(): return
  if is_instance_valid(rules_overlay): rules_overlay.queue_free()
@@ -361,3 +380,31 @@ func confirm(prompt: String, yes_text: String, no_text: String) -> bool:
 func open_link(url: String):
  if UIStyle.is_web() and OS.has_feature("web"): JavaScriptBridge.get_interface("window").open(url, "_blank", "noopener")
  else: OS.shell_open(url)
+
+func resolve_custom_deck():
+ var choices = DECK_BUILDER.playable()
+ custom_deck = choices[0].duplicate(true) if not choices.is_empty() else {}
+ for value in choices:
+  if value.name == Sfx.custom_deck_name: custom_deck = value.duplicate(true); break
+ if not custom_deck.is_empty(): Sfx.custom_deck_name = custom_deck.name
+ elif Sfx.card_pool == "custom": Sfx.card_pool = "2026"
+func refresh_custom_tile():
+ resolve_custom_deck()
+ if is_instance_valid(custom_tile): custom_tile.text = ("Custom deck (experimental)\n" if UIStyle.compact() else "Custom deck (experimental) · ") + "%s · %d cards" % [custom_deck.get("name", "Choose deck"), CustomDeck.total(custom_deck)]
+func open_decks():
+ var builder = DECK_BUILDER.new()
+ add_child(builder)
+ builder.closed.connect(func(): refresh_custom_tile(); refresh_bans())
+func choose_custom_deck():
+ Sfx.card_pool = "custom"
+ CardDB.select_pool("custom")
+ var builder = DECK_BUILDER.new()
+ builder.selected = func(value):
+  custom_deck = value
+  Sfx.custom_deck_name = value.name
+  Sfx.save()
+  refresh_custom_tile()
+  refresh_bans()
+ add_child(builder)
+ refresh_bans()
+ Sfx.save()

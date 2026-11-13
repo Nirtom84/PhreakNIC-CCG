@@ -89,7 +89,7 @@ func _process(_delta):
  var stat = table.match_stats.seats[table.human_seat]
  var done = false
  match STEPS[step][2]:
-  "play": done = int(stat.played.get("Hacking", 0)) > baseline_played or not table.engine.is_turn(p) or not p.hand.any(func(c): return c.id == "Hacking" and table.engine.can_play(p, c))
+  "play": done = int(stat.played.get("Hacking", 0)) > baseline_played or not table.engine.is_turn(p) or not p.hand.any(func(c): return CustomDeck.rules_id(c.id) == "Hacking" and table.engine.can_play(p, c))
   "buy":
    var can_buy = table.engine.state.center_row.any(func(c): return c != null and table.engine.can_buy(p, c))
    var can_play = p.hand.any(func(c): return table.engine.can_play(p, c))

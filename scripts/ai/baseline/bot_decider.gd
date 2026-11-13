@@ -20,7 +20,7 @@ func value(card, player = null) -> float:
 		score += 1.0 + engine.effects.initial_ice(card.id) * 0.6
 		if "once per turn" in text: score += 2.8
 	if "remove a card" in text: score += 1.8 if difficulty == 2 else 0.7
-	match card.id:
+	match CustomDeck.rules_id(card.id):
 		"Rickroll", "PhreakMyst": score = -3.0
 		"Touch Grass": score = 0.0
 		"Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4": score = 5.0
@@ -36,9 +36,9 @@ func value(card, player = null) -> float:
 		var owned = player.deck + player.hand + player.discard + player.play_area
 		if engine.db().named(card.id, "Botnet"): score += owned.filter(func(c): return engine.db().named(c.id, "Botnet")).size() * 2.0
 		var pairs = {"5ud0": ["Bitwize", "crook3dfingers"], "Bitwize": ["5ud0", "crook3dfingers"], "crook3dfingers": ["5ud0", "Bitwize"], "Never Gonna Give You Up": ["Never Gonna Let You Down"], "Never Gonna Let You Down": ["Never Gonna Give You Up"], "Reps4Thor": ["nirtom", "Nirtom Unleashed"], "nirtom": ["Reps4Thor"], "DeMartian": ["m8trix310"], "m8trix310": ["DeMartian"]}
-		if pairs.has(card.id):
+		if pairs.has(CustomDeck.rules_id(card.id)):
 			for c in owned:
-				if c.id in pairs[card.id]: score += 1.6
+				if CustomDeck.rules_id(c.id) in pairs[CustomDeck.rules_id(card.id)]: score += 1.6
 		if engine.db().has_subtype(card.id, "FOTTR Hero") and not engine.controlled(player, "The Fellowship of the Token Ring").is_empty(): score += 3
 		var enemy_life = 999
 		for q in engine.opponents(player): enemy_life = mini(enemy_life, q.life)
@@ -94,7 +94,7 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 		engine.shuffle(sorted)
 		return sorted.slice(0, engine.rand_range(min_n, max_n))
 	if "full prevention" in prompt:
-		sorted.sort_custom(func(a, b): return a.effect_id() == "Military-Grade Card Encapsulation" and b.effect_id() != "Military-Grade Card Encapsulation")
+		sorted.sort_custom(func(a, b): return CustomDeck.rules_id(a.effect_id()) == "Military-Grade Card Encapsulation" and CustomDeck.rules_id(b.effect_id()) != "Military-Grade Card Encapsulation")
 		return sorted.slice(0, 1)
 	if "ICE prevention" in prompt:
 		sorted.sort_custom(func(a, b): return a.counters < b.counters)
@@ -122,7 +122,7 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 		return sorted.slice(0, 1)
 	if min_n > 0: return sorted.slice(0, min_n)
 	if "Remove cards" in prompt:
-		return sorted.filter(func(c): return c.id in ["Hacking", "Damage", "Rickroll"] or value(c, player) < 1.5).slice(0, max_n)
+		return sorted.filter(func(c): return CustomDeck.rules_id(c.id) in ["Hacking", "Damage", "Rickroll"] or value(c, player) < 1.5).slice(0, max_n)
 	if "Discard to redraw" in prompt or "Discard for hacking" in prompt:
 		return sorted.filter(func(c): return value(c, player) < 1.5).slice(0, max_n)
 	if "Discard hero to add ICE" in prompt: return []
@@ -158,7 +158,7 @@ func confirm(player, prompt: String) -> bool:
 	if "Discard permanent" in prompt or "discard a permanent" in prompt:
 		return engine.permanents().any(func(c): return c.controller != player.seat)
 	if "O.P.R.A.H." in prompt:
-		return engine.state.center_row.any(func(c): return c != null and c.id == "O.P.R.A.H.")
+		return engine.state.center_row.any(func(c): return c != null and CustomDeck.rules_id(c.id) == "O.P.R.A.H.")
 	if "Remove this" in prompt: return true
 	return false
 func name_a_card(_player, _prompt: String) -> String:

@@ -42,6 +42,7 @@ func load_auto(config: ConfigFile):
   auto_activate[group] = value if value is bool else false
 var difficulty: int = 0
 var starting_life: int = 0
+var custom_deck_name: String = "Tag Team"
 var card_pool: String = "2026"
 var banned_by_pool: Dictionary = {"2025": [], "2026": [], "2026mog": []}
 func banned_cards(selected_pool: String) -> Array:
@@ -59,7 +60,8 @@ func _ready():
  var v = config.get_value("sound", "volume", 0.65)
  if (v is float or v is int) and is_finite(float(v)) and v >= 0 and v <= 1: volume = float(v)
  v = config.get_value("game", "card_pool", "2026")
- if v is String and v in ["2025", "2026", "2026mog"]: card_pool = v
+ if v is String and v in ["2025", "2026", "2026mog", "custom"]: card_pool = v
+ custom_deck_name = str(config.get_value("game", "custom_deck_name", "Tag Team")).left(40)
  CardDB.select_pool(card_pool)
  v = config.get_value("player", "handle", "")
  if v is String: handle = clean_handle(v)
@@ -108,6 +110,7 @@ func save():
  config.set_value("game", "starting_life", starting_life)
  config.set_value("game", "bot_pace", bot_pace)
  config.set_value("game", "card_pool", card_pool)
+ config.set_value("game", "custom_deck_name", custom_deck_name)
  for selected_pool in ["2025", "2026", "2026mog"]: config.set_value("game", "banned_" + selected_pool, banned_cards(selected_pool))
  config.set_value("visual", "effects", visual_effects)
  visuals_changed.emit(visual_effects)

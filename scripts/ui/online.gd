@@ -32,7 +32,9 @@ var toast: Label
 var starting_indicator: Label
 var initial_status = ""
 var kick_overlay: Control
-const SETS = ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27", "Base Set + Expansion 1 · Mog Variant"]
+const POOLS = ["2025", "2026", "2026mog", "custom"]
+const DECK_BUILDER = preload("res://scripts/ui/deck_builder.gd")
+const SETS = ["Base Set · PhreakNIC 26", "Base Set + Expansion 1 · PhreakNIC 27", "Base Set + Expansion 1 · Mog Variant", "Custom decks (experimental)"]
 var pending_join = ""
 var join_button: Button
 var join_anyway: Button
@@ -82,7 +84,7 @@ func browser():
  UIStyle.label(header, "// PLAY ONLINE", 40).size_flags_horizontal = Control.SIZE_EXPAND_FILL
  action(header, "Back to menu", back)
  if not OnlineAPI.remembered().is_empty(): UIStyle.primary(action(content, "Resume online game", func(): enter(OnlineAPI.remembered())))
- var columns = HBoxContainer.new()
+ var columns = VBoxContainer.new() if UIStyle.compact() else HBoxContainer.new()
  columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
  columns.add_theme_constant_override("separation", 24)
  content.add_child(columns)
@@ -131,10 +133,11 @@ func browser():
  seat_count.item_selected.connect(func(n):
   for i in 3: seat_types[i].get_parent().visible = i <= n)
  UIStyle.label(create, "Card set", 18)
- pool = option(create, SETS, CardDB.POOLS.find(Sfx.card_pool))
- create_banned = Sfx.banned_cards(CardDB.POOLS[pool.selected])
- bans_button = action(create, "Banned cards: %d" % create_banned.size(), func(): ban_picker.open_bans(CardDB.POOLS[pool.selected], create_banned, func(ids): create_banned = ids; Sfx.set_banned(CardDB.POOLS[pool.selected], ids); Sfx.save(); bans_button.text = "Banned cards: %d" % ids.size()))
- pool.item_selected.connect(func(_n): CardDB.select_pool(CardDB.POOLS[pool.selected]); create_banned = Sfx.banned_cards(CardDB.POOLS[pool.selected]); bans_button.text = "Banned cards: %d" % create_banned.size())
+ pool = option(create, SETS, POOLS.find(Sfx.card_pool))
+ create_banned = Sfx.banned_cards(POOLS[pool.selected])
+ bans_button = action(create, "Banned cards: %d" % create_banned.size(), func(): ban_picker.open_bans(POOLS[pool.selected], create_banned, func(ids): create_banned = ids; Sfx.set_banned(POOLS[pool.selected], ids); Sfx.save(); bans_button.text = "Banned cards: %d" % ids.size()))
+ bans_button.visible = POOLS[pool.selected] != "custom"
+ pool.item_selected.connect(func(_n): bans_button.visible = POOLS[pool.selected] != "custom"; CardDB.select_pool(POOLS[pool.selected]); create_banned = Sfx.banned_cards(POOLS[pool.selected]); bans_button.text = "Banned cards: %d" % create_banned.size())
  UIStyle.label(create, "Starting life", 18)
  life = option(create, ["Standard", "20", "30", "40"], [0,20,30,40].find(Sfx.starting_life))
  bot_pace_choice = Sfx.pace_option(create, Sfx.bot_pace, func(_value): pass)
@@ -195,6 +198,9 @@ func section(parent, title: String, scrolling: bool = false) -> VBoxContainer:
 func option(parent, labels: Array, selected: int = 0) -> OptionButton:
  var choice = OptionButton.new()
  for label in labels: choice.add_item(str(label))
+ choice.fit_to_longest_item = false
+ choice.clip_text = true
+ choice.custom_minimum_size.x = 0
  choice.select(maxi(0, selected))
  choice.custom_minimum_size.y = 56
  choice.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -208,8 +214,8 @@ func create_game():
  message.text = "Creating game…"
  var body = identity()
  body.public = public_choice.button_pressed
- body.card_pool = CardDB.POOLS[pool.selected]
- body.banned = create_banned.duplicate()
+ body.card_pool = POOLS[pool.selected]
+ body.banned = [] if body.card_pool == "custom" else create_banned.duplicate()
  body.starting_life = [0,20,30,40][life.selected]
  body.bot_pace = Sfx.BOT_PACES[bot_pace_choice.selected]
  body.seats = [{"bot": false, "difficulty": 0}]
@@ -289,7 +295,7 @@ func refresh_rooms():
   for seat in room.seats:
    seats.append("◈ " + BotDifficulty.DISPLAY_NAMES[int(seat.difficulty)] if seat.bot else ("● " + seat.name if not seat.name.is_empty() else "○ Open seat"))
   UIStyle.label(box, " · ".join(seats), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-  UIStyle.label(box, UIStyle.pool_label(room.card_pool) + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life · bots " + Sfx.pace_label(room.get("bot_pace", 0.5), true).replace(" s", " s/card"), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  UIStyle.label(box, ("Custom decks" if room.card_pool == "custom" else UIStyle.pool_label(room.card_pool)) + " · " + ("Standard" if room.starting_life == 0 else str(room.starting_life)) + " life · bots " + Sfx.pace_label(room.get("bot_pace", 0.5), true).replace(" s", " s/card"), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 func enter(data: Dictionary):
  while hero_picker.close_top(): pass
  while ban_picker.close_top(): pass
@@ -317,7 +323,7 @@ func lobby(room: Dictionary):
   while ban_picker.close_top(): pass
  clear_content()
  starting_indicator = null
- var columns = HBoxContainer.new()
+ var columns = VBoxContainer.new() if UIStyle.compact() else HBoxContainer.new()
  columns.size_flags_vertical = Control.SIZE_EXPAND_FILL
  columns.add_theme_constant_override("separation", 24)
  content.add_child(columns)
@@ -325,21 +331,23 @@ func lobby(room: Dictionary):
  var code = UIStyle.label(main, room.code, 64)
  code.add_theme_color_override("font_color", UIStyle.CYAN)
  var link = "https://phreaknic-ccg.net/join/" + room.code
- var invite = HBoxContainer.new()
+ var invite = VBoxContainer.new() if UIStyle.compact() else HBoxContainer.new()
  main.add_child(invite)
- UIStyle.label(invite, link, 20).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ var invite_label = UIStyle.label(invite, link, 20)
+ invite_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+ invite_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  action(invite, "Copy invite link", func():
   # On the web this uses navigator.clipboard; no JavaScript eval (the site's CSP forbids it).
   DisplayServer.clipboard_set(link)
   toast.show()
   get_tree().create_timer(2).timeout.connect(func(): if is_instance_valid(toast): toast.hide()))
- UIStyle.label(main, "Share this code with friends", 20)
- UIStyle.label(main, UIStyle.pool_label(room.card_pool) + " · " + str(room.starting_life) + " life · bots " + Sfx.pace_label(room.get("bot_pace", 0.5), true).replace(" s", " s/card"), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ UIStyle.label(main, "Share this code with friends", 20).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ UIStyle.label(main, ("Custom decks" if room.card_pool == "custom" else UIStyle.pool_label(room.card_pool)) + " · " + str(room.starting_life) + " life · bots " + Sfx.pace_label(room.get("bot_pace", 0.5), true).replace(" s", " s/card"), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  var host = int(room.host_seat) == int(session.credential.seat)
  for i in room.seats.size():
   var seat = room.seats[i]
   var card = section(main, "")
-  var row = HBoxContainer.new()
+  var row = VBoxContainer.new() if UIStyle.compact() else HBoxContainer.new()
   card.add_child(row)
   row.add_child(UIStyle.avatar(UIStyle.seat_avatar(str(seat.get("name", "")), str(seat.get("hero", "")), bool(seat.get("bot", false)), int(seat.get("difficulty", -1)))))
   var dot = UIStyle.label(row, "●", 22)
@@ -354,8 +362,14 @@ func lobby(room: Dictionary):
   if host and i != int(room.host_seat) and not room.started:
    if not seat.bot and not seat.name.is_empty(): action(row, "Remove", kick_seat.bind(i))
    action(row, "Remove seat", func(): session.lobby("remove_seat", {"seat": i})).disabled = room.seats.size() <= 2
+  if seat.get("deck") is Dictionary:
+   UIStyle.label(card, str(seat.deck.name) + " · %d cards" % int(seat.deck.count), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+ if room.card_pool == "custom" and not room.started and not room.seats[int(session.credential.seat)].bot:
+  action(main, "Submit deck", submit_deck)
+  action(main, "Withdraw", func(): session.lobby("withdraw_deck")).disabled = not room.seats[int(session.credential.seat)].get("deck") is Dictionary
+ for line in room.get("deck_roll", []): UIStyle.label(main, str(line), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  var settings = section(columns, "// HOST SETTINGS" if host else "// READY ROOM", true)
- settings.get_parent().custom_minimum_size.x = 520
+ settings.get_parent().custom_minimum_size.x = 0 if UIStyle.compact() else 520
  if room.started:
   starting_indicator = UIStyle.label(settings, "", 26)
   starting_indicator.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -368,20 +382,25 @@ func lobby(room: Dictionary):
   publicity.button_pressed = room.public
   settings.add_child(publicity)
   publicity.toggled.connect(func(value): session.lobby("settings", {"public": value}))
-  var sets = option(settings, SETS, CardDB.POOLS.find(room.card_pool))
-  sets.item_selected.connect(func(n): session.lobby("settings", {"card_pool": CardDB.POOLS[n]}))
+  var sets = option(settings, SETS, POOLS.find(room.card_pool))
+  sets.item_selected.connect(func(n): session.lobby("settings", {"card_pool": POOLS[n]}))
   UIStyle.label(settings, "Starting life", 18)
   var lives = option(settings, ["Standard", "20", "30", "40"], [0,20,30,40].find(int(room.starting_life)))
   lives.item_selected.connect(func(n): session.lobby("settings", {"starting_life": [0,20,30,40][n]}))
-  Sfx.pace_option(settings, room.get("bot_pace", 0.5), func(value): session.lobby("settings", {"bot_pace": value}))
+  var pace_picker = Sfx.pace_option(settings, room.get("bot_pace", 0.5), func(value): session.lobby("settings", {"bot_pace": value}))
+  pace_picker.fit_to_longest_item = false
+  pace_picker.clip_text = true
+  pace_picker.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   var start = action(settings, "Start", func(): session.lobby("start"))
   UIStyle.primary(start)
-  start.disabled = room.seats.any(func(seat): return not seat.bot and seat.name.is_empty())
-  UIStyle.label(settings, "Fill every open human seat before starting." if start.disabled else "Everyone is ready!", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+  var needs_deck = room.card_pool == "custom" and not room.seats.any(func(seat): return not seat.bot and seat.get("deck") is Dictionary)
+  start.disabled = needs_deck or room.seats.any(func(seat): return not seat.bot and seat.name.is_empty())
+  UIStyle.label(settings, "Someone needs to submit a deck" if needs_deck else ("Fill every open human seat before starting." if start.disabled else "Everyone is ready!"), 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  else:
   UIStyle.label(settings, "Waiting for " + str(room.seats[int(room.host_seat)].name) + " to start…", 26).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
- UIStyle.label(settings, "%d cards banned" % room.get("banned", []).size(), 18)
- action(settings, "Banned cards: %d" % room.get("banned", []).size() if host and not room.started else "View banned cards", func(): ban_picker.open_bans(room.card_pool, room.get("banned", []), func(ids): session.lobby("settings", {"banned": ids}), not host or room.started))
+ if room.card_pool != "custom":
+  UIStyle.label(settings, "%d cards banned" % room.get("banned", []).size(), 18)
+  action(settings, "Banned cards: %d" % room.get("banned", []).size() if host and not room.started else "View banned cards", func(): ban_picker.open_bans(room.card_pool, room.get("banned", []), func(ids): session.lobby("settings", {"banned": ids}), not host or room.started))
  action(settings, "Close room" if host and not room.started else "Leave", leave_lobby)
 func leave_lobby():
  if not session.room.get("started", false):
@@ -491,3 +510,15 @@ func kick_seat(seat: int):
  kick_overlay = null
  overlay.queue_free()
  if confirmed and session != null: session.lobby("kick", {"seat": seat})
+
+func submit_deck():
+ var decks = DECK_BUILDER.playable()
+ if decks.is_empty():
+  message.text = "No valid decks. Open Decks on the main menu to build one."
+  return
+ var popup = PopupMenu.new()
+ add_child(popup)
+ for deck in decks: popup.add_item(str(deck.name) + " · %d cards" % CustomDeck.total(deck))
+ popup.id_pressed.connect(func(index): session.lobby("submit_deck", {"code": CustomDeck.encode(decks[index])}))
+ popup.popup_hide.connect(popup.queue_free)
+ popup.popup_centered(Vector2i(mini(460, int(size.x) - 32), 0))

@@ -34,11 +34,11 @@ func take_turn(p):
 		actions += 1
 		var candidates = p.hand.filter(func(c): return engine.can_play(p, c))
 		if p.difficulty > 0:
-			candidates = candidates.filter(func(c): return not (c.id == "TOCTOU" and p.life <= 6))
+			candidates = candidates.filter(func(c): return not (CustomDeck.rules_id(c.id) == "TOCTOU" and p.life <= 6))
 		if p.difficulty == 3:
 			# Draw-only self-recycling can otherwise consume all 200 actions while
 			# useful buys wait forever. Count identity, never inspect deck order.
-			candidates = candidates.filter(func(c): return p.played.count(c) < 3 or int(engine.db().get_card(c.id).damage) > 0 or c.effect_id() in ["Ben The Meek", "heartsh8ped", "Jenny", "Non-Infringing Game Show", "LAN Party"])
+			candidates = candidates.filter(func(c): return p.played.count(c) < 3 or int(engine.db().get_card(c.id).damage) > 0 or CustomDeck.rules_id(c.effect_id()) in ["Ben The Meek", "heartsh8ped", "Jenny", "Non-Infringing Game Show", "LAN Party"])
 		var ai = engine.dec(p)
 		# Deck thinning activations happen before playing away the weakest cards.
 		var activated = false
@@ -50,15 +50,15 @@ func take_turn(p):
 				if p.difficulty == 0 and ability.cost > 0: continue
 				if ability.cost > 0 and not candidates.is_empty(): continue
 				if ability.cost > 0 and want_buy(p) and not (p.difficulty >= 2 and ability_wins(p, c)): continue
-				if c.effect_id() == "Nashville 2600":
+				if CustomDeck.rules_id(c.effect_id()) == "Nashville 2600":
 					if p.difficulty == 0 or not p.hand.any(func(x): return engine.db().get_card(x.id).kind == "Permanent"): continue
 					if (engine.state.center_row + p.reserve).any(func(x): return x != null and engine.can_buy(p, x) and purchase_value(ai, x, p) >= purchase_threshold(p)): continue
-				if c.effect_id() == "Shell Speech" and ability.index == 1 and p.difficulty > 0:
+				if CustomDeck.rules_id(c.effect_id()) == "Shell Speech" and ability.index == 1 and p.difficulty > 0:
 					if not engine.opponents(p).all(func(q): return q.life <= 2): continue
-				if c.effect_id() == "Tennessee Department of Health" and p.difficulty > 0:
+				if CustomDeck.rules_id(c.effect_id()) == "Tennessee Department of Health" and p.difficulty > 0:
 					if not engine.permanents().any(func(x): return x.controller != p.seat and x.counters > 0 and engine.db().has_subtype(x.effect_id(), "Location")): continue
-				if c.effect_id() == "Candy Factory" and p.difficulty > 0: continue
-				if c.effect_id() == "AI Bens AI Camry" and engine.opponents(p).all(func(q): return q.hand.is_empty()): continue
+				if CustomDeck.rules_id(c.effect_id()) == "Candy Factory" and p.difficulty > 0: continue
+				if CustomDeck.rules_id(c.effect_id()) == "AI Bens AI Camry" and engine.opponents(p).all(func(q): return q.hand.is_empty()): continue
 				var before = fingerprint(p)
 				await engine.activate(p, c, ability.index)
 				completed()
@@ -160,8 +160,8 @@ func reserve_target(p, buys):
 	# Public persistent economy supplements printed Hacking in the deck estimate.
 	economy += engine.controlled(p, "Botnet").size() * engine.controlled(p, "Botnet").size()
 	for c in p.play_area:
-		if c.id == "Payphone": economy += 2
-		elif c.id in ["Unattended Phone", "Tableskirts"]: economy += 1
+		if CustomDeck.rules_id(c.id) == "Payphone": economy += 2
+		elif CustomDeck.rules_id(c.id) in ["Unattended Phone", "Tableskirts"]: economy += 1
 	budget += economy
 	var targets = engine.state.center_row.filter(func(c): return c != null and engine.can_reserve(p, c))
 	targets.sort_custom(func(a, b): return purchase_value(ai, a, p) > purchase_value(ai, b, p) if p.difficulty == 1 else reserve_priority(a, p) > reserve_priority(b, p))
@@ -183,15 +183,15 @@ func play_priority(p, c) -> float:
 	var data = engine.db().get_card(c.id)
 	var score = engine.dec(p).value(c, p)
 	if "draw" in str(data.text).to_lower(): score += 100 if p.difficulty == 1 else 30
-	if c.id in ["Super r0nk", "DeMartian", "m8trix310"]: score += 40
+	if CustomDeck.rules_id(c.id) in ["Super r0nk", "DeMartian", "m8trix310"]: score += 40
 	if data.kind == "Permanent": score += 45
-	if "remove a card" in str(data.text).to_lower() or c.id == "O.P.R.A.H.": score += 50
-	if c.id == "Nirtom Unleashed": score -= 90
+	if "remove a card" in str(data.text).to_lower() or CustomDeck.rules_id(c.id) == "O.P.R.A.H.": score += 50
+	if CustomDeck.rules_id(c.id) == "Nirtom Unleashed": score -= 90
 	if p.difficulty > 0:
 		# Spend effects wait until the hand has generated its Hacking.
-		if c.id in ["Jenny", "Non-Infringing Game Show", "Treasure Hunters", "Mogs Pancake Breakfast"]: score -= 150
-		if c.id == "Mog's Ice Cream" and p.hand.any(func(x): return x.id == "Rookie Numbers"): score -= 120
-		if c.id in ["hardwarez", "Pooping in the Dark", "tipsybacchus"]: score -= 100
+		if CustomDeck.rules_id(c.id) in ["Jenny", "Non-Infringing Game Show", "Treasure Hunters", "Mogs Pancake Breakfast"]: score -= 150
+		if CustomDeck.rules_id(c.id) == "Mog's Ice Cream" and p.hand.any(func(x): return CustomDeck.rules_id(x.id) == "Rookie Numbers"): score -= 120
+		if CustomDeck.rules_id(c.id) in ["hardwarez", "Pooping in the Dark", "tipsybacchus"]: score -= 100
 	if p.difficulty >= 2:
 		if lethal_reachable(p): score += float(data.damage) * 100
 	return score
@@ -201,8 +201,8 @@ func lethal_reachable(p) -> bool:
 	for x in p.hand:
 		reachable += int(engine.db().get_card(x.id).damage)
 		if engine.db().named(x.id, "Hacker"): reachable += engine.controlled(p, "Dick Van Dyke Stamp").size()
-		if x.id == "Ben The Meek": reachable += 3
-		if x.id == "heartsh8ped": reachable += 1
+		if CustomDeck.rules_id(x.id) == "Ben The Meek": reachable += 3
+		if CustomDeck.rules_id(x.id) == "heartsh8ped": reachable += 1
 	for q in engine.opponents(p):
 		if q.turn_flags.get("prevent_all", false) or not engine.controlled(q, "Military-Grade Card Encapsulation").is_empty() or not engine.controlled(q, "Phreaknic Network").is_empty(): return false
 		var effective_life = q.life
@@ -217,14 +217,14 @@ func reserve_priority(card, p) -> float:
 	for q in engine.opponents(p):
 		if engine.db().named(card.id, "Botnet"): score += engine.controlled(q, "Botnet").size() * 2.0
 		if engine.db().has_subtype(card.id, "FOTTR Hero") and not engine.controlled(q, "The Fellowship of the Token Ring").is_empty(): score += 3.0
-		if card.id in ["Never Gonna Give You Up", "Never Gonna Let You Down"] and (q.discard + q.play_area + q.reserve).any(func(x): return x.id in ["Never Gonna Give You Up", "Never Gonna Let You Down"] and x.id != card.id): score += 2.0
+		if CustomDeck.rules_id(card.id) in ["Never Gonna Give You Up", "Never Gonna Let You Down"] and (q.discard + q.play_area + q.reserve).any(func(x): return CustomDeck.rules_id(x.id) in ["Never Gonna Give You Up", "Never Gonna Let You Down"] and x.id != card.id): score += 2.0
 		var partners = {"5ud0": ["Bitwize", "crook3dfingers"], "Bitwize": ["5ud0", "crook3dfingers"], "crook3dfingers": ["5ud0", "Bitwize"], "Reps4Thor": ["nirtom", "Nirtom Unleashed"], "nirtom": ["Reps4Thor"], "DeMartian": ["m8trix310"], "m8trix310": ["DeMartian"]}
-		if partners.has(card.id) and (q.play_area + q.discard + q.reserve).any(func(x): return x.id in partners[card.id]): score += 2.0
+		if partners.has(CustomDeck.rules_id(card.id)) and (q.play_area + q.discard + q.reserve).any(func(x): return CustomDeck.rules_id(x.id) in partners[CustomDeck.rules_id(card.id)]): score += 2.0
 	return score
 
 func ability_wins(p, card) -> bool:
-	if card.effect_id() == "Lowes Shopping Cart": return p.hacking >= 25 - card.counters
-	if card.effect_id() != "Bribery": return false
+	if CustomDeck.rules_id(card.effect_id()) == "Lowes Shopping Cart": return p.hacking >= 25 - card.counters
+	if CustomDeck.rules_id(card.effect_id()) != "Bribery": return false
 	var damage = floori(float(p.hacking) / 2.0) * (1 + engine.controlled(p, "CTF Bangers").size())
 	for q in engine.opponents(p):
 		if q.turn_flags.get("prevent_all", false) or not engine.controlled(q, "Military-Grade Card Encapsulation").is_empty() or not engine.controlled(q, "Phreaknic Network").is_empty(): return false

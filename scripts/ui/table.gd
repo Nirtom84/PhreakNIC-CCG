@@ -28,6 +28,7 @@ var match_stats = preload("res://scripts/ui/match_stats.gd").new()
 var engine: GameEngine
 var player_count: int = 2
 var difficulty: int = 0
+var custom_deck: Dictionary = {}
 var card_pool: String = "2026"
 var banned: Array = []
 var ban_picker: Control
@@ -185,7 +186,7 @@ func _ready():
  pick_seat_names(game_seed)
  engine.log_message.connect(append_log)
  if resume_data.is_empty():
-  engine.setup(levels, game_seed, choices, card_pool, starting_life, banned)
+  engine.setup(levels, game_seed, choices, card_pool, starting_life, banned, custom_deck)
   if tutorial_mode: engine.state.active_seat = human_seat
  else:
   engine.state = SaveGame.restore(resume_data.game)
@@ -207,6 +208,7 @@ func _ready():
   sync_options()
  lifetime_key = str(resume_data.get("table", {}).get("lifetime_key", "%s:%s" % [game_seed, Time.get_unix_time_from_system()]))
  match_stats.setup(player_count, card_pool, engine.state.players.map(func(p): return p.difficulty), not resume_data.is_empty())
+ match_stats.custom_deck = engine.state.custom_deck.duplicate(true)
  if not resume_data.is_empty() and resume_data.table.has("match_stats"):
   var restored_stats = match_stats.from_dict(resume_data.table.match_stats)
   if restored_stats != null: match_stats = restored_stats
@@ -231,7 +233,7 @@ func _ready():
   match_stats.turn(p.seat)
   opening_rickroll = null
   for card in engine.state.center_row:
-   if card != null and card.id == "Rickroll": opening_rickroll = card
+   if card != null and CustomDeck.rules_id(card.id) == "Rickroll": opening_rickroll = card
   Sfx.play("your_turn" if p.seat == human_seat else "turn_start")
   if p.seat == human_seat: begin_recap()
   append_log("TURN %d · Seat %d connected" % [engine.state.turn, p.seat])
@@ -442,13 +444,18 @@ func redraw_now():
  var deck_label = UIStyle.label(piles, "Deck: %d" % engine.state.center_deck.size(), 16)
  anchor("center_deck", deck_label)
  deck_label.custom_minimum_size.x = 180
- if not compact: UIStyle.label(piles, UIStyle.pool_label(engine.state.card_pool), 14)
+ if not compact or engine.state.card_pool == "custom":
+  var pool_caption = UIStyle.label(piles, UIStyle.pool_label(engine.state.card_pool, engine.state.custom_deck), 14)
+  if engine.state.card_pool == "custom":
+   pool_caption.custom_minimum_size.x = 180
+   pool_caption.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  var banned_button = UIStyle.button(piles, "Banned: %d" % engine.state.banned.size(), func():
-  if is_instance_valid(ban_picker): return
+  if engine.state.card_pool == "custom" or is_instance_valid(ban_picker): return
   ban_picker = load("res://scripts/ui/ban_picker.gd").new()
   add_child(ban_picker)
   ban_picker.open_bans(engine.state.card_pool, engine.state.banned, Callable(), true)
   ban_picker.overlays[0].tree_exited.connect(ban_picker.queue_free))
+ banned_button.visible = engine.state.card_pool != "custom"
  banned_button.icon = load(UIStyle.BACK)
  banned_button.expand_icon = true
  banned_button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -667,7 +674,7 @@ func card_widget(c, zone: String, width: int) -> Control:
  var human = engine.state.players[human_seat]
  var legal = engine.can_play(human, c) if zone == "hand" else engine.can_buy(human, c)
  var abilities_key = engine.activatable_abilities(human, c) if zone == "permanent" else []
- var auto_group = Sfx.AUTO_GROUPS.get(c.effect_id(), "") if zone == "permanent" and c.controller == human_seat else ""
+ var auto_group = Sfx.AUTO_GROUPS.get(CustomDeck.rules_id(c.effect_id()), "") if zone == "permanent" and c.controller == human_seat else ""
  var key = [Sfx.auto_enabled(auto_group), c, c.id, c.effect_id(), zone, width, legal, c.counters, str(abilities_key), engine.effective_cost(human, c), available() if zone == "permanent" else true]
  if rebuilding and widget_cache.has(c.uid):
   var previous = widget_cache[c.uid]
@@ -924,7 +931,7 @@ func auto_ready() -> bool:
 func auto_candidate(ignore_hold: bool = false):
  var p = engine.state.players[human_seat]
  for c in engine.permanents():
-  var group = Sfx.AUTO_GROUPS.get(c.effect_id(), "")
+  var group = Sfx.AUTO_GROUPS.get(CustomDeck.rules_id(c.effect_id()), "")
   if c.controller != human_seat or not Sfx.auto_enabled(group) or auto_sent.has(c.uid): continue
   if not engine.activatable_abilities(p, c).any(func(a): return a.index == 0 and a.enabled): continue
   if not ignore_hold and group in ["Botnet", "Mognet"] and p.hand.any(func(h): return engine.db().named(h.effect_id(), group) and engine.can_play(p, h)): continue
@@ -956,7 +963,7 @@ func auto_step(ignore_hold: bool = false):
 func auto_notice():
  if auto_tip_shown or tutorial_mode or engine.state.finished: return
  for c in engine.permanents():
-  var group = Sfx.AUTO_GROUPS.get(c.effect_id(), "")
+  var group = Sfx.AUTO_GROUPS.get(CustomDeck.rules_id(c.effect_id()), "")
   if c.controller == human_seat and not group.is_empty() and not Sfx.auto_enabled(group):
    auto_tip_shown = true
    show_notice("Tip: tap Auto on %s to activate it by itself each turn" % engine.db().get_card(c.id).name)
@@ -1009,6 +1016,7 @@ func drive_reaction(p):
  driver.yield_frame = true
  await driver.take_turn(p)
 func drive_bot():
+ if not auto_drive: return
  if driving or engine.busy or engine.state.finished or engine.reaction_depth > 0: return
  driving = true
  while engine.active().is_bot and not engine.state.finished:
@@ -1573,6 +1581,7 @@ func show_result(winner):
   box.add_child(hero)
   hero.add_child(UIStyle.avatar(avatar_hero(winner.seat), 96))
   UIStyle.label(hero, player_name(winner), 28)
+ UIStyle.label(box, UIStyle.pool_label(engine.state.card_pool, engine.state.custom_deck), 22).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  if match_stats.since_resume: UIStyle.label(box, "Statistics since resume", 22)
  var rows = GridContainer.new()
  rows.columns = 5
@@ -1621,6 +1630,7 @@ func restart():
  table.tutorial_mode = tutorial_mode
  table.player_count = player_count
  table.difficulty = difficulty
+ table.custom_deck = engine.state.custom_deck.duplicate(true)
  table.card_pool = engine.state.card_pool
  table.banned = engine.state.banned.duplicate()
  table.starting_life = starting_life
@@ -1832,7 +1842,7 @@ func inspect_card(c, interactive: bool = false):
  for id in CardDB.cards:
   var name_text = str(CardDB.cards[id].name)
   if id != c.id and name_text.to_lower() in str(data.text).to_lower():
-   var matched = (p.hand + p.played).any(func(partner): return partner.id == id)
+   var matched = (p.hand + p.played).any(func(partner): return CustomDeck.rules_id(partner.id) == CustomDeck.rules_id(id))
    var partner = UIStyle.label(box, ("★ " if matched else "Combo: ") + name_text, 18)
    partner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
    if matched: partner.add_theme_color_override("font_color", UIStyle.GREEN)
@@ -1843,7 +1853,7 @@ func inspect_card(c, interactive: bool = false):
  if c is CardInstance:
   var reason = engine.why_not_play(p, c) if c in p.hand else (engine.why_not_buy(p, c) if c in engine.state.center_row or c in p.reserve else "")
   if not reason.is_empty(): UIStyle.label(box, reason, 22).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
- if c is CardInstance and c in p.hand and data.kind == "Permanent" and not engine.can_play(p, c) and engine.permanents().any(func(x): return x.effect_id() == "Nashville 2600"):
+ if c is CardInstance and c in p.hand and data.kind == "Permanent" and not engine.can_play(p, c) and engine.permanents().any(func(x): return CustomDeck.rules_id(x.effect_id()) == "Nashville 2600"):
   UIStyle.label(box, "Nashville 2600 is in play: no one can play permanents.", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  if c is CardInstance and available() and c in engine.permanents():
   for ability in engine.activatable_abilities(p, c):
@@ -2121,6 +2131,8 @@ func online_action(kind: String, uid = null, index = null):
  online_session.client.send_action(kind, uid, index)
  redraw()
 func setup_online():
+ if not online_session.room.get("deck_roll", []).is_empty():
+  show_notice.call_deferred("\n".join(online_session.room.deck_roll))
  bot_pace = Sfx.nearest(online_session.room.get("bot_pace", 0.5))
  var client = online_session.client
  emote_ui = load("res://scripts/ui/emotes.gd").new()
@@ -2131,6 +2143,7 @@ func setup_online():
  human_seat = client.seat
  player_count = engine.state.players.size()
  match_stats.setup(player_count, engine.state.card_pool, engine.state.players.map(func(p): return p.difficulty), engine.state.turn > 1)
+ match_stats.custom_deck = engine.state.custom_deck.duplicate(true)
  match_stats.capture_start(engine.state.players)
  card_pool = engine.state.card_pool
  starting_life = engine.state.starting_life
@@ -2292,7 +2305,7 @@ func share_details(winner) -> Dictionary:
   if p.is_bot and level not in levels: levels.append(level)
   opponents.append(seat_name(p.seat) + (" / " + level if p.is_bot else ""))
  var hero = seat_heroes[human_seat]
- return {"headline": result_headline(winner), "victory": winner != null and winner.seat == human_seat, "handle": seat_name(human_seat), "hero": hero, "hero_name": stats_card_name(hero), "life": stat.final_life, "turns": stat.turns, "damage": stat.damage_dealt, "bought": stat.cards_bought, "biggest": stat.biggest_hit, "most_played": match_stats.star_card(human_seat), "most_played_name": stats_card_name(match_stats.star_card(human_seat)), "opponents": opponents, "all_bots": all_bots, "difficulty": "/".join(levels), "pool": engine.state.card_pool, "version": str(ProjectSettings.get_setting("application/config/version")), "date": Time.get_date_string_from_system()}
+ return {"headline": result_headline(winner), "victory": winner != null and winner.seat == human_seat, "handle": seat_name(human_seat), "hero": hero, "hero_name": stats_card_name(hero), "life": stat.final_life, "turns": stat.turns, "damage": stat.damage_dealt, "bought": stat.cards_bought, "biggest": stat.biggest_hit, "most_played": match_stats.star_card(human_seat), "most_played_name": stats_card_name(match_stats.star_card(human_seat)), "opponents": opponents, "all_bots": all_bots, "difficulty": "/".join(levels), "pool": engine.state.card_pool, "custom_deck": engine.state.custom_deck, "version": str(ProjectSettings.get_setting("application/config/version")), "date": Time.get_date_string_from_system()}
 
 func timer_for(seat: int):
  if not countdowns.has(seat):

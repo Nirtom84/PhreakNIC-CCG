@@ -92,7 +92,7 @@ static func build_card(d: Dictionary) -> SubViewport:
   canvas.add_child(image)
   card_label(canvas, d.most_played_name, Rect2(900, 358, 252, 44), 20).horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
  card_label(canvas, "phreaknic-ccg.net", Rect2(48, 548, 500, 40), 30, UIStyle.CYAN)
- card_label(canvas, UIStyle.pool_label(d.pool), Rect2(552, 554, 600, 34), 22, UIStyle.MUTED).horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+ card_label(canvas, UIStyle.pool_label(d.pool, d.get("custom_deck", {})), Rect2(552, 540 if d.pool == "custom" else 554, 600, 70 if d.pool == "custom" else 34), 18 if d.pool == "custom" else 22, UIStyle.MUTED).horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
  return viewport
 static func render_card(owner: Node, d: Dictionary) -> Image:
  var viewport = build_card(d)

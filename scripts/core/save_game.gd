@@ -2,7 +2,7 @@ class_name SaveGame
 extends RefCounted
 const PATH = "user://savegame.json"
 const VERSION = 1
-const STATE_FIELDS = ["starting_life", "card_pool", "banned", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
+const STATE_FIELDS = ["starting_life", "card_pool", "custom_deck", "banned", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "log", "finished", "winner", "extra_turns", "coverage", "initial_count", "initial_ids", "next_uid"]
 const PLAYER_FIELDS = ["seat", "starting_life", "life", "alive", "is_bot", "difficulty", "deck", "hand", "discard", "play_area", "reserve", "hacking", "played", "turn_flags", "turns"]
 const CARD_FIELDS = ["uid", "id", "owner", "controller", "counters", "attached", "flags"]
 var objects: Array = []
@@ -52,7 +52,9 @@ func decode(value):
 static func snapshot(state) -> Dictionary:
 	var codec = SaveGame.new()
 	var data = {}
-	for field in STATE_FIELDS: data[field] = codec.encode(state.get(field))
+	for field in STATE_FIELDS:
+		if field == "custom_deck" and state.card_pool != "custom": continue
+		data[field] = codec.encode(state.get(field))
 	data.rng_seed = str(state.rng.seed)
 	data.rng_state = str(state.rng.state)
 	return {"state": data, "objects": codec.records}
@@ -76,7 +78,7 @@ static func restore(data: Dictionary):
 			object.set(field, value)
 	var state = GameState.new()
 	for field in STATE_FIELDS:
-		if field in ["card_pool", "starting_life", "banned"] and not data.state.has(field): continue
+		if field in ["card_pool", "starting_life", "banned", "custom_deck"] and not data.state.has(field): continue
 		if not data.state.has(field): return null
 		var value = codec.decode(data.state[field])
 		if field != "winner" and typeof(value) != typeof(state.get(field)): return null
@@ -85,7 +87,7 @@ static func restore(data: Dictionary):
 			state.log.assign(value)
 		else: state.set(field, value)
 	if not data.state.has("starting_life"): state.starting_life = 24 if state.players.size() == 2 else 10 * state.players.size()
-	if not codec.valid or state.card_pool not in ["2025", "2026", "2026mog"]: return null
+	if not codec.valid or state.card_pool not in ["2025", "2026", "2026mog", "custom"]: return null
 	if state.players.size() < 2 or state.players.size() > 4 or state.center_row.size() != 5: return null
 	if state.starting_life < 1 or state.starting_life > 10000: return null
 	if state.turn < 1: return null
@@ -125,9 +127,13 @@ static func restore(data: Dictionary):
 	if seen.size() != state.initial_count or state.initial_ids.size() != state.initial_count: return null
 	var expected = {"Hacking": 8 * state.players.size(), "Damage": 2 * state.players.size()}
 	var database = Engine.get_main_loop().root.get_node("CardDB")
-	if state.banned != database.filter_banned(state.banned, state.card_pool) or not database.bans_valid(state.banned, state.card_pool): return null
-	for id in database.center_ids(state.card_pool):
-		if id not in state.banned: expected[id] = 1
+	if state.card_pool == "custom":
+		if not CustomDeck.validate(state.custom_deck).is_empty() or not state.banned.is_empty(): return null
+		for id in state.custom_deck.cards: expected[id] = int(state.custom_deck.cards[id])
+	else:
+		if state.banned != database.filter_banned(state.banned, state.card_pool) or not database.bans_valid(state.banned, state.card_pool): return null
+		for id in database.center_ids(state.card_pool):
+			if id not in state.banned: expected[id] = 1
 	for card in identities: expected[card.id] = expected.get(card.id, 0) - 1
 	if expected.values().any(func(count): return count != 0): return null
 	if state.next_uid != state.initial_count + 1: return null
@@ -211,7 +217,7 @@ static func read() -> Dictionary:
 	for name in table.seat_names:
 		if not name is String: return {}
 	for hero in table.seat_heroes:
-		if not hero is String or (hero != "" and not Engine.get_main_loop().root.get_node("CardDB").cards.has(hero)): return {}
+		if not hero is String or (hero != "" and not Engine.get_main_loop().root.get_node("CardDB").catalog(state.card_pool).cards.has(hero)): return {}
 	if table.has("log_entries"):
 		if not table.log_entries is Array: return {}
 		for entry in table.log_entries:

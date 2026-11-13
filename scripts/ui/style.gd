@@ -272,7 +272,8 @@ static func escape_bbcode(text: String) -> String:
   result += "[lb]" if character == "[" else ("[rb]" if character == "]" else character)
  return result
 
-static func pool_label(pool: String) -> String:
+static func pool_label(pool: String, deck: Dictionary = {}) -> String:
+ if pool == "custom": return "Custom deck: " + str(deck.get("name", "Experimental"))
  if pool == "2026mog": return "Mog Variant · PhreakNIC 27"
  return "Base Set · PhreakNIC 26" if pool == "2025" else "Base Set + Expansion 1 · PhreakNIC 27"
 

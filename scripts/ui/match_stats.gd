@@ -3,6 +3,7 @@ extends RefCounted
 var seats: Array = []
 var duration = 0.0
 var winner_seat = -1
+var custom_deck: Dictionary = {}
 var card_pool = "2025"
 var bot_difficulties: Array = []
 var since_resume = false
@@ -67,16 +68,19 @@ func finish(winner: int, players: Array):
    pending.append_array(c.attached)
   seats[p.seat].final_deck_size = cards.size()
 func to_dict() -> Dictionary:
- return {"seats": seats.duplicate(true), "duration": duration, "winner_seat": winner_seat, "card_pool": card_pool, "player_count": seats.size(), "bot_difficulties": bot_difficulties.duplicate(), "since_resume": since_resume, "finished": finished}
+ return {"seats": seats.duplicate(true), "duration": duration, "winner_seat": winner_seat, "card_pool": card_pool, "custom_deck": custom_deck.duplicate(true), "player_count": seats.size(), "bot_difficulties": bot_difficulties.duplicate(), "since_resume": since_resume, "finished": finished}
 static func from_dict(data: Dictionary):
  var result = load("res://scripts/ui/match_stats.gd").new()
  if not data.get("seats") is Array or data.seats.size() < 2 or data.seats.size() > 4: return null
- if data.get("card_pool") not in ["2025", "2026", "2026mog"] or not data.get("bot_difficulties") is Array: return null
+ if data.get("card_pool") not in ["2025", "2026", "2026mog", "custom"] or not data.get("bot_difficulties") is Array: return null
  if not data.get("since_resume") is bool or not data.get("finished") is bool: return null
  if data.bot_difficulties.size() != data.seats.size(): return null
  for level in data.bot_difficulties:
   if not (level is int or level is float) or not is_finite(float(level)) or level != floor(float(level)) or level < -1 or level > 3: return null
  result.setup(data.seats.size(), data.card_pool, data.bot_difficulties.map(func(level): return int(level)), data.since_resume)
+ if data.card_pool == "custom":
+  if not data.get("custom_deck") is Dictionary or not CustomDeck.validate(data.custom_deck).is_empty(): return null
+  result.custom_deck = CustomDeck.normalize(data.custom_deck)
  for i in result.seats.size():
   if not data.seats[i] is Dictionary: return null
   for key in result.seats[i]:

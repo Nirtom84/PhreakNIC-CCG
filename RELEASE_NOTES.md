@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.25 — Custom decks (experimental)
+**Build your own Center Deck**
+- New **Decks (experimental)** screen on the main menu. A custom deck replaces the shared Center Deck that everyone buys from. Each player still starts with 8 Hacker and 2 Attack.
+- Deck rules: 60 to 200 cards; up to 4 copies of a card; Legendary cards up to 2 (Rick Astley counts as Legendary). Every printing counts toward the same card: Mog Variants mix freely with the originals, and Botnet and Mognet share their 4. Hacker and Attack can't go in a deck.
+- Search and filter by type, cost and set, and add or remove copies. The deck panel shows the total and anything that breaks a rule. Unfinished decks can be kept as drafts.
+- Two starter decks to play or copy: **Tag Team** (Nirtom & Reps4Thor) and **Greatest Hits** (the FOTTR crew).
+
+**Share decks**
+- **Copy deck code** gives a short code to paste into Discord. **Import** accepts a code or a deck file.
+- **Download deck** saves a `.phreakdeck.json` file.
+
+**Play with them**
+- Offline: choose **Custom deck (experimental)** under Card set. The ban list doesn't apply.
+- Online: the host picks **Custom decks (experimental)** and each player may submit a deck. If more than one player submits, everyone's deck rolls a **D20**; the highest roll's deck is played and ties re-roll. The rolls appear in the game log for everyone.
+- Custom-deck games have their own **Experimental decks** tab in Stats and don't count toward your lifetime stats.
+
 ## v0.24 — Fix: Menu button after a game
 **Fix**
 - At the end of an offline game, the **Menu** button on the summary opened the in-game menu behind the summary instead of leaving. It now goes straight back to the main menu, and is labelled **Main menu**.

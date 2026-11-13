@@ -45,6 +45,7 @@ func _receive(raw: Dictionary):
 	message_received.emit(message)
 	match message.get("t"):
 		"welcome":
+			log_history.assign(message.get("log", []))
 			waiting.clear()
 			for id in prompts.keys():
 				prompts.erase(id)

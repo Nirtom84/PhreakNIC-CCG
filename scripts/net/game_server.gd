@@ -8,6 +8,7 @@ const Pace = preload("res://scripts/core/bot_pace.gd")
 # Direct harnesses remain instant; rooms supply the default explicitly through LinkServer.
 var bot_pace: float = 0.0
 var setup_error = ""
+var setup_log: Array = []
 var engine: GameEngine
 var seats: Array = []
 var tokens: Array = []
@@ -72,11 +73,17 @@ func value_shape(value) -> String:
 	return type_string(typeof(value))
 func version() -> String: return str(ProjectSettings.get_setting("application/config/version", ""))
 func now() -> float: return float(clock.call())
-func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, seed_value: int = 1, banned: Array = [], pace: float = 0.0) -> bool:
+func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, seed_value: int = 1, banned: Array = [], pace: float = 0.0, custom_deck: Dictionary = {}) -> bool:
 	bot_pace = Pace.nearest(pace)
 	assert(config.size() >= 2 and config.size() <= 4)
 	setup_error = ""
-	if not get_node("/root/CardDB").bans_valid(banned, card_pool):
+	setup_log.clear()
+	if not custom_deck.is_empty():
+		var problems = CustomDeck.validate(custom_deck)
+		if not problems.is_empty():
+			setup_error = "; ".join(problems)
+			return false
+	if custom_deck.is_empty() and not get_node("/root/CardDB").bans_valid(banned, card_pool):
 		setup_error = "At least 40 center-deck cards must remain."
 		return false
 	seats = []
@@ -93,7 +100,7 @@ func setup(config: Array, card_pool: String = "2026", starting_life: int = 0, se
 	_install_engine()
 	var choices = []
 	for i in seats.size(): choices.append(BotDecider.new(engine, seats[i].difficulty) if seats[i].bot else RemoteDecider.new(self, i))
-	return engine.setup(levels, seed_value, choices, card_pool, starting_life, banned)
+	return engine.setup(levels, seed_value, choices, card_pool, starting_life, banned, custom_deck)
 func _pick_bot_names(card_pool: String):
 	var db = get_node("/root/CardDB").catalog(card_pool)
 	var used_names = []
@@ -219,7 +226,7 @@ func _receive(transport, message: Dictionary):
 		disconnected.erase(seat)
 		engine.deciders[seat] = BotDecider.new(engine, 1) if _takeover(seat) else RemoteDecider.new(self, seat)
 		engine.state.players[seat].difficulty = 1 if _takeover(seat) else -1
-		_send(seat, {"t": "welcome", "seat": seat, "seats": seats, "version": version(), "card_pool": engine.state.card_pool, "starting_life": engine.state.starting_life})
+		_send(seat, {"t": "welcome", "seat": seat, "seats": seats, "version": version(), "card_pool": engine.state.card_pool, "starting_life": engine.state.starting_life, "log": setup_log + engine.state.log.filter(func(line): return line not in setup_log)})
 		_view(seat)
 		for id in pending:
 			if pending[id].seat == seat:
@@ -391,10 +398,14 @@ func _checkpoint():
 	if not pending.is_empty() or not locks.is_empty() or engine.busy or engine.reaction_depth != 0 or engine.simultaneous_depth != 0 or not engine.state.resolving.is_empty(): return
 	if not engine.state.finished and not SaveGame.safe(engine, engine.state.active_seat): return
 	engine.trim_log()
-	last_snapshot = {"version": version(), "content": SaveGame.content(), "game": SaveGame.snapshot(engine.state), "seats": seats.duplicate(true), "tokens": tokens.duplicate(), "bot_pace": bot_pace}
+	last_snapshot = {"version": version(), "content": SaveGame.content(), "game": SaveGame.snapshot(engine.state), "seats": seats.duplicate(true), "tokens": tokens.duplicate(), "bot_pace": bot_pace, "setup_log": setup_log.duplicate()}
 	snapshot.emit(last_snapshot.duplicate(true))
 func restore(data: Dictionary) -> bool:
 	if not SaveGame.bounded(data) or not data.get("version") is String or not data.get("content") is String or not data.get("game") is Dictionary: return false
+	if not data.get("setup_log", []) is Array: return false
+	for line in data.get("setup_log", []):
+		if not line is String: return false
+	setup_log = data.get("setup_log", []).duplicate()
 	if data.version != version() or data.content != SaveGame.content(): return false
 	var restored = SaveGame.restore(data.get("game", {}))
 	if restored == null or not restored.resolving.is_empty() or not data.get("seats") is Array or not data.get("tokens") is Array: return false

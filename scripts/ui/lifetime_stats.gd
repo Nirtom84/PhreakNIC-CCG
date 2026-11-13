@@ -12,7 +12,7 @@ static func bucket() -> Dictionary:
  return b
 static func empty() -> Dictionary:
  var d = bucket()
- d.merge({"version": 1, "streak": 0, "best_streak": 0, "modes": {}, "difficulties": {}, "players": {}, "sets": {}, "heroes": {}, "stars": {}, "played": {}, "bought": {}, "keys": [], "first_date": "", "last_date": "", "biggest_hit": 0, "biggest_hit_date": "", "most_damage": 0, "fastest_win": 0, "fastest_hero": "", "fastest_date": "", "longest_game": 0})
+ d.merge({"experimental": {"games": 0, "wins": 0, "losses": 0, "difficulties": {}, "decks": {}, "keys": []}, "version": 1, "streak": 0, "best_streak": 0, "modes": {}, "difficulties": {}, "players": {}, "sets": {}, "heroes": {}, "stars": {}, "played": {}, "bought": {}, "keys": [], "first_date": "", "last_date": "", "biggest_hit": 0, "biggest_hit_date": "", "most_damage": 0, "fastest_win": 0, "fastest_hero": "", "fastest_date": "", "longest_game": 0})
  return d
 static func number(v):
  if not (v is int or v is float): return 0
@@ -54,6 +54,20 @@ func read():
  if keys is Array:
   for key in keys.slice(maxi(0, keys.size() - 50)):
    if key is String and key.length() <= 256 and key not in data.keys: data.keys.append(key)
+ var experimental = raw.get("experimental", {})
+ if experimental is Dictionary:
+  for field in ["games", "wins", "losses"]: data.experimental[field] = number(experimental.get(field))
+  for group in ["difficulties", "decks"]:
+   var entries = experimental.get(group, {})
+   if not entries is Dictionary: continue
+   for id in entries:
+    if not id is String or id.length() > 40 or not entries[id] is Dictionary: continue
+    if group == "difficulties" and id not in ["0", "1", "2", "3"]: continue
+    data.experimental[group][id] = {"games": number(entries[id].get("games")), "wins": number(entries[id].get("wins")), "losses": number(entries[id].get("losses"))}
+  var recent = experimental.get("keys", [])
+  if recent is Array:
+   for key in recent.slice(maxi(0, recent.size() - 50)):
+    if key is String and key.length() <= 256: data.experimental.keys.append(key)
  data.version = 1
 func bad():
  DirAccess.rename_absolute(ProjectSettings.globalize_path(PATH), ProjectSettings.globalize_path(PATH + ".bad"))
@@ -79,6 +93,7 @@ func add(b: Dictionary, s: Dictionary, won: bool, duration):
 func record(stats, seat: int, hero: String, mode: String, key: String) -> bool:
  if not stats.finished or seat < 0 or seat >= stats.seats.size() or key in data.keys: return false
  if mode not in ["local", "online_humans", "online_bots"]: return false
+ if stats.card_pool == "custom": return record_experimental(stats, seat, key)
  var s = stats.seats[seat]
  var won = stats.winner_seat == seat
  var today = Time.get_date_string_from_system()
@@ -144,3 +159,26 @@ func share_details(handle: String = "You") -> Dictionary:
  d.date = Time.get_date_string_from_system()
  d.version = str(ProjectSettings.get_setting("application/config/version"))
  return d
+
+## Returns an isolated copy for the future Experimental decks tab.
+func experimental() -> Dictionary:
+ return data.experimental.duplicate(true)
+func record_experimental(stats, seat: int, key: String) -> bool:
+ if not stats.finished or seat < 0 or seat >= stats.seats.size() or key in data.experimental.keys: return false
+ if not CustomDeck.validate(stats.custom_deck).is_empty(): return false
+ var won = stats.winner_seat == seat
+ var level = 0
+ for i in stats.bot_difficulties.size():
+  if i != seat: level = maxi(level, stats.bot_difficulties[i])
+ var buckets = [data.experimental]
+ for entry in [["difficulties", str(level)], ["decks", stats.custom_deck.name]]:
+  if not data.experimental[entry[0]].has(entry[1]): data.experimental[entry[0]][entry[1]] = {"games": 0, "wins": 0, "losses": 0}
+  buckets.append(data.experimental[entry[0]][entry[1]])
+ for b in buckets:
+  b.games = mini(MAX, b.games + 1)
+  b.wins = mini(MAX, b.wins + int(won))
+  b.losses = mini(MAX, b.losses + int(not won))
+ data.experimental.keys.append(key.left(256))
+ if data.experimental.keys.size() > 50: data.experimental.keys.pop_front()
+ save()
+ return true

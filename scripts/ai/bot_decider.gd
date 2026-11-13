@@ -22,7 +22,7 @@ func value(card, player = null) -> float:
 		score += 1.0 + engine.effects.initial_ice(card.id) * 0.6
 		if "once per turn" in text: score += 2.8
 	if "remove a card" in text: score += 1.8 if difficulty == 2 else 0.7
-	match card.id:
+	match CustomDeck.rules_id(card.id):
 		"Rickroll", "PhreakMyst": score = -3.0
 		"Touch Grass": score = 0.0
 		"Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4": score = 5.0
@@ -36,7 +36,7 @@ func value(card, player = null) -> float:
 		"Nirtom Unleashed": score = 1.5
 	if difficulty > 0:
 		# Text-only effects need explicit estimates; printed damage/hack omit them.
-		match card.id:
+		match CustomDeck.rules_id(card.id):
 			"Ben The Meek": score = 4.0
 			"heartsh8ped": score = 1.3
 			"Jenny": score = 3.5
@@ -65,18 +65,18 @@ func value(card, player = null) -> float:
 			"Tennessee Department of Health": score = 2.0
 		if player != null and difficulty == 2:
 			# Elite additionally evaluates the public board; Phreak uses the fixed estimates.
-			if card.id == "pouipoui, AV Guy": score = 1.0 + engine.permanents().size()
-			if card.id == "Hotel Roof Chair Toss": score += player.play_area.filter(func(c): return engine.db().has_subtype(c.id, "Location")).size()
-			if card.id in ["Sticky Fingers", "AI Slop", "Still Not Spock"] and engine.permanents().any(func(c): return c.controller != player.seat): score += 2.0
-			if card.id == "Clarion Inn Morning Coffee":
+			if CustomDeck.rules_id(card.id) == "pouipoui, AV Guy": score = 1.0 + engine.permanents().size()
+			if CustomDeck.rules_id(card.id) == "Hotel Roof Chair Toss": score += player.play_area.filter(func(c): return engine.db().has_subtype(c.id, "Location")).size()
+			if CustomDeck.rules_id(card.id) in ["Sticky Fingers", "AI Slop", "Still Not Spock"] and engine.permanents().any(func(c): return c.controller != player.seat): score += 2.0
+			if CustomDeck.rules_id(card.id) == "Clarion Inn Morning Coffee":
 				for c in engine.permanents(): score += 1.5 if c.controller != player.seat else -2.0
 	if player != null and difficulty == 2:
 		var owned = player.deck + player.hand + player.discard + player.play_area
 		if engine.db().named(card.id, "Botnet"): score += owned.filter(func(c): return engine.db().named(c.id, "Botnet")).size() * 2.0
 		var pairs = {"5ud0": ["Bitwize", "crook3dfingers"], "Bitwize": ["5ud0", "crook3dfingers"], "crook3dfingers": ["5ud0", "Bitwize"], "Never Gonna Give You Up": ["Never Gonna Let You Down"], "Never Gonna Let You Down": ["Never Gonna Give You Up"], "Reps4Thor": ["nirtom", "Nirtom Unleashed"], "nirtom": ["Reps4Thor"], "DeMartian": ["m8trix310"], "m8trix310": ["DeMartian"]}
-		if pairs.has(card.id):
+		if pairs.has(CustomDeck.rules_id(card.id)):
 			for c in owned:
-				if c.id in pairs[card.id]: score += 1.6
+				if CustomDeck.rules_id(c.id) in pairs[CustomDeck.rules_id(card.id)]: score += 1.6
 		if engine.db().has_subtype(card.id, "FOTTR Hero") and not engine.controlled(player, "The Fellowship of the Token Ring").is_empty(): score += 3
 		var enemy_life = 999
 		for q in engine.opponents(player): enemy_life = mini(enemy_life, q.life)
@@ -137,7 +137,7 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 		engine.shuffle(sorted)
 		return sorted.slice(0, engine.rand_range(min_n, max_n))
 	if "full prevention" in prompt:
-		sorted.sort_custom(func(a, b): return a.effect_id() == "Military-Grade Card Encapsulation" and b.effect_id() != "Military-Grade Card Encapsulation")
+		sorted.sort_custom(func(a, b): return CustomDeck.rules_id(a.effect_id()) == "Military-Grade Card Encapsulation" and CustomDeck.rules_id(b.effect_id()) != "Military-Grade Card Encapsulation")
 		return sorted.slice(0, 1)
 	if "ICE prevention" in prompt:
 		sorted.sort_custom(func(a, b): return a.counters < b.counters)
@@ -176,7 +176,7 @@ func choose_cards(player, prompt: String, cards: Array, min_n: int, max_n: int) 
 	return sorted.slice(0, maxi(1, min_n))
 func removal_value(card, player) -> float:
 	if not defcon: return value(card, player)
-	if card.id in ["Hacking", "Damage", "Rickroll"]: return -4.0 if card.id != "Rickroll" else -10.0
+	if CustomDeck.rules_id(card.id) in ["Hacking", "Damage", "Rickroll"]: return -4.0 if CustomDeck.rules_id(card.id) != "Rickroll" else -10.0
 	return buy_value(card, player)
 func thinning_choices(cards: Array, player, count: int) -> Array:
 	# Composition only: never use the order of the deck or opponents' hidden cards.
@@ -187,26 +187,26 @@ func thinning_choices(cards: Array, player, count: int) -> Array:
 		var d = engine.db().get_card(c.id)
 		hacking += int(d.hack)
 		damage += int(d.damage)
-		if c.id in ["Ben The Meek", "Non-Infringing Game Show", "LAN Party"]: damage += 3
+		if CustomDeck.rules_id(c.id) in ["Ben The Meek", "Non-Infringing Game Show", "LAN Party"]: damage += 3
 	for c in player.play_area:
 		if engine.db().named(c.id, "Botnet"): hacking += engine.controlled(player, "Botnet").size() * 2
-		if c.id in ["Payphone", "Unattended Phone", "Tableskirts"]: hacking += 2
-		if c.id in ["Payphone", "Bribery", "FOTTR Greatest Hits Vol 2", "Dick Van Dyke Stamp"]: damage += 3
+		if CustomDeck.rules_id(c.id) in ["Payphone", "Unattended Phone", "Tableskirts"]: hacking += 2
+		if CustomDeck.rules_id(c.id) in ["Payphone", "Bribery", "FOTTR Greatest Hits Vol 2", "Dick Van Dyke Stamp"]: damage += 3
 	var result: Array = []
 	for c in cards:
 		if result.size() >= count: break
-		if c.id not in ["Hacking", "Damage", "Rickroll"] and (buy_value(c, player) if defcon else value(c, player)) >= 1.5: continue
-		if defcon and c.id not in ["Hacking", "Damage", "Rickroll"]:
+		if CustomDeck.rules_id(c.id) not in ["Hacking", "Damage", "Rickroll"] and (buy_value(c, player) if defcon else value(c, player)) >= 1.5: continue
+		if defcon and CustomDeck.rules_id(c.id) not in ["Hacking", "Damage", "Rickroll"]:
 			var d = engine.db().get_card(c.id)
-			var attack = int(d.damage) + (3 if c.id in ["Ben The Meek", "Non-Infringing Game Show", "LAN Party"] else 0)
+			var attack = int(d.damage) + (3 if CustomDeck.rules_id(c.id) in ["Ben The Meek", "Non-Infringing Game Show", "LAN Party"] else 0)
 			if int(d.hack) > 0 and hacking - int(d.hack) < 6: continue
 			if attack > 0 and damage - attack < 2: continue
 			hacking -= int(d.hack)
 			damage -= attack
-		if c.id == "Hacking":
+		if CustomDeck.rules_id(c.id) == "Hacking":
 			if hacking <= 6 or not engine.controlled(player, "Dick Van Dyke Stamp").is_empty(): continue
 			hacking -= 1
-		if c.id == "Damage":
+		if CustomDeck.rules_id(c.id) == "Damage":
 			if damage <= 2: continue
 			damage -= 1
 		result.append(c)
@@ -253,7 +253,7 @@ func confirm(player, prompt: String) -> bool:
 	if "Discard permanent" in prompt or "discard a permanent" in prompt:
 		return engine.permanents().any(func(c): return c.controller != player.seat)
 	if "O.P.R.A.H." in prompt:
-		return engine.state.center_row.any(func(c): return c != null and c.id == "O.P.R.A.H.")
+		return engine.state.center_row.any(func(c): return c != null and CustomDeck.rules_id(c.id) == "O.P.R.A.H.")
 	if "Remove this" in prompt: return true
 	return false
 func name_a_card(_player, _prompt: String) -> String:

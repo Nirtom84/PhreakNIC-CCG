@@ -170,7 +170,7 @@ func resolve(p, c):
 	if damage > 0: await e.deal(p, damage, c)
 	if not p.alive or e.state.finished: return
 	if data.kind == "Permanent": c.counters = initial_ice(c.effect_id())
-	await handlers[c.effect_id()].call(p, c)
+	await handlers[CustomDeck.rules_id(c.effect_id())].call(p, c)
 var ice_regex: RegEx
 var ice_counts: Dictionary = {}
 func initial_ice(id: String) -> int:
@@ -1014,10 +1014,10 @@ func cost(p, c) -> int:
 func on_play(p, c):
 	var pending: Array = []
 	for permanent in p.play_area:
-		if permanent.effect_id() == "Dick Van Dyke Stamp":
+		if CustomDeck.rules_id(permanent.effect_id()) == "Dick Van Dyke Stamp":
 			if e.db().named(c.id, "Hacker"): pending.append({"card": permanent, "resolve": e.deal.bind(p, 1, permanent)})
 			if e.db().named(c.id, "Attack"): pending.append({"card": permanent, "commutes": true, "resolve": add_hacking.bind(p, 1)})
-		if permanent.effect_id() == "Foundation of Time Temporal Reconstruction":
+		if CustomDeck.rules_id(permanent.effect_id()) == "Foundation of Time Temporal Reconstruction":
 			if e.db().has_subtype(c.id, "Hero"): pending.append({"card": permanent, "commutes": true, "resolve": add_hacking.bind(p, 1)})
 			if e.db().has_subtype(c.id, "Exploit"): pending.append({"card": permanent, "resolve": e.deal.bind(p, 1, permanent)})
 			if e.db().has_subtype(c.id, "Event"): pending.append({"card": permanent, "commutes": true, "resolve": add_life.bind(p, 1)})
@@ -1036,7 +1036,7 @@ func combos(p):
 		var c = p.played[i]
 		var key = "%d" % i
 		if fired.has(key): continue
-		var id = p.turn_flags.get("copied_text", {}).get(i, c.id)
+		var id = CustomDeck.rules_id(p.turn_flags.get("copied_text", {}).get(i, c.id))
 		var ready = false
 		var damage = 0
 		if id in ["5ud0", "Bitwize", "crook3dfingers"]:
@@ -1061,22 +1061,22 @@ func bought(p, c, from_row: bool):
 	var pending: Array = []
 	# Destination choices are local to this purchase, including nested reactions.
 	var destination = {"chosen": false}
-	if c.id in ["Fore04", "G4nd4lf", "JousterL", "hfuller", "mog", "Nuvious", "proudF00F", "Venaul"]:
+	if CustomDeck.rules_id(c.id) in ["Fore04", "G4nd4lf", "JousterL", "hfuller", "mog", "Nuvious", "proudF00F", "Venaul"]:
 		pending.append({"name": e.db().get_card(c.id).name, "resolve": bought_self.bind(p, c, destination)})
 	if e.db().has_subtype(c.id, "Hero"):
 		for permanent in p.play_area:
-			if permanent.effect_id() in ["The Fellowship of the Token Ring", "pTFS"]:
+			if CustomDeck.rules_id(permanent.effect_id()) in ["The Fellowship of the Token Ring", "pTFS"]:
 				pending.append({"card": permanent, "resolve": bought_destination.bind(p, c, permanent, destination)})
 	if from_row:
 		for permanent in e.permanents():
-			if permanent.effect_id() == "Powered On Taser Maintenance" and permanent.controller != p.seat:
+			if CustomDeck.rules_id(permanent.effect_id()) == "Powered On Taser Maintenance" and permanent.controller != p.seat:
 				pending.append({"card": permanent, "resolve": e.damage.bind(e.state.players[permanent.controller], p, 1, permanent)})
 	await e.resolve_triggers(pending)
 func bought_self(p, c, destination: Dictionary = {}):
-	if c.id in ["hfuller", "proudF00F"]:
+	if CustomDeck.rules_id(c.id) in ["hfuller", "proudF00F"]:
 		for q in e.state.players:
 			if q.alive: e.reveal(q, q.hand)
-	match c.id:
+	match CustomDeck.rules_id(c.id):
 		"Fore04":
 			# Designer ruling 2026-11-10 (#10): with Fellowship/pTFS too, exactly one destination applies.
 			if destination.get("chosen", false): return
@@ -1100,25 +1100,25 @@ func bought_self(p, c, destination: Dictionary = {}):
 				if q.alive: add_life(q, 5)
 func bought_destination(p, c, permanent, destination: Dictionary):
 	if destination.get("chosen", false): return
-	if permanent.effect_id() == "The Fellowship of the Token Ring" and await e.dec(p).confirm(p, "Put bought hero in hand?"):
+	if CustomDeck.rules_id(permanent.effect_id()) == "The Fellowship of the Token Ring" and await e.dec(p).confirm(p, "Put bought hero in hand?"):
 		e.move(c, p.hand, "hand")
 		destination.chosen = true
-	if permanent.effect_id() == "pTFS" and await e.dec(p).confirm(p, "Store bought hero on pTFS?"):
+	if CustomDeck.rules_id(permanent.effect_id()) == "pTFS" and await e.dec(p).confirm(p, "Store bought hero on pTFS?"):
 		e.move(c, permanent.attached, "attached")
 		destination.chosen = true
 const START_TRIGGERS = ["Clarion Inn Closet", "Kevin's Desk", "Military-Grade Card Encapsulation", "Tableskirts", "Unattended Phone", "The Juice", "The Phreaknic Network", "pTFS", "The Book"]
 func start_turn(p):
 	var pending: Array = []
 	for c in e.permanents():
-		if c.effect_id() == "Clarion Inn Air Conditioning" or (c.controller == p.seat and c.effect_id() in START_TRIGGERS):
-			pending.append({"card": c, "commutes": c.effect_id() in ["Clarion Inn Closet", "pTFS"], "resolve": start_trigger.bind(p, c)})
+		if CustomDeck.rules_id(c.effect_id()) == "Clarion Inn Air Conditioning" or (c.controller == p.seat and CustomDeck.rules_id(c.effect_id()) in START_TRIGGERS):
+			pending.append({"card": c, "commutes": CustomDeck.rules_id(c.effect_id()) in ["Clarion Inn Closet", "pTFS"], "resolve": start_trigger.bind(p, c)})
 	for c in row():
-		if c.id == "Rickroll": pending.append({"card": c, "row": true, "resolve": e.buy_card.bind(p, c, true)})
+		if CustomDeck.rules_id(c.id) == "Rickroll": pending.append({"card": c, "row": true, "resolve": e.buy_card.bind(p, c, true)})
 	await e.resolve_triggers(pending)
 func start_trigger(p, c):
-	if c.effect_id() == "Clarion Inn Air Conditioning": await e.damage(e.state.players[c.controller], p, 1, c)
+	if CustomDeck.rules_id(c.effect_id()) == "Clarion Inn Air Conditioning": await e.damage(e.state.players[c.controller], p, 1, c)
 	if c.controller != p.seat: return
-	match c.effect_id():
+	match CustomDeck.rules_id(c.effect_id()):
 		"Clarion Inn Closet": c.counters += 2
 		"Kevin's Desk":
 			for x in await e.choose(p, "Take control of permanent", e.permanents()): e.take_control(x, p)
@@ -1154,9 +1154,9 @@ func end_turn(p):
 	if p.turn_flags.get("acquired", 0) == 0:
 		for i in p.turn_flags.get("zenthere", 0): pending.append({"name": "Zenthere, Mind Goblin", "resolve": e.deal.bind(p, 2)})
 	for c in e.permanents():
-		if c.effect_id() == "Touch Grass" and c.controller == p.seat and p.turns >= c.flags.get("expires", 999999):
+		if CustomDeck.rules_id(c.effect_id()) == "Touch Grass" and c.controller == p.seat and p.turns >= c.flags.get("expires", 999999):
 			pending.append({"card": c, "resolve": e.remove.bind(c)})
-		elif c.effect_id() == "FOTTR Greatest Hits Vol 2" and c.controller != p.seat and not p.played.any(func(x): return x.id in RICK_ART):
+		elif CustomDeck.rules_id(c.effect_id()) == "FOTTR Greatest Hits Vol 2" and c.controller != p.seat and not p.played.any(func(x): return CustomDeck.rules_id(x.id) in RICK_ART):
 			pending.append({"card": c, "resolve": e.damage.bind(e.state.players[c.controller], p, 2, c)})
 	await e.resolve_triggers(pending)
 const FREE_ONCE = ["Mognet", "Mognet1", "Mognet2", "Mognet3", "Mognet4", "Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4", "Tableskirts", "Unattended Phone", "The Big Dipper", "Payphone", "Shell Speech", "Disassembled Sink", "FOTTR Greatest Hits"]
@@ -1164,24 +1164,24 @@ const PAID = {"Bribery": 2, "AI Bens AI Camry": 2, "Fivrr Friendship": 2, "White
 func abilities(p, c) -> Array:
 	var result: Array = []
 	if c not in e.permanents(): return result
-	if c.effect_id() == "Nashville 2600":
+	if CustomDeck.rules_id(c.effect_id()) == "Nashville 2600":
 		return [{"index": 0, "label": "Pay 6 Hacking: remove Nashville 2600", "enabled": e.is_turn(p) and p.hacking >= 6, "cost": 6}]
 	if c.controller != p.seat: return result
-	var id = c.effect_id()
+	var id = CustomDeck.rules_id(c.effect_id())
 	if id in FREE_ONCE:
 		var enabled = not c.flags.get("used", false)
 		if id in ["Disassembled Sink", "FOTTR Greatest Hits"]: enabled = enabled and not p.hand.is_empty()
-		result.append({"index": 0, "label": e.db().get_card(id).text.split("\n")[0], "enabled": e.is_turn(p) and enabled, "cost": 0})
-	if PAID.has(id): result.append({"index": 0, "label": e.db().get_card(id).text, "enabled": e.is_turn(p) and p.hacking >= PAID[id], "cost": PAID[id]})
+		result.append({"index": 0, "label": e.db().get_card(c.effect_id()).text.split("\n")[0], "enabled": e.is_turn(p) and enabled, "cost": 0})
+	if PAID.has(id): result.append({"index": 0, "label": e.db().get_card(c.effect_id()).text, "enabled": e.is_turn(p) and p.hacking >= PAID[id], "cost": PAID[id]})
 	if id in ["Time Travel", "Shell Speech", "Clarion Inn Chandeliers", "Candy Factory", "Tennessee Department of Health"]:
 		var enabled = true
 		if id == "Clarion Inn Chandeliers": enabled = not e.state.removed.is_empty()
 		if id == "Candy Factory": enabled = p.hand.any(func(x): return e.db().has_subtype(x.id, "Hero"))
 		if id == "Tennessee Department of Health": enabled = e.permanents().any(func(x): return e.db().has_subtype(x.effect_id(), "Location") and x.counters > 0)
-		result.append({"index": 1 if id == "Shell Speech" else 0, "label": "Remove this: deal 2 damage" if id == "Shell Speech" else e.db().get_card(id).text, "enabled": enabled and e.is_turn(p), "cost": 0})
+		result.append({"index": 1 if id == "Shell Speech" else 0, "label": "Remove this: deal 2 damage" if id == "Shell Speech" else e.db().get_card(c.effect_id()).text, "enabled": enabled and e.is_turn(p), "cost": 0})
 	return result
 func activate(p, c, index: int):
-	var id = c.effect_id()
+	var id = CustomDeck.rules_id(c.effect_id())
 	if id in FREE_ONCE and index == 0:
 		c.flags.used = true
 		match id:

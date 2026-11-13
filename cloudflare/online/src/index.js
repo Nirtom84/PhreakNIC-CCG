@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave,validEmote,emoteRate} from './lib/protocol.js';
+import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave,validEmote,emoteRate,deckSubmission,deckRanking} from './lib/protocol.js';
 import {adminHTML,adminJS,adminHeaders} from './admin.js';
 const HOUR=3600000, IDLE=600000, DAY=24*HOUR;
 let listingCache;
@@ -136,6 +136,7 @@ export class Room extends DurableObject {
     this.closing=false;this.sleeping=false;this.starting=false;this.boot=null;this.stopping=null;this.savedAt=0;++this.generation;this.clients.clear();this.rates.clear();this.emoteRates?.clear();this.link=null;
     if(this.env.ONLINE_ENABLED==='0'){await lobby(this.env).bump(['refused.maintenance']);fail('maintenance',503);}
     const {platform:p,...config}=data;
+    if(config.card_pool==='custom')config.banned=[];
     this.r={...config,code:c,host_seat:0,started:false,over:false,created:Date.now(),lastActivity:Date.now(),emptySince:Date.now(),hostGoneAt:Date.now(),snapshot:null,seed:crypto.getRandomValues(new Uint32Array(1))[0]&0x7fffffff};
     await this.stat('create',p);await this.save();return {code:c,seat:0,token:this.r.seats[0].token};
   }
@@ -148,7 +149,7 @@ export class Room extends DurableObject {
   connected(seat) {return [...this.clients.values()].some(c=>c.seat===seat);}
   send(ws,v) {try{ws.send(JSON.stringify(v));}catch{}}
   broadcast(v) {for(const ws of this.clients.keys())this.send(ws,v);}
-  broadcastRoom() {const r=this.r;this.broadcast({t:'room',banned:r.banned||[],code:r.code,seats:r.seats.map((s,i)=>({name:s.name,hero:s.hero,bot:s.bot,difficulty:s.difficulty,connected:this.connected(i)})),host_seat:r.host_seat,started:r.started,public:r.public,card_pool:r.card_pool,starting_life:r.starting_life,bot_pace:r.bot_pace??0.5});}
+  broadcastRoom() {const r=this.r;this.broadcast({t:'room',deck_roll:this.r.deck_roll||[],banned:r.banned||[],code:r.code,seats:r.seats.map((s,i)=>({name:s.name,hero:s.hero,bot:s.bot,difficulty:s.difficulty,connected:this.connected(i),deck:s.deck?{name:s.deck.name,count:s.deck.count}:null})),host_seat:r.host_seat,started:r.started,public:r.public,card_pool:r.card_pool,starting_life:r.starting_life,bot_pace:r.bot_pace??0.5});}
   linkSend(v) {if(this.link?.readyState===1)this.link.send(JSON.stringify(v));}
   async fetch(req) {
     try {
@@ -193,6 +194,12 @@ export class Room extends DurableObject {
       return;
     }
     if(m.t!=='lobby')fail('lobby');if(this.starting)fail('busy',503);
+    if(['submit_deck','withdraw_deck'].includes(m.action)){
+      if(this.r.card_pool!=='custom'||this.r.seats[c.seat].bot)fail('deck');
+      const seat=this.r.seats[c.seat],credential=seat.token;const deck=m.action==='submit_deck'?await deckSubmission(m.code):null;
+      if(!this.r||this.closing||this.r.started||this.starting||this.r.card_pool!=='custom'||this.r.seats[c.seat]!==seat||seat.token!==credential)fail('busy');
+      seat.deck=deck;await this.save(true);this.broadcastRoom();return;
+    }
     if(m.action==='leave'&&hostLeave(this.r,c.seat)){await this.closeByHost();return;}
     if(m.action==='leave'&&c.seat!==0){
       this.r.seats[c.seat]={name:'',hero:'',bot:false,difficulty:0,token:''};
@@ -202,6 +209,7 @@ export class Room extends DurableObject {
       if(c.seat!==0)fail('host',403);
       if(m.action==='start') {
         if(this.r.seats.length<2||!this.r.seats.some(s=>!s.bot&&s.token)||this.r.seats.some(s=>!s.bot&&!s.token))fail('seats');
+        if(this.r.card_pool==='custom'){const ranked=deckRanking(this.r.seats);if(!ranked.order.length)fail('Someone needs to submit a deck');this.r.deck_order=ranked.order;this.r.deck_groups=ranked.groups;this.r.deck_roll=ranked.lines;this.r.deck_attempt=0;}
         this.starting=true;try{
           const refusal=await lobby(this.env).claim(this.r.code,this.r.created);if(refusal)fail(refusal,503);
           if(!this.r||roomExpired(this.r)){await lobby(this.env).release(this.r?.code||'');fail('busy',503);}
@@ -215,7 +223,7 @@ export class Room extends DurableObject {
         if(!Number.isInteger(m.seat)||m.seat<=0||m.seat>=this.r.seats.length||this.r.seats.length<=2)fail('seat');
         for(const [s,v]of this.clients){if(v.seat===m.seat){this.clients.delete(s);s.close(1000,'removed');}else if(v.seat>m.seat)v.seat--;}
         this.r.seats.splice(m.seat,1);const rates=new Map();for(const [seat,rate]of this.rates)if(seat!==m.seat)rates.set(seat>m.seat?seat-1:seat,rate);this.rates=rates;
-      }else if(m.action==='settings'){const next=settings(m,true);this.r.banned_by_pool||={};this.r.banned_by_pool[this.r.card_pool]=this.r.banned||[];if(next.card_pool&&next.card_pool!==this.r.card_pool)next.banned=this.r.banned_by_pool[next.card_pool]||[];Object.assign(this.r,next);this.r.banned_by_pool[this.r.card_pool]=this.r.banned||[];}else fail('action');
+      }else if(m.action==='settings'){const next=settings(m,true);if(next.card_pool&&next.card_pool!=='custom')for(const seat of this.r.seats)delete seat.deck;this.r.banned_by_pool||={};this.r.banned_by_pool[this.r.card_pool]=this.r.banned||[];if(next.card_pool&&next.card_pool!==this.r.card_pool)next.banned=this.r.banned_by_pool[next.card_pool]||[];Object.assign(this.r,next);if(this.r.card_pool==='custom')this.r.banned=[];this.r.banned_by_pool[this.r.card_pool]=this.r.banned||[];}else fail('action');
     }
     await this.save(true);this.broadcastRoom();
   }
@@ -275,15 +283,33 @@ export class Room extends DurableObject {
         });
         if(ws.readyState!==1||this.link!==ws)throw new Error('link lost');
         if(this.r.snapshot){await quiet(()=>lobby(this.env).bump(['server.restores']));this.linkSend({t:'restore',room:this.r.code,snapshot:this.r.snapshot});}
-        else this.linkSend({t:'setup',room:this.r.code,seats:this.r.seats.map(({name,hero,bot,difficulty,token})=>({name,hero,bot,difficulty,token:bot?'':token})),card_pool:this.r.card_pool,banned:this.r.banned||[],starting_life:this.r.starting_life,bot_pace:this.r.bot_pace??0.5,seed:this.r.seed});
+        else {this.sendSetup();if(this.r.card_pool==='custom')return;}
         for(let seat=0;seat<this.r.seats.length;seat++)if(this.connected(seat))this.linkSend({t:'connect',seat,version:this.r.version});
         this.broadcast({t:'server',status:'ok'});return;
       }catch(e){if(!this.r||this.sleeping||this.r.over||gen!==this.generation)return;console.error('room',this.r.code,'attempt',attempt,'failed:',e&&e.stack||e);++this.generation;this.link?.close();this.link=null;}
     }
     await quiet(()=>lobby(this.env).bump(['server.unavailable']));++this.generation;await this.stop('retry limit');this.broadcast({t:'server',status:'unavailable'});
   }
+  sendSetup() {
+    const r=this.r,seat=r.seats[r.deck_order?.[r.deck_attempt||0]],custom=r.card_pool==='custom';
+    const chosen=custom?`${seat.name}'s deck "${seat.deck.name}" will be played.`:'';
+    const lines=custom?[...(r.deck_roll||[]).filter(line=>line!==chosen),chosen]:[];
+    this.linkSend({t:'setup',attempt:r.deck_attempt||0,room:r.code,seats:r.seats.map(({name,hero,bot,difficulty,token})=>({name,hero,bot,difficulty,token:bot?'':token})),card_pool:r.card_pool,banned:custom?[]:r.banned||[],starting_life:r.starting_life,bot_pace:r.bot_pace??0.5,seed:r.seed,...(custom?{custom_deck_code:seat.deck.code,deck_roll:lines}:{})});
+  }
   async linkMessage(m) {
     if(!this.r||roomExpired(this.r)||this.sleeping)return;
+    if(m.t==='setup_error'&&this.r.started&&this.r.card_pool==='custom'&&!this.r.snapshot&&m.attempt===(this.r.deck_attempt||0)){
+      const r=this.r,seat=r.seats[r.deck_order[r.deck_attempt||0]];r.deck_roll.push(seat.name+"'s deck was invalid and was dropped.");delete seat.deck;r.deck_attempt=(r.deck_attempt||0)+1;
+      if(r.deck_attempt<r.deck_order.length){
+        if(r.deck_groups){r.deck_groups.shift();if(r.deck_groups[0]?.length>1){const ranked=deckRanking(r.seats,undefined,r.deck_groups.shift());r.deck_groups.unshift(...ranked.groups);r.deck_roll.push(...ranked.lines);}r.deck_order=[...r.deck_order.slice(0,r.deck_attempt),...r.deck_groups.flat()];}
+        await this.save();this.sendSetup();return;
+      }
+      r.started=false;r.deck_order=[];++this.generation;this.link?.close();this.link=null;await this.stop('invalid decks');await this.save(true);this.broadcastRoom();this.broadcast({t:'error',reason:'No valid submitted decks remain. Submit a valid deck and try again.'});return;
+    }
+    if(m.t==='setup_ok'&&this.r.started&&this.r.card_pool==='custom'&&!this.r.snapshot&&m.attempt===(this.r.deck_attempt||0)){
+      const seat=this.r.seats[this.r.deck_order[this.r.deck_attempt||0]];const chosen=`${seat.name}'s deck "${seat.deck.name}" will be played.`;if(!this.r.deck_roll.includes(chosen))this.r.deck_roll.push(chosen);await this.save();this.broadcastRoom();
+      for(let seat=0;seat<this.r.seats.length;seat++)if(this.connected(seat))this.linkSend({t:'connect',seat,version:this.r.version});this.broadcast({t:'server',status:'ok'});return;
+    }
     if(m.t==='diag'){if(typeof m.text==='string')console.log(`room ${this.r.code}: ${m.text.slice(0,300)}`);}
     else if(m.t==='to'){for(const [ws,c]of this.clients)if(c.seat===m.seat)this.send(ws,m.msg);}
     else if(m.t==='snapshot'){this.r.snapshot=m.data;await this.ctx.storage.put('room',this.r);}

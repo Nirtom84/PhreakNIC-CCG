@@ -2,7 +2,7 @@ class_name NetView
 extends SaveGame
 # The object codec preserves object-valued flags and dictionary keys. Only this
 # explicit public field list is encoded, never the authoritative save envelope.
-const PUBLIC_STATE = ["starting_life", "card_pool", "banned", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "finished", "winner"]
+const PUBLIC_STATE = ["starting_life", "card_pool", "custom_deck", "banned", "players", "center_deck", "center_row", "removed", "resolving", "active_seat", "turn", "finished", "winner"]
 var visible: Array = []
 var masks: Dictionary = {}
 static func hidden_cards(count: int) -> Array:
@@ -47,6 +47,7 @@ static func build(engine, seat: int) -> Dictionary:
 		codec.records[p.seat] = {"type": "player", "data": data}
 	var data = {}
 	for field in PUBLIC_STATE:
+		if field == "custom_deck" and state.card_pool != "custom": continue
 		data[field] = codec.encode(hidden_cards(state.center_deck.size()) if field == "center_deck" else state.get(field))
 	return {"state": data, "objects": codec.records, "seat": seat, "ready": not engine.busy, "counts": {"center_deck": state.center_deck.size(), "players": state.players.map(func(p): return {"deck": p.deck.size(), "hand": p.hand.size()})}}
 # NetClient installs this public state on a GameEngine, including its shared
@@ -59,6 +60,8 @@ static func apply(view: Dictionary) -> GameState:
 		var record = view.objects[i]
 		for field in record.data: codec.objects[i].set(field, codec.decode(record.data[field]))
 	var state = GameState.new()
-	for field in PUBLIC_STATE: state.set(field, codec.decode(view.state[field]))
+	for field in PUBLIC_STATE:
+		if field == "custom_deck" and not view.state.has(field): continue
+		state.set(field, codec.decode(view.state[field]))
 	Engine.get_main_loop().root.get_node("CardDB").select_pool(state.card_pool)
 	return state

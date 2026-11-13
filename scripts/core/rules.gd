@@ -63,12 +63,16 @@ func trim_log():
 		if size > 65536:
 			state.log = state.log.slice(i + 1)
 			break
-func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026", starting_life: int = 0, banned: Array = []) -> bool:
+func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_pool: String = "2026", starting_life: int = 0, banned: Array = [], custom_deck: Dictionary = {}) -> bool:
 	assert(difficulties.size() >= 2 and difficulties.size() <= 4)
-	if not get_node("/root/CardDB").catalog(card_pool).bans_valid(banned, card_pool): return false
+	if not custom_deck.is_empty() and not CustomDeck.validate(custom_deck).is_empty(): return false
+	if custom_deck.is_empty() and not get_node("/root/CardDB").catalog(card_pool).bans_valid(banned, card_pool): return false
 	state = GameState.new()
 	state.card_pool = card_pool if card_pool in ["2025", "2026", "2026mog"] else "2026"
-	state.banned = db().filter_banned(banned, state.card_pool)
+	if not custom_deck.is_empty():
+		state.card_pool = "custom"
+		state.custom_deck = CustomDeck.normalize(custom_deck)
+	state.banned = [] if state.card_pool == "custom" else db().filter_banned(banned, state.card_pool)
 	state.rng.seed = seed_value
 	state.starting_life = starting_life if starting_life > 0 else (24 if difficulties.size() == 2 else 10 * difficulties.size())
 	deciders = choices.duplicate()
@@ -85,8 +89,12 @@ func setup(difficulties: Array, seed_value: int = 1, choices: Array = [], card_p
 		for i in 10: p.deck.append(state.create("Hacking" if i < 8 else "Damage", seat))
 		shuffle(p.deck)
 		draw(p, 5)
-	for id in db().pool_ids(state.card_pool):
-		if not db().get_card(id).starter and id not in state.banned: state.center_deck.append(state.create(id))
+	if state.card_pool == "custom":
+		for id in state.custom_deck.cards:
+			for copy in state.custom_deck.cards[id]: state.center_deck.append(state.create(id))
+	else:
+		for id in db().pool_ids(state.card_pool):
+			if not db().get_card(id).starter and id not in state.banned: state.center_deck.append(state.create(id))
 	shuffle(state.center_deck)
 	for i in 5: refill(i)
 	state.active_seat = rand_int(state.players.size())
@@ -227,14 +235,14 @@ func legal_effect(p, card) -> bool:
 func why_not_effect(p, card) -> String:
 	var data = db().get_card(card.id)
 	if data.kind == "Permanent" and in_play("Nashville 2600"): return "Nashville 2600 is in play: no one can play permanents"
-	if card.id == "PhreakMyst" and p.turn_flags.get("bought", 0) > 0: return "Another played card blocks this action"
-	if card.id == "Even More Logo" and played_name(p, "_NSAKEY", true): return "Another played card blocks this action"
-	if db().name_contains(card.id, "_NSAKEY") and p.played.any(func(c): return c.id == "Even More Logo"): return "Another played card blocks this action"
+	if CustomDeck.rules_id(card.id) == "PhreakMyst" and p.turn_flags.get("bought", 0) > 0: return "Another played card blocks this action"
+	if CustomDeck.rules_id(card.id) == "Even More Logo" and played_name(p, "_NSAKEY", true): return "Another played card blocks this action"
+	if db().name_contains(card.id, "_NSAKEY") and p.played.any(func(c): return CustomDeck.rules_id(c.id) == "Even More Logo"): return "Another played card blocks this action"
 	if data.kind == "Action":
-		if card.id == "Nirtom Unleashed":
+		if CustomDeck.rules_id(card.id) == "Nirtom Unleashed":
 			for prior in p.played:
 				if db().get_card(prior.id).kind == "Action" and not db().named(prior.id, "Reps4Thor"): return "Another played card blocks this action"
-		elif p.played.any(func(c): return c.id == "Nirtom Unleashed") and not db().named(card.id, "Reps4Thor"): return "Another played card blocks this action"
+		elif p.played.any(func(c): return CustomDeck.rules_id(c.id) == "Nirtom Unleashed") and not db().named(card.id, "Reps4Thor"): return "Another played card blocks this action"
 	return ""
 func play_card(p, card) -> bool:
 	if busy or not can_play(p, card): return false
@@ -363,7 +371,7 @@ func end_turn(p):
 func counter_removed(card):
 	ice_counter_removed.emit(card)
 	if card.counters > 0 or card not in permanents(): return
-	var id = card.effect_id()
+	var id = CustomDeck.rules_id(card.effect_id())
 	var p = state.players[card.controller]
 	if id == "Walmart Parking Lot": return
 	leave_play(card, id == "The Clarion Inn")
@@ -411,13 +419,13 @@ func resolve_damage(p, q, amount: int, source = null, dealing: bool = false):
 			var c = sources[i].card
 			if c not in permanents(): continue
 			if sources[i].full:
-				if c.effect_id() == "The Phreaknic Network":
+				if CustomDeck.rules_id(c.effect_id()) == "The Phreaknic Network":
 					leave_play(c)
 					q.turn_flags.prevent_all = true
 			else:
 				c.counters -= points[i]
-				if c.counters == 0 and c.effect_id() != "Walmart Parking Lot":
-					depleted.append({"card": c, "commutes": c.effect_id() not in ["Carpeted Pool", "The Clarion Inn"], "resolve": counter_removed.bind(c)})
+				if c.counters == 0 and CustomDeck.rules_id(c.effect_id()) != "Walmart Parking Lot":
+					depleted.append({"card": c, "commutes": CustomDeck.rules_id(c.effect_id()) not in ["Carpeted Pool", "The Clarion Inn"], "resolve": counter_removed.bind(c)})
 				else: ice_counter_removed.emit(c)
 		amount = remaining
 		await resolve_triggers(depleted, false)
@@ -431,7 +439,7 @@ func resolve_damage(p, q, amount: int, source = null, dealing: bool = false):
 	state_changed.emit()
 func eliminate(p, forced: bool = false):
 	if not p.alive: return
-	var reactions = p.hand.filter(func(c): return c.id == "TOCTOU")
+	var reactions = p.hand.filter(func(c): return CustomDeck.rules_id(c.id) == "TOCTOU")
 	if not reactions.is_empty() and await dec(p).confirm(p, "Use TOCTOU to avoid losing?"):
 		remove(reactions[0])
 		p.life = 1
@@ -552,6 +560,6 @@ func resolve_triggers(pending: Array, stop_on_active_death: bool = true):
 # Shared bounded convenience action, used by local and remote humans.
 func play_all(p, basics: bool = false):
 	for action in BotPlayer.MAX_ACTIONS:
-		var playable = p.hand.filter(func(c): return can_play(p, c) and (not basics or c.id in ["Hacking", "Damage"]))
+		var playable = p.hand.filter(func(c): return can_play(p, c) and (not basics or CustomDeck.rules_id(c.id) in ["Hacking", "Damage"]))
 		if playable.is_empty(): break
 		await play_card(p, playable[0])

@@ -39,7 +39,7 @@ export function identity(v) {
 }
 export function settings(v, partial=false) {
   const out = {};
-  for (const [key, valid] of Object.entries({public:x=>typeof x==='boolean',card_pool:x=>['2025','2026','2026mog'].includes(x),starting_life:x=>[0,20,30,40].includes(x)})) {
+  for (const [key, valid] of Object.entries({public:x=>typeof x==='boolean',card_pool:x=>['2025','2026','2026mog','custom'].includes(x),starting_life:x=>[0,20,30,40].includes(x)})) {
     if (partial && !(key in v)) continue;
     if (!valid(v[key])) fail(key);
     out[key]=v[key];
@@ -109,4 +109,34 @@ export function emoteRate(stamps,now) {
  const recent=(stamps||[]).filter(t=>now-t<60000);
  const allowed=recent.length<10&&(!recent.length||now-recent.at(-1)>=3000);
  return {allowed,stamps:allowed?[...recent,now]:recent};
+}
+
+// Decode a bounded zlib stream without materializing unbounded inflated output.
+export async function deckSubmission(code) {
+ if(typeof code!=='string'||code.length>8192||!/^PNDK1\.[A-Za-z0-9_-]+$/.test(code))fail('Invalid deck code');
+ const body=code.slice(6);if(body.length%4===1)fail('Invalid deck code');
+ let reader;
+ try {
+  const bytes=Uint8Array.from(atob(body.replace(/-/g,'+').replace(/_/g,'/')+'='.repeat((4-body.length%4)%4)),c=>c.charCodeAt(0));
+  reader=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate')).getReader();
+  const chunks=[];let size=0;
+  while(true){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>8192){await reader.cancel();fail('Deck data exceeds 8 KB');}chunks.push(value);}
+  const all=new Uint8Array(size);let offset=0;for(const chunk of chunks){all.set(chunk,offset);offset+=chunk.length;}
+  const d=JSON.parse(new TextDecoder('utf-8',{fatal:true}).decode(all));
+  if(!d||typeof d.name!=='string'||[...d.name].length<1||[...d.name].length>40||!d.cards||typeof d.cards!=='object'||Array.isArray(d.cards)||Object.keys(d.cards).length>200)fail('Invalid deck structure');
+  const name=d.name.replace(/[\p{C}\p{Zl}\p{Zp}]/gu,'').trim();if(!name)fail('Invalid deck name');
+  let count=0;for(const n of Object.values(d.cards)){if(!Number.isInteger(n)||n<1||n>4)fail('Invalid deck count');count+=n;}
+  if(count<60||count>200)fail('Deck must have 60–200 cards');return {name,count,code};
+ }catch(e){fail(e.status?e.message:'Invalid deck code');}finally{reader?.releaseLock();}
+}
+export function d20(random=crypto) {let b;do{b=random.getRandomValues(new Uint8Array(1))[0];}while(b>=240);return b%20+1;}
+// Resolve the highest tied group only. Lower ties wait until fallback needs them.
+export function deckRanking(seats,roll=d20,candidates=null) {
+ const lines=[],groups=[];let ids=candidates??seats.flatMap((s,i)=>!s.bot&&s.deck?[i]:[]);
+ while(ids.length>1){const scores=ids.map(seat=>({seat,roll:roll()}));
+  lines.push('Deck roll (D20): '+scores.map(x=>seats[x.seat].name+' '+x.roll).join(', ')+'.');
+  const values=[...new Set(scores.map(x=>x.roll))].sort((a,b)=>b-a),parts=values.map(n=>scores.filter(x=>x.roll===n).map(x=>x.seat));
+  ids=parts.shift();groups.unshift(...parts);if(ids.length>1)lines.push('Tie at '+values[0]+' — re-roll:');
+ }
+ if(ids.length)groups.unshift(ids);return {order:groups.flat(),groups,lines};
 }

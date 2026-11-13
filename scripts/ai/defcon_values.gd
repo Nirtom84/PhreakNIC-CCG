@@ -46,13 +46,14 @@ static func load_weights(path: String = PATH):
 static func phase(p) -> int:
 	return 0 if p.turns <= 4 else (1 if p.turns <= 9 else 2)
 static func original_id(db, id: String) -> String:
+	id = db.rules_id(id)
 	for original in db.variants:
 		if db.variants[original].id == id: return original
 	return id
 static func adjustment(engine, card, p) -> float:
 	if not loaded: load_weights()
 	var pool = "2025" if engine.state.card_pool == "2025" else "2026"
-	var id = original_id(engine.db(), card.id) if engine.state.card_pool == "2026mog" else card.id
+	var id = original_id(engine.db(), card.id) if engine.state.card_pool in ["2026mog", "custom"] else card.id
 	var tables = bonus_weights if p.starting_life > engine.state.starting_life and bonus_weights.has(pool) else weights
 	return float(tables.get(pool, {}).get(id, [0.0, 0.0, 0.0])[phase(p)]) * scale
 static func knobs(pool: String, bonus: bool = false) -> Dictionary:

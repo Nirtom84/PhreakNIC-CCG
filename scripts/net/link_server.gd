@@ -178,13 +178,28 @@ func _receive(message: Dictionary):
 	match message.get("t"):
 		"ping": _send({"t": "pong"})
 		"setup":
+			var deck = {}
+			if message.get("card_pool") == "custom":
+				if message.get("custom_deck_code") is String: deck = CustomDeck.decode(message.custom_deck_code)
+				if deck.is_empty() or not CustomDeck.validate(deck).is_empty():
+					_send({"t": "setup_error", "attempt": message.get("attempt", 0), "reason": "Invalid custom deck code or card rules"})
+					return
 			_new_game()
 			room = str(message.get("room", ""))
 			game.room_label = room
-			if not game.setup(message.seats, str(message.get("card_pool", "2026")), int(message.get("starting_life", 0)), int(message.get("seed", 1)), message.get("banned", []), float(message.get("bot_pace", 0.5))):
+			if not game.setup(message.seats, str(message.get("card_pool", "2026")), int(message.get("starting_life", 0)), int(message.get("seed", 1)), message.get("banned", []), float(message.get("bot_pace", 0.5)), deck):
+				if message.get("card_pool") == "custom":
+					_send({"t": "setup_error", "attempt": message.get("attempt", 0), "reason": game.setup_error})
+					return
 				for seat in message.seats.size(): _send({"t": "to", "seat": seat, "msg": {"t": "error", "reason": "At least 40 center-deck cards must remain. Change the banned cards and create a new room."}})
 				_send({"t": "over", "winner": -1, "reason": "banned_minimum"})
 				return
+			if message.get("deck_roll") is Array:
+				for line in message.deck_roll:
+					if line is String:
+						game.setup_log.append(line.left(500))
+						game.engine.say(line.left(500))
+			_send({"t": "setup_ok", "attempt": message.get("attempt", 0)})
 			for i in message.seats.size(): game.tokens[i] = str(message.seats[i].get("token", ""))
 			_watch_over()
 			print("room %s setup" % room)

@@ -244,10 +244,10 @@ func lethal_possible(p) -> bool:
 	for c in p.hand:
 		damage += int(engine.db().get_card(c.id).damage)
 		if engine.db().named(c.id, "Hacker"): damage += engine.controlled(p, "Dick Van Dyke Stamp").size()
-		if c.effect_id() == "Ben The Meek": damage += 3
-		if c.effect_id() == "heartsh8ped": damage += 1
-		if c.effect_id() == "Jenny": damage += hacking
-		if c.effect_id() in ["Non-Infringing Game Show", "LAN Party"]: damage += 3
+		if CustomDeck.rules_id(c.effect_id()) == "Ben The Meek": damage += 3
+		if CustomDeck.rules_id(c.effect_id()) == "heartsh8ped": damage += 1
+		if CustomDeck.rules_id(c.effect_id()) == "Jenny": damage += hacking
+		if CustomDeck.rules_id(c.effect_id()) in ["Non-Infringing Game Show", "LAN Party"]: damage += 3
 	for q in engine.opponents(p):
 		var life = q.life
 		for c in q.play_area:

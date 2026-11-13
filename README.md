@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.24**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.25**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -17,6 +17,7 @@ _Screenshots are from the current version and are refreshed with every release._
 - **After a game:** a match summary with every player's stats, and a result card you can save as an image or share (X, Bluesky, Reddit, Facebook, Discord, or your phone's share sheet in a browser).
 - **Auto toggle:** cards like Botnet and Tableskirts have an **Auto** switch so their once-per-turn ability fires by itself.
 - **Stats:** the **Stats** button shows your lifetime record (kept on your device only), with a card you can save or share.
+- **Custom decks (experimental):** build your own 60–200 card Center Deck under **Decks (experimental)**, share it as a code or file, and play it offline or online (several submitted decks roll a D20). Two starter decks are included.
 - **Watching the bots:** their plays show as a row of cards, and stay as a recap at the start of your turn until your first click. **Bot pace** sets how fast they play (Instant up to 5 seconds per card).
 - **Options:** bot pace, music and sound volume, and a "Visual effects" switch that turns off all animation.
 
@@ -129,8 +130,11 @@ godot4.7.1 --headless --path . -s tests/v17_checks.gd    # lifetime stats, stats
 godot4.7.1 --headless --path . -s tests/v18_checks.gd    # per-card Auto toggles (local and online), card-face avatars
 godot4.7.1 --headless --path . -s tests/v20_checks.gd    # backing out of dialogs, grouped card pickers
 godot4.7.1 --headless --path . -s tests/v21_checks.gd    # DEFCON difficulty: per-seat life, avatar, online, learned values
-godot4.7.1 --headless --path . -s tests/v23_checks.gd    # Dynamic soundtrack: public selection, clocks, files and export exclusions
 godot4.7.1 --headless --path . -s tests/v22_checks.gd    # Phone board: buy a reserved card or use a permanent from Open board
+godot4.7.1 --headless --path . -s tests/v23_checks.gd    # Dynamic soundtrack: public selection, clocks, files and export exclusions
+godot4.7.1 --headless --path . -s tests/v25_checks.gd    # custom decks: deck rules, deck codes, engine, saves, bots
+godot4.7.1 --headless --path . -s tests/v25_ui_checks.gd # deck builder, custom games, experimental stats, phone layout
+godot4.7.1 --headless --path . -s tests/v25_online_checks.gd # online deck submission and the D20 roll
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```
 
@@ -138,3 +142,4 @@ godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8  
 Neon HUD panels, terminal backgrounds and bundled fonts require no system fonts. The menu’s Visual effects switch disables animated backgrounds and decorative effects and is saved with sound settings. Card artwork is unchanged.
 
 Fonts in `assets/fonts/`: JetBrains Mono Nerd Font (regular/bold, SIL Open Font License; `LICENSE-JetBrainsMono-OFL.txt`), Noto Sans Mono Condensed Black (`LICENSE-NotoSansMono.txt`), and Droid Sans Japanese (Apache 2.0; `NOTICE-DroidSansJapanese-Apache.txt`). The matrix background uses lightweight procedural glyphs.
+

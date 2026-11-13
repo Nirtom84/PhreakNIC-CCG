@@ -1,4 +1,5 @@
 extends Control
+var experimental_view = false
 var store
 var content: VBoxContainer
 var confirmation: ConfirmationDialog
@@ -21,6 +22,10 @@ func _ready():
  margin.add_child(layout)
  UIStyle.label(layout, "Lifetime stats", 36)
  UIStyle.label(layout, "Stats are stored on this device only.", 22)
+ var tabs = HBoxContainer.new()
+ layout.add_child(tabs)
+ UIStyle.button(tabs, "Lifetime", func(): experimental_view = false; refresh())
+ UIStyle.button(tabs, "Experimental decks", func(): experimental_view = true; refresh())
  var scroll = ScrollContainer.new()
  scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
  layout.add_child(scroll)
@@ -97,6 +102,9 @@ func feature(parent: Node, caption: String, id: String, fallback: String):
  line(str(CardDB.cards[id].name) if CardDB.cards.has(id) else fallback, box).horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 func refresh():
  for child in content.get_children(): content.remove_child(child); child.queue_free()
+ if experimental_view:
+  refresh_experimental()
+  return
  var d = store.data
  if d.games == 0:
   line("No finished games yet. Play a game and your stats will show up here.")
@@ -165,3 +173,17 @@ func _unhandled_key_input(event):
   get_viewport().set_input_as_handled()
 func _notification(what):
  if what == NOTIFICATION_WM_GO_BACK_REQUEST: queue_free()
+
+func refresh_experimental():
+ var d = store.experimental()
+ line("Experimental decks · offline games")
+ if d.games == 0:
+  line("No finished custom-deck games yet.")
+  return
+ line("%d games · %d wins · %d losses · %d%% win rate" % [d.games, d.wins, d.losses, roundi(100.0 * d.wins / d.games)])
+ var levels = d.difficulties.keys()
+ levels.sort()
+ record_table(section(content, "By difficulty"), levels.map(func(id): return [BotDifficulty.DISPLAY_NAMES[int(id)], d.difficulties[id]]))
+ var names = d.decks.keys()
+ names.sort()
+ record_table(section(content, "By deck name"), names.map(func(id): return [id, d.decks[id]]))

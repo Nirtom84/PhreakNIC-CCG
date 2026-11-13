@@ -179,3 +179,28 @@ test('container setup includes configured pace and older rooms default to half a
   await r.recover();assert.equal(sent.find(m=>m.t==='setup').bot_pace,pace??0.5);
  }
 });
+
+test('custom submissions are private, human-owned, withdrawable and cleared with pool or seat',async()=>{
+ const {deflateSync}=await import('node:zlib');const r=makeRoom(),host=sock(),guest=sock(),messages=[];r.r.card_pool='custom';r.r.seats.forEach((s,i)=>s.name='p'+i);r.clients.set(host,{seat:0});r.clients.set(guest,{seat:1});r.broadcastRoom=Room.prototype.broadcastRoom;host.send=v=>messages.push(JSON.parse(v));
+ const code='PNDK1.'+deflateSync(JSON.stringify({name:'Shared',cards:Object.fromEntries(Array.from({length:15},(_,i)=>['c'+i,4]))})).toString('base64url');
+ const send=(ws,action,fields={})=>r.message(ws,JSON.stringify({t:'lobby',action,...fields}));
+ await send(guest,'submit_deck',{code});assert.deepEqual(messages.at(-1).seats[1].deck,{name:'Shared',count:60});assert(!JSON.stringify(messages).includes(code));
+ await send(guest,'withdraw_deck');assert.equal(r.r.seats[1].deck,null);
+ r.r.seats[1].bot=true;await assert.rejects(()=>send(guest,'submit_deck',{code}));r.r.seats[1].bot=false;
+ await send(guest,'submit_deck',{code});await send(host,'settings',{card_pool:'2026'});assert.equal(r.r.seats[1].deck,undefined);
+ await send(host,'settings',{card_pool:'custom'});await send(guest,'submit_deck',{code});await send(guest,'leave');assert.equal(r.r.seats[1].deck,undefined);
+});
+test('custom start requires submissions, setup carries sole winner and invalid winners fall back',async()=>{
+ const r=makeRoom(),host=sock(),sent=[];r.clients.set(host,{seat:0});r.r.card_pool='custom';r.r.seats.forEach((s,i)=>s.name='p'+i);r.linkSend=m=>sent.push(m);r.stat=async()=>{};r.ensure=async()=>r.sendSetup();r.env={LOBBY:binding({claim:async()=>null})};
+ await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),/Someone needs to submit a deck/);
+ r.r.seats[1].deck={name:'Only',count:60,code:'PNDK1.private'};await r.message(host,JSON.stringify({t:'lobby',action:'start'}));assert.equal(sent[0].custom_deck_code,'PNDK1.private');assert.deepEqual(r.r.deck_order,[1]);assert(!sent[0].deck_roll.join(' ').includes('D20'));
+ r.r.deck_order=[1,0];r.r.deck_groups=[[1],[0]];r.r.seats[0].deck={name:'Next',count:60,code:'PNDK1.next'};await r.linkMessage({t:'setup_error',attempt:0,reason:'invalid'});assert.equal(sent.at(-1).custom_deck_code,'PNDK1.next');assert.equal(r.r.seats[1].deck,undefined);
+ r.stop=async()=>{};r.broadcast=()=>{};await r.linkMessage({t:'setup_error',attempt:1,reason:'invalid'});assert.equal(r.r.started,false);assert.equal(r.r.over,false);
+});
+test('multiple submissions roll on the Worker, broadcast ties and send highest deck only',async()=>{
+ const r=makeRoom(),host=sock(),messages=[],setups=[],original=crypto.getRandomValues.bind(crypto);let rolls=[14,14,3,10];
+ r.r.card_pool='custom';r.r.seats.forEach((s,i)=>{s.name='p'+i;s.deck={name:'Deck'+i,count:60,code:'PNDK1.private'+i};});r.clients.set(host,{seat:0});host.send=v=>messages.push(JSON.parse(v));r.broadcastRoom=Room.prototype.broadcastRoom;r.linkSend=m=>setups.push(m);r.stat=async()=>{};r.ensure=async()=>r.sendSetup();r.env={LOBBY:binding({claim:async()=>null})};
+ crypto.getRandomValues=a=>{a[0]=rolls.shift();return a;};
+ try{await r.message(host,JSON.stringify({t:'lobby',action:'start'}));}finally{crypto.getRandomValues=original;}
+ assert.equal(setups[0].custom_deck_code,'PNDK1.private1');assert.deepEqual(r.r.deck_order,[1,0]);assert(messages.at(-1).deck_roll.join(' ').includes('Tie at 15'));assert(!JSON.stringify(messages).includes('PNDK1.'));
+});

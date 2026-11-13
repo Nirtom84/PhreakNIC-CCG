@@ -41,7 +41,13 @@ func _exit_tree():
 func select_pool(pool: String):
 	selected_pool = pool
 	cards = originals.duplicate(true)
-	if pool == "2026mog":
+	if pool == "custom":
+		for id in variants:
+			if variants[id].id != id: continue
+			var printing = variants[id].duplicate(true)
+			printing.id = id + "@mog"
+			cards[printing.id] = printing
+	elif pool == "2026mog":
 		for id in variants:
 			cards[variants[id].id] = variants[id]
 			if variants[id].id != id: cards.erase(id)
@@ -61,9 +67,9 @@ func has_subtype(id: String, subtype: String) -> bool:
 		if word not in words: return false
 	return true
 func named(id: String, name: String) -> bool:
-	return id == "What is Truth" or names(id).any(func(n): return n.to_lower() == name.to_lower())
+	return rules_id(id) == "What is Truth" or names(id).any(func(n): return n.to_lower() == name.to_lower())
 func name_contains(id: String, part: String) -> bool:
-	return id == "What is Truth" or names(id).any(func(n): return part.to_lower() in n.to_lower())
+	return rules_id(id) == "What is Truth" or names(id).any(func(n): return part.to_lower() in n.to_lower())
 func names(id: String) -> Array:
 	return [str(get_card(id).get("name", ""))] + get_card(id).get("aliases", [])
 ## A card name mapped to its id in the current pool, or "" when no card is named that.
@@ -77,17 +83,20 @@ func card_id_for_name(name: String) -> String:
 		if found.is_empty(): found = id
 	return found
 func in_pool(id: String, pool: String = "2026") -> bool:
+	if pool == "custom": return cards.has(id) if selected_pool == pool else catalog(pool).cards.has(id)
 	if not originals.has(id) or pool not in POOLS: return false
 	if pool == "2026mog":
 		return id not in ["Botnet", "Botnet1", "Botnet2", "Botnet3", "Botnet4"]
 	return str(originals[id].get("set", "2025")) != "2026mog" and (pool == "2026" or str(originals[id].get("set", "2025")) == "2025")
 func pool_ids(pool: String = "2026") -> Array:
+	if pool == "custom": return cards.keys() if selected_pool == pool else catalog(pool).cards.keys()
 	return originals.keys().filter(func(id): return in_pool(id, pool))
 
 # Physical center-deck copies: each catalog ID represents one printed copy.
 const MIN_CENTER_CARDS = 40
 func center_ids(pool: String = "2026") -> Array:
-	return pool_ids(pool).filter(func(id): return not originals[id].starter)
+	var book = self if selected_pool == pool else catalog(pool)
+	return pool_ids(pool).filter(func(id): return not book.get_card(id).starter)
 func filter_banned(value: Array, pool: String = "2026") -> Array:
 	if pool != selected_pool: return catalog(pool).filter_banned(value, pool)
 	var eligible = center_ids(pool)
@@ -109,3 +118,7 @@ func center_choices(pool: String = "2026") -> Array:
 func center_copies(id: String, pool: String = "2026") -> Array:
 	if pool != selected_pool: return catalog(pool).center_copies(id, pool)
 	return center_ids(pool).filter(func(copy): return cards[copy].name == cards[id].name)
+
+## Handler identity preserves Mognet's different rules. Deck limits use CustomDeck.base_id.
+static func rules_id(id: String) -> String:
+	return id.trim_suffix("@mog")

@@ -48,7 +48,7 @@ jobs:
         run: |
           export XDG_DATA_HOME="$RUNNER_TEMP/data"
           suites="ui_smoke touch_checks v05_checks v06_checks v07_checks v08_checks v10_checks save_checks ui_state_sync net_checks online_ui_checks link_checks"
-          for extra in v11_checks v12_checks v13_checks v15_checks v16_checks v17_checks v18_checks v20_checks v21_checks v22_checks v23_checks fuzz_checks; do [ -f "tests/$extra.gd" ] && suites="$suites $extra"; done
+          for extra in v11_checks v12_checks v13_checks v15_checks v16_checks v17_checks v18_checks v20_checks v21_checks v22_checks v23_checks v25_checks v25_ui_checks v25_online_checks fuzz_checks; do [ -f "tests/$extra.gd" ] && suites="$suites $extra"; done
           # The 300-game bot simulation is slow: run it on pushes to main only.
           if [ "$EVENT" = push ] && [ "$REF" = refs/heads/main ]; then suites="$suites sim"; fi
           failed=""
