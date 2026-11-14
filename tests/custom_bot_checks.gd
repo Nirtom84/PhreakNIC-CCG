@@ -67,6 +67,8 @@ func run():
  var output = []
  var old_scale = OS.get_environment("SP_PLAN_SCALE")
  OS.set_environment("SP_PLAN_SCALE", "0.00001")
+ # CI has no ~/.local/bin/godot4.7.1: run the shard with this same Godot binary.
+ if not OS.has_environment("GODOT"): OS.set_environment("GODOT", OS.get_executable_path())
  var code = OS.execute("bash", ["tools/custom_selfplay.sh", path, "2"],output,true)
  if old_scale.is_empty(): OS.unset_environment("SP_PLAN_SCALE")
  else: OS.set_environment("SP_PLAN_SCALE", old_scale)
