@@ -1,0 +1,47 @@
+{
+  "cards": [
+    "4 × Candy Factory [Candy Factory]",
+    "2 × Clarion Inn Carpeted Pool [Carpeted Pool]",
+    "2 × Clarion Inn Storage Closet [Clarion Inn Closet]",
+    "3 × Corporate Retreat [Corperate Retreat]",
+    "4 × Corporate SWAG Table [Corporate SWAG Table]",
+    "2 × DeMartian [DeMartian]",
+    "2 × Fiverr Friendship [Fivrr Friendship]",
+    "2 × fred rogers [Fred Rogers]",
+    "2 × Hardware Hacking Village [Hardware Hacking Village]",
+    "2 × John Titor [John Titor]",
+    "2 × JousterL [JousterL]",
+    "2 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "2 × Military-Grade Card Encapsulation [Military-Grade Card Encapsulation]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × Still Not Spock [Still Not Spock]",
+    "3 × The Big Dipper [The Big Dipper]",
+    "4 × The Clarion Inn [The Clarion Inn]",
+    "4 × Phreaknic Network [The Phreaknic Network]",
+    "2 × The Sandwich Factory [The Sandwich Factory]",
+    "2 × Venaul [Venaul]",
+    "4 × Walmart Parking Lot [Walmart Parking Lot]",
+    "2 × [Restaurant Name] Restaurant [[Restaurant Name] Restaurant]",
+    "2 × c14ud3 [c14ud3]",
+    "4 × heartsh8ped [heartsh8ped]",
+    "2 × hfuller [hfuller]",
+    "2 × mog [mog]",
+    "4 × Randy [randy]",
+    "2 × tipsybacchus [tipsybacchus]"
+  ],
+  "code": "PNDK1.eJxtksFu2zAMhl-F8Lk7dO1hyG1Nl2ZbEgRJ0B6GHRiZswQrokFRDYyi7z5GLtoddrHNj-Rv6qdeGofS5mb20swxtSMs0CnL2Mxur4zIQEotbJljM_tsJKIETvA9JZhHzqQTZisUVIIdqRAavZkoV7p_-voABzxGqrr3tEbRgKk2L8KzCCwkUGqzD8MExX67444k13hpU55RCJbo-pA6eAwxYkc1-YN9gkOwud_CkpVkVYOf9BwSrIOm4HqwE7VHtgfMi3KZpl-HGBRl_PQg2FKtgW_J4ZBLRLXj1qoN6wpFxv9r7NXmAauB_cCur-zgCe5CB_dhMHeqJRf0j4fVjQvbenOttxFhQ3pm6d8ze9vKOTj_sRhTfqSEZdrIE8aTmQlblOrLirX2_tpRViyCSWGDJ_oNH6A2uuvb0t7UT0-mkP2Xgdra6_-UGGky88RdfcvldtSshiGPR3TOl8tuXq-aZPrNrFmyUoQFi12BnJvXv0y-xf0",
+  "combos": [
+    "`heartsh8ped` played this turn: buy `Walmart Parking Lot` free.",
+    "`Candy Factory` discards spare Heroes for more ICE.",
+    "`Randy` cuts location costs; `Corporate Retreat` punishes lower-life players."
+  ],
+  "count": 72,
+  "description": "Walls of ICE: out-last aggro and win late with Corporate Retreat.",
+  "name": "Hotel Fortress",
+  "play_style": "Locations first: Candy Factory, The Clarion Inn and Walmart Parking Lot (free with heartsh8ped). Keep life high with The Big Dipper and Fiverr Friendship, then use Corporate Retreat for damage.",
+  "tags": [
+    "control",
+    "ice",
+    "locations"
+  ]
+}

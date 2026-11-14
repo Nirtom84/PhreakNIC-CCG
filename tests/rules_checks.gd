@@ -189,6 +189,35 @@ func run():
 	e.dec(p).requested_id = "Drunk Riddler"
 	await e.play_card(p, copy)
 	check(original in q.discard and copy in e.state.removed and q.life == 97, "Copy leaves source intact and self-removal affects copying card")
+	# Custom decks can put another Etch in the target discard. A human or bot
+	# repeatedly selecting it used to recurse without changing the choice set.
+	await fixture()
+	e.free()
+	e = GameEngine.new()
+	test.root.add_child(e)
+	var copy_deck = JSON.parse_string(FileAccess.get_file_as_string("res://data/starter_decks.json"))[0]
+	copy_deck.cards["Etch-a-Sketch Skillz"] = 3
+	check(e.setup([2, 2], 83011518, [FixedDecider.new(), FixedDecider.new()], "2026", 0, [], copy_deck), "Custom copy fixture setup")
+	await e.start_turn(0)
+	p = e.active()
+	q = e.state.players[1]
+	var etches: Array = []
+	for c in e.state.all_cards():
+		if c.id == "Etch-a-Sketch Skillz": etches.append(c)
+	for c in etches:
+		e.gain_owner(c, q)
+		e.move(c, q.discard, "discard")
+	copy = etches[0]
+	e.gain_owner(copy, p)
+	e.move(copy, p.hand, "hand")
+	e.dec(p).requested_id = "Etch-a-Sketch Skillz"
+	check(await e.play_card(p, copy) and copy in p.discard and q.discard.size() == 2, "All-Etch targets resolve without recursion")
+	original = (q.hand + q.deck).filter(func(c): return c.id == "Hacking")[0]
+	e.move(original, q.discard, "discard")
+	e.move(copy, p.hand, "hand")
+	var before_copy_hack = p.hacking
+	await e.play_card(p, copy)
+	check(p.hacking == before_copy_hack + 1 and original in q.discard, "Copy skips redundant Etch and resolves productive target once")
 	await fixture()
 	p = e.active()
 	q = e.state.players[1]

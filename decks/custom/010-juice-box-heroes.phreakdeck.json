@@ -1,0 +1,46 @@
+{
+  "cards": [
+    "2 × Botnet Takeover [Botnet Takeover]",
+    "3 × CTF Bangers [CTF Bangers]",
+    "2 × Clarion Inn Morning Coffee [Clarion Inn Morning Coffee]",
+    "2 × Doom on a Trading Card [Doom on a Trading Card]",
+    "4 × Elevator Noises [Elevator Noises]",
+    "2 × Hotel Roof Chair Toss [Hotel Roof Chair Toss]",
+    "2 × I've got the Logs [I've got the Logs]",
+    "2 × Jenny [Jenny]",
+    "2 × CRT LAN Party [LAN Party]",
+    "2 × Military-Grade Card Encapsulation [Military-Grade Card Encapsulation]",
+    "2 × Non-Infringing Game Show [Non-Infringing Game Show]",
+    "2 × You've Got Mail [Reverse Shell]",
+    "2 × Rookie Numbers [Rookie Numbers]",
+    "2 × Share a Link [Share a Link]",
+    "2 × Should have Preregistered [Should have Preregistered]",
+    "3 × Still Not Spock [Still Not Spock]",
+    "3 × Talks Fun Police [Talks Fun Police]",
+    "3 × The Juice [The Juice]",
+    "4 × Two Hump Camel [Two Hump Camel]",
+    "2 × Under New Management [Under New Management]",
+    "4 × _NASKEY [_NASKEY]",
+    "2 × _NSAKEY, Juiced [_NSAKey, Juiced]",
+    "2 × evildagmar [evildagmar]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "2 × m8trix [m8trix310]",
+    "2 × notlarry [notlarry]",
+    "2 × tipsybacchus [tipsybacchus]"
+  ],
+  "code": "PNDK1.eJw9UU1PwzAM_StWL1yGxNcB7baNwQZbNdFy4IRM67VRU7tK0o0J8d_xEsQp8XtP9nv2d1ahq302_c7mEpgClNiRHMhl05tJtigfYY7ckFPJrdYWnRGGNTNsxbHhBhay3xNF-YNID0ojlA7rSGr3SC0tHTCIg1yMJ-12N8lWEsjCq8geFi0aB6V4H9XriwNBIwFCS7CRJqHPxHyKv80shx26kKqtsSagO10-6VSKM2HJFQ5-tBjUb1Tlwpdr3ju1dXb2hD1B0coxkq-kkf0ZIGsTItIZgnzsP2N6hYoWHWm4jeHuD5DR1tCiut05ctQYH_RJkYtgrNW8AYpBqi4usETbeXgcGXZiTUUJ1JDP4391FFiN_aA5erJxUW9ck26OjrBFxoZ64hBHfOSz4mX5HkUfeTF7odMktUoW6GBsjU2P6Zwt6c58ez_80f19cObr9voqVixBz-vSToMZ_OkTq6odz-F_lFY72TSL3WEuX7AiJ3rJn1-4jLno",
+  "combos": [
+    "`_NASKEY` deals and draws twice with `The Juice` in play.",
+    "`CTF Bangers` makes each `The Juice` tick 1 bigger.",
+    "`Talks Fun Police` or `Still Not Spock` discards your own `The Juice` before it kills you."
+  ],
+  "count": 64,
+  "description": "The Juice ramps damage every turn, and the deck carries its own exits before the fifth counter.",
+  "name": "Juice Box Heroes",
+  "play_style": "Play The Juice early: 1, 2, 3, 4 damage per turn. _NASKEY doubles with Juice in play. Before the fifth counter, clear your own Juice with Talks Fun Police or Still Not Spock, or wipe the board with Clarion Inn Morning Coffee.",
+  "tags": [
+    "aggro",
+    "juice",
+    "risky"
+  ]
+}

@@ -1,0 +1,50 @@
+{
+  "cards": [
+    "2 × Brimstone [Brimstone]",
+    "2 × Candy Factory [Candy Factory]",
+    "4 × Clarion Inn Carpeted Pool [Carpeted Pool]",
+    "4 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "2 × Clarion Inn Chandeliers [Clarion Inn Chandeliers]",
+    "4 × Clarion Inn Storage Closet [Clarion Inn Closet]",
+    "1 × Clarion Inn Morning Coffee [Clarion Inn Morning Coffee]",
+    "4 × Clarion Inn Staff [Clarion Inn Staff]",
+    "2 × Corporate SWAG Table [Corporate SWAG Table]",
+    "2 × DeMartian [DeMartian]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "2 × Elonka [Elonka]",
+    "1 × fred rogers [Fred Rogers]",
+    "2 × Hardware Hacking Village [Hardware Hacking Village]",
+    "3 × Hotel Roof Chair Toss [Hotel Roof Chair Toss]",
+    "2 × Still Not Spock [Still Not Spock]",
+    "4 × The Clarion Inn [The Clarion Inn]",
+    "2 × Phreaknic Network [The Phreaknic Network]",
+    "2 × The Sandwich Factory [The Sandwich Factory]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "2 × Two Hump Camel [Two Hump Camel]",
+    "3 × Under New Management [Under New Management]",
+    "2 × Venaul [Venaul]",
+    "2 × Walmart Parking Lot [Walmart Parking Lot]",
+    "2 × [Restaurant Name] Restaurant [[Restaurant Name] Restaurant]",
+    "2 × c14ud3 [c14ud3]",
+    "2 × hardwarez [hardwarez]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "2 × pouipoui [pouipoui]",
+    "4 × Randy [randy]"
+  ],
+  "code": "PNDK1.eJxlUk1v2zAM_SuEzrn04zDk1mbrMmAJgthrDsMOrE3HgmXSoGQYXdH_Plru0AY9GBAfH58en_ziKtQ6uvWLu1ffxyRMbn29chvk-hkesEqiz2-IDpSohoNIcOtbQwKqF4YfzHCvhF2DMX3qbFqTouBJ46LzsRck0ueRnSh7PsNGmobMz9Vlu0jYNMuQ6CCKiaA43X2HEp_CYv8r7VCTR14qHbmDo6_rQJqRb0G4w3x8UNvpKOfsz27aWiATKsEWq2528ehDwPOiu5VEwdjSzHt5hVKijd2sXJGMBntJUAxSdZldtgQfjGfLM3Zo57TYV7CnNIm-swvLavJVe5F8aew4zo5GTv9jLCexuh9ggz2FDP2ynNUkJ9ghm-OeOGVvj8Q4LpwTht6SgQNqXu6npIz_PlJMOCpygr0p_oF3IBOqq9uxvsnH9i2hv0tFphfbLwPVuR5k9POXC51_I9v7deXYVN364iFPRB1x7V7_AW0O0nA",
+  "combos": [
+    "`Clarion Inn Staff` buys `The Clarion Inn` (8 ICE) for free.",
+    "`Under New Management` takes a Clarion card from any discard pile.",
+    "`Hotel Roof Chair Toss` deals 1 per Location you control.",
+    "`Randy` makes locations cost 1 less."
+  ],
+  "count": 72,
+  "description": "Check in at the Clarion: free Clarion buys, stolen Clarions, and walls of ICE.",
+  "name": "Clarion Inn Weekend",
+  "play_style": "Clarion Inn Staff makes every Clarion card free that turn, so buy Staff early and save the big Clarion Inn for a Staff turn. Under New Management steals Clarions from discards. Hotel Roof Chair Toss scales with all the locations.",
+  "tags": [
+    "theme",
+    "clarion",
+    "ice"
+  ]
+}

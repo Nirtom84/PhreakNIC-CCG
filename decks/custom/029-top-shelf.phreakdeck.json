@@ -1,0 +1,40 @@
+{
+  "cards": [
+    "2 × benthemeek [Ben The Meek]",
+    "3 × Bribery [Bribery]",
+    "2 × Brimstone, Fabulous [Brimstone, Fabulous]",
+    "4 × F.O.T.T.R. Capture the Flag [Capture the Flag]",
+    "3 × Clarion Inn Carpeted Pool [Carpeted Pool]",
+    "3 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "3 × Flesh Oprah [Flesh Oprah]",
+    "3 × Hardware Hacking Village [Hardware Hacking Village]",
+    "4 × John Titor [John Titor]",
+    "4 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "4 × OSINT for Dummies [OSINT for Dummies]",
+    "3 × Payphone [Payphone]",
+    "3 × Powered-On Taser Maintenance [Powered On Taser Maintenance]",
+    "4 × You've Got Mail [Reverse Shell]",
+    "3 × Shell Speech [Shell Speech]",
+    "3 × Should have Preregistered [Should have Preregistered]",
+    "3 × TOCTOU Photo-Finish [TOCTOU]",
+    "3 × The Reason [The Reason]",
+    "1 × Time Travel [Time Travel]",
+    "3 × White Python Boots [White Python Boots]",
+    "3 × tipsybacchus [tipsybacchus]"
+  ],
+  "code": "PNDK1.eJwtkE1vwjAMhv-KlXMvGzv1CBNjm1grmm1ntzUkIk2qxAVViP8-k-4S-et9_MY31WHskypvak0etCHYE51V-VyodbQtxVmVqxwPiYOnArbYTi5MKc9scOQpErAItw5Pqnx5FONITD3UIbgs31ZaH-AtEjIlhp3ltNQdJQPVGNHkfCdmrii8HXZn60_wY51QKTc_ghGHlkPMWz7pYj3sLXvbnUF29m2QBzYTh4nzSNW8f2k4hgiv0zBYSrla4zwa-UqG1uFKUaxWgsZEEfZoPZNH3y0DB7pQTASNIeeyPkfQjETd4roxYXI9GLwQ1FFwJ5v4Qc1dXW109b2EcqUDYQp-Se1AoKPIBPxUqF9jWQgziztYh_B_JLZjmlvsOvM4-upeKI-DmFM6jNnWUd3_AFBRk5c",
+  "combos": [
+    "`Hardware Hacking Village` makes `Bribery` and `Payphone` cheaper.",
+    "`F.O.T.T.R. Capture the Flag` (+3) funds big buys.",
+    "`TOCTOU Photo-Finish` saves you at 1 life with an extra turn."
+  ],
+  "count": 64,
+  "description": "Nothing under 5: a slow, rich market where every buy matters.",
+  "name": "Top Shelf",
+  "play_style": "Cards are expensive, so first-turn hacking decides who buys first. Hardware Hacking Village discounts the technology; John Titor shuffles back. Expect long games.",
+  "tags": [
+    "heavy",
+    "economy",
+    "control"
+  ]
+}

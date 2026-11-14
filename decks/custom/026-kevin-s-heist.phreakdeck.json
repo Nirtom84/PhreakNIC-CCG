@@ -1,0 +1,49 @@
+{
+  "cards": [
+    "3 × AI Slop [AI Slop]",
+    "2 × Altk3y [Altk3y]",
+    "2 × Brimstone [Brimstone]",
+    "2 × Clarion Inn Staff [Clarion Inn Staff]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "2 × Elonka [Elonka]",
+    "3 × Etch-a-Sketch Skillz [Etch-a-Sketch Skillz]",
+    "1 × Mog’s Etch-a-Sketch Skillz [Etch-a-Sketch Skillz@mog]",
+    "2 × fred rogers [Fred Rogers]",
+    "2 × JousterL [JousterL]",
+    "3 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "2 × Kevin's Desk [Kevin's Desk]",
+    "1 × Mog’s Desk [Kevin's Desk@mog]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "3 × Payphone [Payphone]",
+    "2 × Shell Speech [Shell Speech]",
+    "4 × AI Fingers [Sticky Fingers]",
+    "2 × Still Not Spock [Still Not Spock]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "4 × Tyler Crumpton [Tyler Crumpton]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "2 × c14ud3 [c14ud3]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "2 × itsamenathan [itsamenathan]",
+    "2 × mog [mog]",
+    "2 × pouipoui [pouipoui]",
+    "2 × Randy [randy]",
+    "2 × tipsybacchus [tipsybacchus]",
+    "2 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJxtUU1PAjEQ_StNL16WA8LB7ElcRFA0xiUx8VbagTbbbTft1GQh_HfLrOKFQ9v5ePNm3vTIpQgq8vLIZytWW9_xclLwmcVm0vPytuAPwbQRvQPyKiuC8Y6tnGM1it2OovOQXMM-jFIWAkUerXeNGEyUeiRGdQPZYHVjrD1Qk2uJ-9bveTku-CKAYh9-DyESy7NPESGsyXmBb-PYq0FnZMOqrGDr88WqhD4hkRPkJrI5xOa_5jdw6fLmcS1C6K9w5JJ30XealGfCWoO1rO4ApKZsjbl5zxbGDUNOKZQxmTTjvBz6bgKImAKwZXL4p2bT50WxKqS2y6ul2i9wqCFAkXU5xZ781hpHYDmeJjUhU4MIGPVdB4p8g1G04ARqMWBJWH47n8z5kBOEU8NnoulivxVS6jQMchC20-LT2_NHngruMh0vL8tagonITz-eJLFJ",
+  "combos": [
+    "`AI Fingers` takes control of the best permanent in play.",
+    "`Kevin's Desk` steals another permanent every turn.",
+    "`Etch-a-Sketch Skillz` copies an action from an opponent's discard.",
+    "`AI Fingers` on an opponent's `Payphone`: it now pays you every turn."
+  ],
+  "count": 64,
+  "description": "Why build when you can take? Steal permanents and copy opponents' actions.",
+  "name": "Kevin's Heist",
+  "play_style": "Let opponents invest in permanents, then take them with AI Fingers and Kevin's Desk. Etch-a-Sketch Skillz copies their best action. The market has strong permanents so there is always something to take.",
+  "tags": [
+    "steal",
+    "disruption",
+    "mog"
+  ]
+}

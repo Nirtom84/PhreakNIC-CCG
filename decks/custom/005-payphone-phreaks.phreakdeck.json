@@ -1,0 +1,42 @@
+{
+  "cards": [
+    "4 × Altk3y [Altk3y]",
+    "2 × Brimstone [Brimstone]",
+    "3 × CTF Bangers [CTF Bangers]",
+    "2 × DeMartian [DeMartian]",
+    "2 × Elonka [Elonka]",
+    "2 × John Titor [John Titor]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "4 × Payphone [Payphone]",
+    "4 × Payphone Dave [Payphone Dave]",
+    "3 × Payphone Karaoke [Payphone Karaoke]",
+    "3 × You've Got Mail [Reverse Shell]",
+    "3 × Shell Speech [Shell Speech]",
+    "4 × The Tone Whisperer [The Tone Whisperer]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "2 × Two Hump Camel [Two Hump Camel]",
+    "4 × Tyler Crumpton [Tyler Crumpton]",
+    "3 × Unattended Phone [Unattended Phone]",
+    "1 × Venaul [Venaul]",
+    "2 × c14ud3 [c14ud3]",
+    "2 × hardwarez [hardwarez]",
+    "2 × itsamenathan [itsamenathan]",
+    "2 × mog [mog]",
+    "2 × Randy [randy]"
+  ],
+  "code": "PNDK1.eJxdUE1PwzAM_StRzr1s7ak31oHQ-FDFApxNay1V06Rykk1l2n_HeEiTuCR-z372s8-6A-qjrs_6zqWxXHRdFXpDwxRT8KjrdaEb86A24A9IXFcWeosvQGkAL9l7F_wIEu6C9coMKZDA15CegWhRDY_4CvyoJqeQk2RbWGYrI6obUFs4_mOegCCMKJPf8MgmUO0tOieMRGo_I3ZWCGNRmV_dpx3ijIQk7QwhxEyoHrNPsghbMKfAeJrZ4ITuSi0OSTXELO8v0ncPKaHvsVft1TCP-UAPmSWrQnerKvelqC3veALCb0FDityX1fbvVFM4yE_gez70-lJozxW6vm3bWjY6Rn35Ab_ng1k",
+  "combos": [
+    "`Payphone` in play: `The Tone Whisperer` deals 3.",
+    "`Payphone Dave` buys `Payphone`, `You've Got Mail` or `Shell Speech` free.",
+    "`CTF Bangers` adds 1 to `Payphone` damage."
+  ],
+  "count": 60,
+  "description": "Old-school phone phreaking: Payphones in play, Tone Whispers on top.",
+  "name": "Payphone Phreaks",
+  "play_style": "Get one Payphone down early; after that every Tone Whisperer is a 2-cost card dealing 3. Payphone Dave buys Payphones, You've Got Mail and Shell Speech for free. CTF Bangers makes Payphone damage hit 3.",
+  "tags": [
+    "combo",
+    "phreaking",
+    "permanents"
+  ]
+}

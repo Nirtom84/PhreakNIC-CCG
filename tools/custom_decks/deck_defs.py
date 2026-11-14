@@ -1,0 +1,702 @@
+# Deck definitions, exec'd by decks100.py (has deck(), POOL, ID, PR, MOG).
+orig = [p for p in PR if not p['id'].endswith('@mog') and p['id'] != 'Mognet']
+def nm(p):
+    return next(k for k, v in ID.items() if v == p['id'])
+POOL['mog'] = MOG
+POOL['set2025'] = sorted(nm(p) for p in orig if p['set'] == '2025')
+POOL['set2026'] = sorted(nm(p) for p in orig if p['set'] == '2026') + MOG
+POOL['cheap'] = sorted(nm(p) for p in orig if int(p['cost']) <= 3)
+POOL['pricey'] = sorted(nm(p) for p in orig if int(p['cost']) >= 5)
+POOL['mid'] = sorted(nm(p) for p in orig if 4 <= int(p['cost']) <= 5)
+POOL['heroes'] = sorted(nm(p) for p in orig if 'Hero' in p['type_line'])
+POOL['tech'] = sorted(nm(p) for p in orig if 'Technology' in p['type_line'])
+POOL['events'] = sorted(nm(p) for p in orig if 'Event' in p['type_line'])
+POOL['exploits'] = sorted(nm(p) for p in orig if 'Exploit' in p['type_line'])
+NOPERM = ['Nashville 2600', 'Clarion Inn Morning Coffee']
+SELFHARM = ['The Juice', 'Grass', 'Nashville 2600', 'Clarion Inn Air Conditioning']
+
+# ===================== LEAN: 60-79 (35) =====================
+deck("Tag Team Unleashed", 60, ["combo", "tag-team", "aggro"],
+ "Nirtom and Reps4Thor at full strength: every turn you pair them, Reps4Thor hits for 3.",
+ "Buy every Nirtom-named card and every Reps4Thor you see; they are the deck. Makeshift Lectern makes the pair cheap and Registration digs them back out of the discard. Nirtom Unleashed is a finisher, played alone or with Reps4Thor only.",
+ ["`Nirtom` + `Reps4Thor` in one turn: Reps4Thor deals 3.",
+  "`Nirtom Unleashed` may share a turn with `Reps4Thor`: +5 hacking, 2 damage, then 3 more.",
+  "`What is Truth?` has every name, so it counts as Nirtom for `Reps4Thor`.",
+  "`Super r0nk` adds hacking for each other Hero, and `Registration` returns a Hero to hand."],
+ {"Nirtom": 4, "Reps4Thor": 4, "Nirtom Unleashed": 2, "Super r0nk": 2, "r0nk": 3, "What is Truth?": 3, "Makeshift Lectern": 3, "Registration": 4, "Speakers Needed": 3, "Corporate Retreat": 3, "Number One PhreakNIC Rule": 2, "The Big Dipper": 2},
+ fill=["econ", "draw"], copies=2, exclude=SELFHARM)
+deck("Token Ring Trio", 60, ["combo", "fottr", "aggro"],
+ "5ud0, bitwize and crook3dfingers ping each other; the market is built so you see them constantly.",
+ "Take the trio early and keep two of the three in hand: each one played with another deals 1 extra. Lectern and the free-Hero Fellowship turn the trio into a 3-hero turn. Registration and Speakers Needed recover them.",
+ ["`5ud0` + `bitwize` + `crook3dfingers`: each deals 1 when another of them is played.",
+  "`What is Truth?` counts as all three names for the trio's triggers.",
+  "`The Fellowship of the Token Ring` lets you buy FOTTR Heroes free and put Heroes in hand.",
+  "`Fore04` and `G4nd4lf` set up the next draw so the trio meets."],
+ {"5ud0": 4, "bitwize": 4, "crook3dfingers": 4, "What is Truth?": 4, "Makeshift Lectern": 3, "Registration": 4, "Speakers Needed": 3, "Fore04": 3, "G4nd4lf": 3, "Lightning Talks": 3, "The Fellowship of the Token Ring": 2},
+ fill=["fottr", "draw"], exclude=SELFHARM)
+deck("Botnet Farm", 64, ["economy", "botnet", "combo"],
+ "Stack four Botnets and turn the hacking into an alternate win or a damage machine.",
+ "Race for Botnets: each one pays +1 per Botnet you control. Technology discounts (Tyler Crumpton, Hardware Hacking Village) make them nearly free. Spend surplus in Lowes Shopping Cart or Bribery.",
+ ["Four `Botnet` = +4 hacking each per turn.",
+  "`Tyler Crumpton` and `Hardware Hacking Village` cut `Botnet` to 1 hacking.",
+  "Surplus hacking goes into `Lowes Shopping Cart` (25 counters wins) or `Bribery`."],
+ {"Botnet": 4, "Tyler Crumpton": 4, "Hardware Hacking Village": 2, "Lowes Shopping Cart": 2, "Filler": 3, "Tableskirts": 2, "pouipoui": 3, "Unattended Phone": 3, "White Python Boots": 2, "Bribery": 2, "c14ud3": 3},
+ fill=["econ", "tech"], exclude=NOPERM + ["Botnet Takeover", "Talks Fun Police", "Grass"])
+deck("Mognet Mayhem", 64, ["economy", "mog", "mognet"],
+ "The Mog Variant engine: Mognet stacks while Mog-branded tech smooths the draw.",
+ "Same plan as a Botnet farm but in Mog colors: Mognets first, Mog Crumpton to discount technology, then Mog's Lowes Shopping Cart as the sink. Rookie Numbers punishes everyone holding Mog cards in their discard.",
+ ["Four `Mognet` = +4 hacking each per turn.",
+  "`Mog Crumpton` makes `Mognet` cost 1.",
+  "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: draw 3."],
+ {"Mognet": 4, "Mog Crumpton": 3, "Mog’s Lowes Shopping Cart": 2, "Mog Filler": 3, "Mog’s White Python Boots": 2, "Mog's Disassembled Sink": 2, "Rookie Numbers (Mog)": 3, "Mog's Lemon Custard Ice Cream (Mog)": 3, "MogAlphaWolf": 3, "Mogwarez": 3, "Mogdy": 2},
+ fill=["mog"], exclude=["Touch Mog", "Mog’s Desk"])
+deck("Payphone Phreaks", 60, ["combo", "phreaking", "permanents"],
+ "Old-school phone phreaking: Payphones in play, Tone Whispers on top.",
+ "Get one Payphone down early; after that every Tone Whisperer is a 2-cost card dealing 3. Payphone Dave buys Payphones, You've Got Mail and Shell Speech for free. CTF Bangers makes Payphone damage hit 3.",
+ ["`Payphone` in play: `The Tone Whisperer` deals 3.",
+  "`Payphone Dave` buys `Payphone`, `You've Got Mail` or `Shell Speech` free.",
+  "`CTF Bangers` adds 1 to `Payphone` damage."],
+ {"Payphone": 4, "The Tone Whisperer": 4, "Payphone Dave": 4, "Shell Speech": 3, "You've Got Mail": 3, "Unattended Phone": 3, "Altk3y": 2, "CTF Bangers": 3, "Payphone Karaoke": 3, "Tyler Crumpton": 3},
+ fill=["econ", "damage"], exclude=NOPERM + ["Talks Fun Police"])
+deck("Never Gonna Rickroll", 64, ["combo", "rickroll", "disruption"],
+ "Rick Astley's greatest hits: paired songs strip hands and permanents.",
+ "Hold Never Gonna Give You Up until you have Never Gonna Let You Down (or What is Truth?) to play together. Rick Astley pushes Rickrolls into opponents' discards. Greatest Hits Volume 2 punishes anyone not playing Rick cards.",
+ ["`Never Gonna Give You Up` + `Never Gonna Let You Down`: opponents discard a permanent AND a card.",
+  "`What is Truth?` stands in for either song.",
+  "`Rick Astley` moves a `Rickroll` from your discard into an opponent's.",
+  "`F.O.T.T.R. Greatest Hits Volume 2` with plenty of `Rick Astley` around taxes 2 life per Rick-less turn."],
+ {"Rick Astley": 2, "Rickroll": 4, "Never Gonna Give You Up": 4, "Never Gonna Let You Down": 4, "F.O.T.T.R. Greatest Hits Volume 2": 2, "What is Truth?": 3, "Lightning Talks": 3, "Bedtime Story": 3, "Where's Apache!?": 2},
+ fill=["draw", "econ"], exclude=SELFHARM)
+deck("The O.P.R.A.H. Hour", 72, ["combo", "oprah", "thinning"],
+ "You get a card, you get a card: thin your deck, then O.P.R.A.H. trades your hand for center deck cards.",
+ "Thin starters early with fred rogers, Elonka and evildagmar. Buy Flesh Oprah to get O.P.R.A.H. for free; PhreakNIC lowers Legendary prices. Late game, O.P.R.A.H. turns a hand of Hackers into fresh market cards.",
+ ["`Flesh Oprah` removes itself to buy `O.P.R.A.H.` free.",
+  "`PhreakNIC` makes `O.P.R.A.H.` and `Oprah Wonka` cost 2 less.",
+  "`O.P.R.A.H.` swaps Hackers in hand for center deck cards; `fred rogers` and `Elonka` thin the rest."],
+ {"O.P.R.A.H.": 2, "Flesh Oprah": 4, "Oprah Wonka": 2, "PhreakNIC": 2, "Employee Review": 3, "Elonka": 3, "fred rogers": 3, "evildagmar": 3, "Pooping in the Dark": 2, "tipsybacchus": 3, "Lightning Talks": 3},
+ fill=["econ", "draw"], exclude=SELFHARM)
+deck("Clarion Inn Weekend", 72, ["theme", "clarion", "ice"],
+ "Check in at the Clarion: free Clarion buys, stolen Clarions, and walls of ICE.",
+ "Clarion Inn Staff makes every Clarion card free that turn, so buy Staff early and save the big Clarion Inn for a Staff turn. Under New Management steals Clarions from discards. Hotel Roof Chair Toss scales with all the locations.",
+ ["`Clarion Inn Staff` buys `The Clarion Inn` (8 ICE) for free.",
+  "`Under New Management` takes a Clarion card from any discard pile.",
+  "`Hotel Roof Chair Toss` deals 1 per Location you control.",
+  "`Randy` makes locations cost 1 less."],
+ {"Clarion Inn Staff": 4, "Under New Management": 3, "Clarion Inn Carpeted Pool": 3, "Clarion Inn Storage Closet": 3, "Clarion Inn Breakfast": 4, "Clarion Inn Chandeliers": 2, "The Clarion Inn": 2, "Clarion Inn Morning Coffee": 1, "Hotel Roof Chair Toss": 3, "Randy": 3},
+ fill=["ice", "econ"], exclude=["Tennessee Department of Health", "Nashville 2600"])
+deck("Soup and Sandwiches", 60, ["control", "ice", "lifegain"],
+ "Lunch at the con: The Sandwich Factory keeps getting re-ICEd while you snack your way to a life lead.",
+ "Land The Sandwich Factory and feed it with Egg in Your Soup and spare hacking. With a life lead, Corporate Retreat becomes a 2-damage hit. Hotel Roof Chair Toss turns the locations into damage.",
+ ["`Egg in Your Soup` adds 2 ICE to `The Sandwich Factory`.",
+  "`Hotel Roof Chair Toss` deals extra for each location.",
+  "Life from `Mog's Pancake Breakfast` keeps `Corporate Retreat` on its damage side."],
+ {"The Sandwich Factory": 4, "Egg in Your Soup": 4, "Mog's Pancake Breakfast": 3, "Clarion Inn Breakfast": 3, "Corporate SWAG Table": 3, "Hotel Roof Chair Toss": 4, "Randy": 3, "The Big Dipper": 2, "Fiverr Friendship": 2, "Corporate Retreat": 3},
+ fill=["ice", "draw"], exclude=["Tennessee Department of Health"] + NOPERM)
+deck("Juice Box Heroes", 64, ["aggro", "juice", "risky"],
+ "The Juice ramps damage every turn, and the deck carries its own exits before the fifth counter.",
+ "Play The Juice early: 1, 2, 3, 4 damage per turn. _NASKEY doubles with Juice in play. Before the fifth counter, clear your own Juice with Talks Fun Police or Still Not Spock, or wipe the board with Clarion Inn Morning Coffee.",
+ ["`_NASKEY` deals and draws twice with `The Juice` in play.",
+  "`CTF Bangers` makes each `The Juice` tick 1 bigger.",
+  "`Talks Fun Police` or `Still Not Spock` discards your own `The Juice` before it kills you."],
+ {"The Juice": 3, "_NASKEY": 4, "_NSAKEY, Juiced": 2, "CTF Bangers": 3, "Talks Fun Police": 3, "Still Not Spock": 3, "Clarion Inn Morning Coffee": 2, "Military-Grade Card Encapsulation": 2, "Elevator Noises": 3, "Two Hump Camel": 3},
+ fill=["damage", "econ"], exclude=["Even More Logo"])
+deck("Damage Dealers Anonymous", 60, ["aggro", "damage", "lean"],
+ "No tricks, just damage: cheap hits and burst Heroes.",
+ "Buy damage every turn and point it at the weakest player. Drunk Riddler and Share a Link trade themselves for burst. Non-Infringing Game Show converts late hacking into damage.",
+ ["`Drunk Riddler` removes itself for 3 damage; `Share a Link` can remove itself for +2 hacking.",
+  "`Non-Infringing Game Show` spends up to 3 hacking for that much damage.",
+  "`heartsh8ped` and `Two Hump Camel` keep the hits cheap."],
+ {"Elevator Noises": 4, "Share a Link": 4, "Two Hump Camel": 4, "heartsh8ped": 4, "evildagmar": 4, "Drunk Riddler": 4, "Non-Infringing Game Show": 3, "Rookie Numbers": 3, "You've Got Mail": 3, "Even More Logo": 3, "Hotel Roof Chair Toss": 2},
+ fill=["damage"], copies=2)
+deck("Martian Invasion", 62, ["combo", "martian", "midrange"],
+ "DeMartian and m8trix supercharge each other; the rest of the deck helps you find the pair.",
+ "Hold DeMartian until m8trix arrives: m8trix then deals 4 and DeMartian makes 4 hacking. Registration and Speakers Needed fetch Heroes. Makeshift Lectern and Super r0nk turn hero turns into big turns.",
+ ["`DeMartian` + `m8trix`: m8trix deals +2 and DeMartian makes +2.",
+  "`Registration` and `Speakers Needed` find the missing half.",
+  "`Super r0nk` adds hacking for every other Hero played."],
+ {"DeMartian": 4, "m8trix": 4, "Registration": 4, "Speakers Needed": 3, "Makeshift Lectern": 3, "Lightning Talks": 3, "Bedtime Story": 3, "Super r0nk": 2, "Kevin Mitnick Cardboard Cutout": 3},
+ fill=["econ", "draw"], exclude=SELFHARM)
+deck("Cardboard Cutout Convention", 64, ["market", "midrange", "mog"],
+ "Every cutout at the con: reshape the Center Row until it shows what you need.",
+ "Use NotLarry Cardboard Cutout and Phreaknic Website Refresh to flush bad Center Rows and fish for your combo pieces; since the deck list is public, count what is left. Kevin Mitnick Cardboard Cutout keeps the cards flowing.",
+ ["`NotLarry Cardboard Cutout` swaps a Center Row card for a new one.",
+  "`Phreaknic Website Refresh` deals out a fresh Center Row and draws.",
+  "`Treasure Hunters` acquires an exact cost from the Center Deck."],
+ {"Kevin Mitnick Cardboard Cutout": 4, "NotLarry Cardboard Cutout": 2, "Mog Cardboard Cutout": 2, "notlarry": 4, "Phreaknic Website Refresh": 4, "Treasure Hunters": 3, "Makeshift Lectern": 2, "itsamenathan": 3, "Tips and tricks for Windows and Office365": 3},
+ fill=["econ", "draw"], exclude=SELFHARM)
+deck("Thin Mints", 68, ["thinning", "combo", "control"],
+ "Remove your starters, then cash in removed cards for damage.",
+ "Spend the first turns thinning Hackers with fred rogers, Elonka, evildagmar and mog. F.O.T.T.R. Greatest Hits turns each removal into 2 damage. Clarion Inn Chandeliers brings back a removed card when you need it.",
+ ["`fred rogers` and `Elonka` remove Hackers for a tighter deck.",
+  "`F.O.T.T.R. Greatest Hits` removes a card from hand each turn for 2 damage.",
+  "`Clarion Inn Chandeliers` returns a removed card to your hand."],
+ {"fred rogers": 4, "Elonka": 4, "evildagmar": 3, "mog": 4, "Employee Review": 4, "Disassembled Sink": 2, "Clarion Inn Chandeliers": 2, "Should have Preregistered": 2, "F.O.T.T.R. Greatest Hits": 3, "Brimstone": 3, "Kevin Mitnick Cardboard Cutout": 3},
+ fill=["econ", "draw"], exclude=SELFHARM)
+deck("Jenny 867-5309", 60, ["combo", "burst", "economy"],
+ "Call Jenny: pay up to 9 hacking for 9 damage, then bring her back.",
+ "Build a big hacking turn (Botnets, PhreakMyst) and dump it into Jenny for 9. Jenny removes herself, so Clarion Inn Chandeliers returns her to hand for another call.",
+ ["`Jenny` pays 9 hacking for 9 damage.",
+  "`Clarion Inn Chandeliers` returns `Jenny` after she removes herself.",
+  "`PhreakMyst` gives +6 on a no-buy turn: that's `Jenny` money."],
+ {"Jenny": 4, "Clarion Inn Chandeliers": 4, "PhreakMyst": 2, "Botnet": 4, "Payphone": 2, "Tyler Crumpton": 3, "c14ud3": 4, "notlarry": 3, "hardwarez": 3},
+ fill=["econ"], exclude=NOPERM)
+deck("Rookie Mog Hunt", 66, ["mog", "combo", "drain"],
+ "Mog cards everywhere, so every Rookie Numbers hits every discard pile.",
+ "Nearly every card is a Mog printing, so everyone's discard soon has Mog cards in it, including yours; Rookie Numbers costs every such player 2 life. Plan to land more Rookies than your opponents.",
+ ["`Rookie Numbers` drains 2 from each player with a Mog card in their discard.",
+  "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: draw 3.",
+  "`MogAlphaWolf` can remove itself to draw."],
+ {"Rookie Numbers": 2, "Rookie Numbers (Mog)": 2, "Mog's Lemon Custard Ice Cream": 2, "Mog's Lemon Custard Ice Cream (Mog)": 2, "MogAlphaWolf": 4, "Mogwarez": 4, "MogsterL": 4, "Mognaul": 3, "Still not Mog": 3, "Mog Fun Police": 3, "Mog's Pancake Breakfast": 4, "mog": 4},
+ fill=["mog"], exclude=["Touch Mog", "Mog’s Lowes Shopping Cart", "Mognet"])
+deck("Hotel Fortress", 72, ["control", "ice", "locations"],
+ "Walls of ICE: out-last aggro and win late with Corporate Retreat.",
+ "Locations first: Candy Factory, The Clarion Inn and Walmart Parking Lot (free with heartsh8ped). Keep life high with The Big Dipper and Fiverr Friendship, then use Corporate Retreat for damage.",
+ ["`heartsh8ped` played this turn: buy `Walmart Parking Lot` free.",
+  "`Candy Factory` discards spare Heroes for more ICE.",
+  "`Randy` cuts location costs; `Corporate Retreat` punishes lower-life players."],
+ {"The Clarion Inn": 3, "Candy Factory": 3, "Walmart Parking Lot": 3, "Corporate SWAG Table": 3, "Phreaknic Network": 2, "heartsh8ped": 4, "Military-Grade Card Encapsulation": 2, "Fiverr Friendship": 2, "The Big Dipper": 3, "Corporate Retreat": 3, "Randy": 4},
+ fill=["ice", "econ"], exclude=["Tennessee Department of Health", "Clarion Inn Morning Coffee", "Nashville 2600"])
+deck("Health Inspector", 64, ["disruption", "anti-ice", "aggro"],
+ "The health department is here: strip ICE and permanents, then burn.",
+ "Your damage is cheap, so the opponents' defense is the problem. Tennessee Department of Health removes ICE counters; AI Slop and Still Not Spock knock out permanents; Kevin's Desk takes their best one.",
+ ["`Tennessee Department of Health` strips ICE so `Elevator Noises` gets through.",
+  "`AI Slop` makes everyone discard a permanent and draws you a card.",
+  "`Kevin's Desk` steals a permanent every turn."],
+ {"Tennessee Department of Health": 3, "Tennessee Department of Mog": 1, "Doom on a Trading Card": 3, "AI Slop": 3, "Still Not Spock": 3, "Nuvious": 2, "AI Fingers": 2, "Kevin's Desk": 2, "The Reason": 2, "Elevator Noises": 4, "Two Hump Camel": 3},
+ fill=["damage"], exclude=["The Juice"])
+deck("Fun Police State", 68, ["disruption", "control", "permanents"],
+ "Nobody gets to keep nice things: board wipes, hand attacks, and Nashville 2600.",
+ "Win by attrition. Talks Fun Police and Clarion Inn Morning Coffee clear permanents; Nashville 2600 locks them out entirely. The Reason and AI Ben's AI Camry empty hands. Your own damage comes from actions.",
+ ["`Nashville 2600` stops permanents; the deck's damage is actions like `Doom on a Trading Card`.",
+  "`AI Ben's AI Camry` turns spare hacking into opponent discards.",
+  "`Etch-a-Sketch Skillz` copies the best action in an opponent's discard."],
+ {"Talks Fun Police": 4, "Clarion Inn Morning Coffee": 3, "Nashville 2600": 2, "The Reason": 4, "AI Ben's AI Camry": 2, "Mog’s AI Camry": 2, "Doom on a Trading Card": 3, "Etch-a-Sketch Skillz": 3, "I've got the Logs": 3, "Elevator Noises": 3},
+ fill=["draw", "econ"], exclude=["Botnet", "Lowes Shopping Cart"])
+deck("Extra Credit", 76, ["combo", "big-turns", "economy"],
+ "Time Travel and The Book: take extra turns and replay actions.",
+ "Build hand size with draw, then land The Book: every turn it replays all attached actions. Time Travel gives an extra turn; time it for a lethal or a Book turn.",
+ ["`The Book` attaches an action every turn and replays all of them.",
+  "`Time Travel` removes itself for an extra turn.",
+  "`Tyler Crumpton` makes `Time Travel` and `The Book` cheaper."],
+ {"Time Travel": 3, "The Book": 2, "Lightning Talks": 4, "OSINT for Dummies": 3, "White Python Boots": 2, "Kevin Mitnick Cardboard Cutout": 3, "Brimstone": 3, "Where's Apache!?": 3, "Tyler Crumpton": 3, "Brimstone, Fabulous": 2},
+ fill=["draw", "econ"], exclude=SELFHARM)
+deck("Shopping Cart Sprint", 72, ["alt-win", "economy", "mog"],
+ "Fill a shopping cart with 25 counters and win the game outright.",
+ "Lowes Shopping Cart wins at 25 counters. Build hacking with Botnets, Mognets and phones, then dump it into the cart every turn. PhreakMyst's +6 is perfect: you can't buy, but you can fill the cart.",
+ ["`PhreakMyst` +6 hacking straight into `Lowes Shopping Cart`.",
+  "`Botnet` and `Mognet` each count only their own name, so pick one family.",
+  "`hardwarez` discards dead cards for extra hacking."],
+ {"Lowes Shopping Cart": 2, "Mog’s Lowes Shopping Cart": 2, "Botnet": 2, "Mognet": 2, "PhreakMyst": 2, "Payphone": 3, "Unattended Phone": 3, "Tableskirts": 3, "c14ud3": 4, "Tyler Crumpton": 3, "hardwarez": 3},
+ fill=["econ"], exclude=NOPERM + ["Botnet Takeover", "Kevin's Desk"])
+deck("Life Coaches", 68, ["lifegain", "control"],
+ "Out-heal everyone, then let Corporate Retreat do the hitting.",
+ "Pile on life with Fiverr Friendship, The Big Dipper and breakfasts. Once ahead, Corporate Retreat deals 2 instead of healing. benthemeek can swing either way.",
+ ["`Corporate Retreat` deals 2 while you have more life; `Fiverr Friendship` keeps you ahead.",
+  "`BONY` gains 2 and buys `F.O.T.T.R. Greatest Hits` free.",
+  "`benthemeek` chooses +3 hacking, 3 life or 3 damage."],
+ {"Fiverr Friendship": 3, "The Big Dipper": 3, "The Big Mogger": 1, "Nirtom": 4, "BONY": 3, "F.O.T.T.R. Greatest Hits": 2, "Mog's Pancake Breakfast": 4, "Clarion Inn Breakfast": 3, "Corporate Retreat": 4, "benthemeek": 2, "Number One PhreakNIC Rule": 3, "Egg in Your Soup": 3},
+ fill=["draw", "econ"], exclude=SELFHARM)
+deck("Blood Pact", 64, ["drain", "aggro", "risky"],
+ "Everyone bleeds: symmetric life loss favors the player who planned for it.",
+ "r0nk and Clarion Inn Air Conditioning cost everyone life, Powered-On Taser Maintenance taxes Center Row buys, and proudF00F punishes Hackers in hand. Close fast with cheap damage.",
+ ["`proudF00F` makes each player lose 1 per Hacker in hand.",
+  "`Powered-On Taser Maintenance` costs opponents 1 life per Center Row buy.",
+  "`r0nk` + `Clarion Inn Air Conditioning`: everyone bleeds; be the one with damage."],
+ {"r0nk": 4, "Clarion Inn Air Conditioning": 3, "Powered-On Taser Maintenance": 3, "proudF00F": 4, "hfuller": 3, "Super r0nk": 2, "CRT LAN Party": 3, "Elevator Noises": 4, "Two Hump Camel": 4},
+ fill=["damage"], exclude=["Fiverr Friendship"])
+deck("Stamp Collector", 60, ["starters", "combo"],
+ "Starter cards matter: Hackers deal damage and Attacks make hacking.",
+ "Dick Van Dyke Stamp makes every Hacker a damage card and every Attack a hacking card, so this deck keeps its starters instead of thinning. Cycle with Pooping in the Dark and Empty Lockpicking Table to replay them.",
+ ["`Dick Van Dyke Stamp`: each Hacker deals 1, each Attack gives +1.",
+  "`hfuller` gains life for every Attack revealed.",
+  "`CRT LAN Party` hits players whose top card is cheapest, often a starter."],
+ {"Dick Van Dyke Stamp": 4, "proudF00F": 2, "hfuller": 3, "CRT LAN Party": 4, "Foundation of Time/Temporal Reconstruction": 2, "Pooping in the Dark": 3, "Bedtime Story": 3, "Empty Lockpicking Table": 4, "Speakers Needed": 2, "Lightning Talks": 3},
+ fill=["draw", "econ"], exclude=["fred rogers", "Elonka", "evildagmar", "mog", "Employee Review"] + SELFHARM)
+deck("pTFS Bus", 68, ["combo", "ptfs", "heroes"],
+ "Ride the pTFS bus: bought Heroes return to your hand every turn.",
+ "Land pTFS: your pTFS Heroes are free and bought Heroes wait on it until your next turn. JousterL and G4nd4lf stack your next draw.",
+ ["`pTFS` lets you buy `JousterL`, `Venaul` and `Nuvious` free.",
+  "Heroes parked on `pTFS` come to hand next turn: buy `Kevin Mitnick Cardboard Cutout` and use it at once.",
+  "`Nuvious` discards an opposing permanent when bought."],
+ {"pTFS": 3, "pTFMOG": 1, "JousterL": 3, "MogsterL": 1, "Venaul": 3, "Nuvious": 2, "Makeshift Lectern": 3, "Fore04": 3, "G4nd4lf": 3, "Registration": 3, "Kevin Mitnick Cardboard Cutout": 3},
+ fill=["heroes"], exclude=SELFHARM)
+deck("Kevin's Heist", 64, ["steal", "disruption", "mog"],
+ "Why build when you can take? Steal permanents and copy opponents' actions.",
+ "Let opponents invest in permanents, then take them with AI Fingers and Kevin's Desk. Etch-a-Sketch Skillz copies their best action. The market has strong permanents so there is always something to take.",
+ ["`AI Fingers` takes control of the best permanent in play.",
+  "`Kevin's Desk` steals another permanent every turn.",
+  "`Etch-a-Sketch Skillz` copies an action from an opponent's discard."],
+ {"Kevin's Desk": 2, "Mog’s Desk": 1, "AI Fingers": 4, "Etch-a-Sketch Skillz": 3, "Mog’s Etch-a-Sketch Skillz": 1, "Payphone": 3, "Shell Speech": 2, "AI Slop": 3, "Tyler Crumpton": 3, "Kevin Mitnick Cardboard Cutout": 3},
+ fill=["econ", "perm"], exclude=NOPERM)
+deck("Lightning Round", 60, ["draw", "combo", "burst"],
+ "Draw everything, then throw your hand at someone.",
+ "Lightning Talks, Bedtime Story and Where's Apache fill your hand, then Should have Preregistered removes the hand for 1 damage per card. F.O.T.T.R. Greatest Hits turns one card per turn into 2 damage.",
+ ["Draw with `Lightning Talks`, then `Should have Preregistered` removes the hand for 1 damage each.",
+  "`F.O.T.T.R. Greatest Hits` removes a card each turn for 2 damage.",
+  "`Errorgone` and `tipsybacchus` filter Hackers out."],
+ {"Lightning Talks": 4, "Bedtime Story": 4, "Empty Lockpicking Table": 3, "Where's Apache!?": 3, "OSINT for Dummies": 3, "Should have Preregistered": 3, "F.O.T.T.R. Greatest Hits": 3, "Errorgone": 4, "tipsybacchus": 3, "Pooping in the Dark": 2},
+ fill=["draw"], exclude=SELFHARM)
+deck("Budget Hackers", 60, ["budget", "lean", "economy"],
+ "Nothing costs more than 3: every turn is a two-buy turn.",
+ "Everything is cheap, so buy two or three cards a turn. Botnets and Tableskirts snowball and Treasure Hunters picks an exact cost from the deck. Games are fast.",
+ ["Four `Botnet` at 2 each snowball quickly.",
+  "`Treasure Hunters` pays a cost and digs up the first card at that cost.",
+  "`Filler` replaces itself; `Tableskirts` is free hacking until you get another permanent."],
+ {"heartsh8ped": 4, "fred rogers": 4, "Two Hump Camel": 4, "c14ud3": 4, "Elevator Noises": 4, "Bedtime Story": 4, "Empty Lockpicking Table": 4, "Tableskirts": 4, "Filler": 4, "Unattended Phone": 4, "Treasure Hunters": 4, "Botnet": 4, "What is Truth?": 4, "Speakers Needed": 4, "zalphaWolf": 4})
+deck("Top Shelf", 64, ["heavy", "economy", "control"],
+ "Nothing under 5: a slow, rich market where every buy matters.",
+ "Cards are expensive, so first-turn hacking decides who buys first. Hardware Hacking Village discounts the technology; John Titor shuffles back. Expect long games.",
+ ["`Hardware Hacking Village` makes `Bribery` and `Payphone` cheaper.",
+  "`F.O.T.T.R. Capture the Flag` (+3) funds big buys.",
+  "`TOCTOU Photo-Finish` saves you at 1 life with an extra turn."],
+ {"You've Got Mail": 4, "Bribery": 3, "Payphone": 3, "Shell Speech": 3, "Kevin Mitnick Cardboard Cutout": 4, "John Titor": 4, "tipsybacchus": 3, "OSINT for Dummies": 4, "Flesh Oprah": 3, "F.O.T.T.R. Capture the Flag": 4, "Should have Preregistered": 3, "White Python Boots": 3, "Clarion Inn Carpeted Pool": 3, "Hardware Hacking Village": 3, "F.O.T.T.R. Greatest Hits": 3, "Time Travel": 1, "TOCTOU Photo-Finish": 3, "The Reason": 3, "Powered-On Taser Maintenance": 3, "benthemeek": 2, "Brimstone, Fabulous": 2})
+deck("Base Set Classic", 70, ["base", "midrange"],
+ "Only Base Set cards: the original 2025 game with a curated market.",
+ "Plays like the original game with trimmed filler. Botnets and Payphones for economy, Elevator Noises and Share a Link for steady damage.",
+ ["`Payphone` + `The Tone Whisperer` for 3 damage.",
+  "`Nirtom` + `Reps4Thor` for 3 damage.",
+  "Four `Botnet` snowball."],
+ {"Botnet": 4, "Payphone": 2, "The Tone Whisperer": 3, "Nirtom": 3, "Reps4Thor": 3, "Elevator Noises": 3, "Share a Link": 3, "Lightning Talks": 3},
+ fill=["set2025"], copies=2, exclude=SELFHARM)
+deck("Expansion One", 70, ["expansion", "midrange", "mog"],
+ "Only Expansion 1 and its Mog printings: the 2026 cards on their own.",
+ "A newer-card environment: Makeshift Lectern heroes, pTFS, locations with ICE, and the Rookie Numbers Mog package.",
+ ["`Makeshift Lectern` discounts Heroes like `JousterL`.",
+  "`pTFS` buys `Venaul` and `JousterL` free.",
+  "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: draw 3."],
+ {"Makeshift Lectern": 3, "JousterL": 3, "pTFS": 2, "Venaul": 2, "Rookie Numbers": 3, "Mog's Lemon Custard Ice Cream": 3, "Candy Factory": 2},
+ fill=["set2026"], copies=2, exclude=["Grass", "Touch Mog"], seed=131)
+deck("Mog Only", 78, ["mog", "mogonly", "theme"],
+ "Every card is a Mog printing or Mog-named: the full Mog experience.",
+ "A Mog world. Mognet is the economy, Mog Fun Police the disruption, MOGTAU the safety net. Rookie Numbers hits everyone, since every discard pile fills with Mog cards.",
+ ["Four `Mognet` stack +4 a turn.",
+  "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: draw 3.",
+  "`MOGTAU` saves you at 1 life with an extra turn."],
+ {"Mognet": 4, "MOGTAU": 2, "Rookie Numbers (Mog)": 2, "Mog's Lemon Custard Ice Cream (Mog)": 2, "mog": 3, "Mog's Pancake Breakfast": 3},
+ fill=["mog"], copies=2, exclude=["Touch Mog"])
+deck("Singleton Sampler A", 79, ["singleton", "chaos", "variety"],
+ "One copy of nearly everything: every game shows a different market.",
+ "No combos to rely on, so value flexible cards: card draw, cheap damage and economy. Read the public list and count what is left: in a singleton deck each card you see is gone for good.",
+ ["`Payphone` + `The Tone Whisperer` if both appear.",
+  "`Nirtom` + `Reps4Thor` if both appear."],
+ {"Payphone": 1, "The Tone Whisperer": 1, "Nirtom": 1, "Reps4Thor": 1},
+ fill=["all"], copies=1, exclude=SELFHARM, seed=301)
+deck("Legends Never Die", 72, ["legendary", "big-turns", "combo"],
+ "Two of every big Legendary, with PhreakNIC discounting them.",
+ "Economy first, then a Legendary a turn. PhreakNIC makes Legendaries 2 cheaper that turn; Makeshift Lectern also discounts Legendary Heroes.",
+ ["`PhreakNIC` makes `O.P.R.A.H.` or `Brimstone, Fabulous` 2 cheaper.",
+  "`Makeshift Lectern` stacks with `PhreakNIC` on `Super r0nk`.",
+  "`benthephreak` takes any Center Row card, including a Legendary."],
+ {"PhreakNIC": 2, "Mog’s PhreakNIC": 0, "Makeshift Lectern": 3, "benthephreak": 2, "benthemeek": 2, "Brimstone, Fabulous": 2, "_NSAKEY, Juiced": 2, "Super r0nk": 2, "O.P.R.A.H.": 2, "pouipoui, AV Guy": 2, "Merry Christmas": 2, "Nirtom Unleashed": 2},
+ fill=["econ"], copies=3, exclude=SELFHARM)
+deck("Fellowship Free Lunch", 70, ["fottr", "heroes", "economy"],
+ "The Fellowship of the Token Ring makes FOTTR Heroes free: build the whole crew.",
+ "Rush The Fellowship of the Token Ring; afterwards each FOTTR Hero is a free buy that goes to your hand. BONY makes Greatest Hits free.",
+ ["`The Fellowship of the Token Ring`: FOTTR Heroes like `cyberMonk3y` are free.",
+  "`BONY` buys `F.O.T.T.R. Greatest Hits` free.",
+  "`Fore04` goes on top of your deck when bought."],
+ {"The Fellowship of the Token Ring": 2, "Errorgone": 4, "Fore04": 4, "G4nd4lf": 4, "proudF00F": 4, "cyberMonk3y": 4, "5ud0": 1, "bitwize": 1, "crook3dfingers": 1, "BONY": 4, "F.O.T.T.R. Greatest Hits": 3, "CTF Bangers": 3, "F.O.T.T.R. Capture the Flag": 3},
+ fill=["draw", "econ"], exclude=SELFHARM)
+
+# ===================== MEDIUM: 80-119 (25) =====================
+deck("Singleton Sampler B", 100, ["singleton", "chaos", "variety"],
+ "A hundred different cards: pure variety with no repeats.",
+ "Value flexible cards and count the public list as cards leave. Disruption is rare, so a strong permanent usually survives.",
+ ["`DeMartian` + `m8trix` if both show up.",
+  "`5ud0` + `bitwize` if both show up."],
+ {"DeMartian": 1, "m8trix": 1, "5ud0": 1, "bitwize": 1}, fill=["all"], copies=1, seed=302)
+deck("Singleton Sampler C", 116, ["singleton", "chaos", "big-deck"],
+ "Almost every card once: the widest market in the collection.",
+ "Treat each card as unique. Market control (NotLarry Cardboard Cutout, Phreaknic Website Refresh) is strong when you're hunting a specific card.",
+ ["`NotLarry Cardboard Cutout` digs the Center Row for a key single.",
+  "`Treasure Hunters` acquires an exact cost from the Center Deck."],
+ {"NotLarry Cardboard Cutout": 1, "Treasure Hunters": 1}, fill=["all"], copies=1, seed=303)
+deck("Highlander Heroes", 90, ["singleton", "heroes"],
+ "One copy of every Hero, plus support.",
+ "Every Hero is unique, so tag-team and trio combos are rare and valuable. Lectern and Super r0nk reward hero-heavy turns.",
+ ["`Super r0nk` gains hacking for each other Hero played.",
+  "`Makeshift Lectern` makes every Hero 1 cheaper."],
+ {"Super r0nk": 1, "Makeshift Lectern": 2}, fill=["heroes", "draw"], copies=1, exclude=SELFHARM, seed=304)
+deck("Two of Everything Economy", 96, ["economy", "midrange"],
+ "Two copies of every economy card: build an engine, then decide how to win.",
+ "Lots of +2 Heroes and permanents. Out-build opponents, then take the few damage cards in the market.",
+ ["`Tyler Crumpton` discounts `Botnet`.",
+  "`Payphone Dave` buys `Payphone` free."],
+ {"Tyler Crumpton": 2, "Botnet": 2, "Payphone Dave": 2, "Payphone": 2}, fill=["econ", "perm"], copies=2, exclude=SELFHARM, seed=305)
+deck("Botnet vs Mognet", 88, ["botnet", "mognet", "mog", "economy"],
+ "Two rival networks in one market, plus Botnet Takeover to wipe the Botnets.",
+ "Botnet and Mognet don't count each other, so commit to one family. Botnet Takeover wipes every Botnet in play but ignores Mognets; it's 2 damage when there are none.",
+ ["`Botnet Takeover` discards every `Botnet`; `Mognet` survives.",
+  "`Botnet` and `Mognet` each stack only with their own name.",
+  "`Tyler Crumpton` discounts both."],
+ {"Botnet": 2, "Mognet": 2, "Botnet Takeover": 4, "Tyler Crumpton": 3, "Mog Crumpton": 1, "Lowes Shopping Cart": 2},
+ fill=["tech", "damage", "disrupt"], copies=2, exclude=NOPERM, seed=306)
+deck("Payphone Network", 100, ["phreaking", "permanents", "midrange"],
+ "A big phone-network market: Payphones, phones and phreakers.",
+ "Each Payphone gives +2 or 2 damage every turn. Get several down, protect them with ICE, and let The Tone Whisperer cash in.",
+ ["`Payphone` + `The Tone Whisperer`: 3 damage.",
+  "`Payphone Dave` buys `Payphone` free.",
+  "`CTF Bangers` adds 1 to `Payphone` damage."],
+ {"Payphone": 4, "The Tone Whisperer": 4, "Payphone Dave": 4, "CTF Bangers": 2, "Payphone Karaoke": 2, "Payphone Karaoke (Mog)": 2, "Unattended Phone": 3, "benthephreak": 2},
+ fill=["perm", "ice", "econ"], copies=2, exclude=NOPERM + ["Talks Fun Police"], seed=307)
+deck("Rick Roll Radio", 96, ["rickroll", "fottr", "disruption"],
+ "FOTTR and Rick Astley on the radio: songs, rickrolls and Greatest Hits.",
+ "Pair the Never Gonna songs, keep Greatest Hits Volume 2 in play, and use BONY to grab Greatest Hits free.",
+ ["`Never Gonna Give You Up` + `Never Gonna Let You Down` double-hit.",
+  "`BONY` buys `F.O.T.T.R. Greatest Hits` free.",
+  "`Rick Astley` passes a `Rickroll` to an opponent."],
+ {"Rick Astley": 2, "Rickroll": 3, "Never Gonna Give You Up": 4, "Never Gonna Let You Down": 4, "F.O.T.T.R. Greatest Hits Volume 2": 2, "BONY": 3, "F.O.T.T.R. Greatest Hits": 3, "CTF Bangers": 2},
+ fill=["fottr", "draw"], copies=2, exclude=SELFHARM, seed=308)
+deck("Clarion Resort", 110, ["clarion", "ice", "control"],
+ "Full-service Clarion with a wider market around it.",
+ "Clarion Inn Staff for free Clarions, Under New Management to steal them, and enough draw and damage to close.",
+ ["`Clarion Inn Staff` makes `The Clarion Inn` free.",
+  "`Under New Management` steals a Clarion card from a discard pile.",
+  "`Clarion Inn Storage Closet` adds 2 ICE each turn."],
+ {"Clarion Inn Staff": 4, "Under New Management": 4, "The Clarion Inn": 3, "Clarion Inn Storage Closet": 3, "Mog's Clarion Inn Closet": 1, "Clarion Inn Carpeted Pool": 3, "Clarion Inn Breakfast": 3},
+ fill=["ice", "draw", "damage"], copies=2, exclude=["Tennessee Department of Health", "Nashville 2600"], seed=309)
+deck("Exploit Engine", 90, ["exploits", "combo", "aggro"],
+ "cyberMonk3y discounts Exploits; Foundation of Time pays damage per Exploit.",
+ "A market full of Exploits. cyberMonk3y makes them 1 cheaper; Foundation of Time/Temporal Reconstruction deals 1 per Exploit played. Chain several Exploits a turn.",
+ ["`cyberMonk3y` makes `Elevator Noises` cost 1.",
+  "`Foundation of Time/Temporal Reconstruction` adds 1 damage per Exploit.",
+  "`Never Gonna Give You Up` + `Never Gonna Let You Down` cost 1 less each with `cyberMonk3y`."],
+ {"cyberMonk3y": 4, "Foundation of Time/Temporal Reconstruction": 2, "Elevator Noises": 4, "Never Gonna Give You Up": 2, "Never Gonna Let You Down": 2},
+ fill=["exploits"], copies=3, exclude=["Even More Logo", "Botnet Takeover"], seed=310)
+deck("Foundation Builders", 84, ["midrange", "legendary"],
+ "Foundation of Time/Temporal Reconstruction rewards a balanced mix of Heroes, Exploits and Events.",
+ "Rush Foundation: every Hero +1 hacking, Exploit 1 damage, Event 1 life. Then just play a lot of cards.",
+ ["`Foundation of Time/Temporal Reconstruction` + `Lightning Talks`: draw 2 and gain 1.",
+  "`PhreakNIC` makes Foundation 2 cheaper.",
+  "`Makeshift Lectern` discounts the Heroes."],
+ {"Foundation of Time/Temporal Reconstruction": 2, "PhreakNIC": 2, "Makeshift Lectern": 3, "Lightning Talks": 4},
+ fill=["heroes", "exploits", "events"], copies=2, exclude=SELFHARM, seed=311)
+deck("Draw Go", 100, ["control", "draw", "ice"],
+ "Draw, defend, survive: the long game for patient players.",
+ "ICE and card draw. Military-Grade Card Encapsulation and TOCTOU Photo-Finish stop surprise lethal, then late burst wins.",
+ ["`Military-Grade Card Encapsulation` blocks all damage until your turn.",
+  "`TOCTOU Photo-Finish` saves you at 1 life and takes an extra turn.",
+  "`White Python Boots` turns spare hacking into cards."],
+ {"Military-Grade Card Encapsulation": 3, "TOCTOU Photo-Finish": 3, "MOGTAU": 1, "White Python Boots": 3},
+ fill=["draw", "ice"], copies=3, exclude=["Tennessee Department of Health"], seed=312)
+deck("Tech Tree", 92, ["technology", "permanents", "economy"],
+ "Technology everywhere, discounted by Tyler Crumpton and Hardware Hacking Village.",
+ "Get discounts first, then a permanent engine. CTF Bangers makes damaging permanents hit harder.",
+ ["`Hardware Hacking Village` + `Tyler Crumpton`: Technology 2 cheaper.",
+  "`CTF Bangers` + `Bribery`: 2 damage per 2 hacking.",
+  "`Shell Speech` draws each turn."],
+ {"Hardware Hacking Village": 3, "Tyler Crumpton": 4, "Mog Crumpton": 0, "CTF Bangers": 3, "Bribery": 2, "Shell Speech": 3},
+ fill=["tech"], copies=3, exclude=["Grass", "The Juice", "Clarion Inn Air Conditioning"], seed=313)
+deck("Location Location Location", 88, ["locations", "ice", "control"],
+ "Every location: build a hotel empire.",
+ "Randy discounts locations, Hotel Roof Chair Toss turns them into damage, and [Restaurant Name] Restaurant copies the best one.",
+ ["`[Restaurant Name] Restaurant` copies `The Clarion Inn`.",
+  "`Hotel Roof Chair Toss` deals 1 extra per Location.",
+  "`Randy` makes locations 1 cheaper."],
+ {"[Restaurant Name] Restaurant": 3, "[Mog’s Restaurant Name] Restaurant": 1, "The Clarion Inn": 3, "Hotel Roof Chair Toss": 4, "Randy": 3, "Mogdy": 1},
+ fill=["ice", "econ"], copies=3, exclude=["Tennessee Department of Health", "Nashville 2600", "Clarion Inn Morning Coffee"], seed=314)
+deck("Damage Race", 112, ["aggro", "damage", "big-deck"],
+ "A big deck that is almost all damage: whoever hits first wins.",
+ "Defense is scarce. Every turn, buy damage; shift to cheap draw only when the Center Row is all expensive.",
+ ["`DeMartian` + `m8trix` when both appear.",
+  "`Drunk Riddler` removes for 3 damage."],
+ {"DeMartian": 2, "m8trix": 2, "Drunk Riddler": 3}, fill=["damage", "econ"], copies=2, seed=315)
+deck("Mog Mix", 96, ["mog", "mixed", "midrange"],
+ "Original and Mog printings side by side: two of each.",
+ "Same rules, two printings, but Mog printings feed Rookie Numbers. Buy the originals when an opponent runs Rookies.",
+ ["`Rookie Numbers` hits players with Mog cards in their discard; originals don't count.",
+  "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: draw 3.",
+  "`Tyler Crumpton` and `Mog Crumpton` both discount `Botnet`."],
+ {"Rookie Numbers": 2, "Rookie Numbers (Mog)": 2, "Mog's Lemon Custard Ice Cream": 2, "Mog's Lemon Custard Ice Cream (Mog)": 2, "Tyler Crumpton": 2, "Mog Crumpton": 2, "Botnet": 2,
+  "NotLarry Cardboard Cutout": 2, "Mog Cardboard Cutout": 2, "zalphaWolf": 2, "MogAlphaWolf": 2, "hardwarez": 2, "Mogwarez": 2, "JousterL": 2, "MogsterL": 2, "Venaul": 2, "Mognaul": 2,
+  "Filler": 2, "Mog Filler": 2, "Talks Fun Police": 2, "Mog Fun Police": 2, "Where's Apache!?": 2, "Where's Mog?!": 2, "OSINT for Dummies": 2, "Mog's OSINT for Dummies": 2, "Speakers Needed": 2, "Mog's Speakers Needed": 2,
+  "Candy Factory": 2, "Mog’s Candy Factory": 2, "What is Truth?": 2, "Who is Mog?": 2, "Treasure Hunters": 2, "Treasure Moggers": 2, "Still Not Spock": 2, "Still not Mog": 2},
+ fill=["set2026"], copies=2, exclude=["Grass", "Touch Mog"], seed=316)
+deck("Cheap Thrills", 104, ["budget", "economy", "big-deck"],
+ "Only cards costing 3 or less, in a deck large enough to be different every game.",
+ "Two buys a turn, every turn. Economy snowballs fast; damage decides it.",
+ ["Four `Botnet` snowball.",
+  "`heartsh8ped` + `Two Hump Camel`: steady damage for 1–3 hacking."],
+ {"Botnet": 4, "heartsh8ped": 4, "Two Hump Camel": 4}, fill=["cheap"], copies=2, exclude=SELFHARM, seed=317)
+deck("Con Crunch", 92, ["con-life", "theme", "events"],
+ "PhreakNIC weekend: registration lines, talks, lecterns and the con network.",
+ "Event-heavy: Registration and Speakers Needed find Heroes, Makeshift Lectern discounts them, Lightning Talks draws. PhreakNIC is the big Legendary turn.",
+ ["`Registration` returns a Hero and draws.",
+  "`Speakers Needed` + `Makeshift Lectern`: find a Hero, play it cheap.",
+  "`Phreaknic Network` blocks a turn of damage, then deals 5."],
+ {"PhreakNIC": 2, "Registration": 4, "Speakers Needed": 4, "Makeshift Lectern": 4, "Lightning Talks": 4, "Number One PhreakNIC Rule": 3, "Phreaknic Network": 3, "Phreaknic Website Refresh": 3, "Corporate SWAG Table": 3, "Employee Review": 2, "CRT LAN Party": 3, "Talks Fun Police": 2, "Clarion Inn Breakfast": 2},
+ fill=["heroes"], copies=2, exclude=SELFHARM, seed=318)
+deck("Corporate Ladder", 84, ["corporate", "control", "theme"],
+ "Climb the corporate ladder: retreats, reviews, swag and AI everything.",
+ "Life lead via Fiverr Friendship and SWAG tables, then Corporate Retreat for damage. The AI cards strip opponents' hands and boards.",
+ ["`Corporate Retreat` deals 2 when you're ahead on life.",
+  "`AI Ben's AI Camry` turns spare hacking into discards.",
+  "`Tips and tricks for Windows and Office365` lets you reserve and buy in one turn."],
+ {"Corporate Retreat": 4, "Corporate SWAG Table": 4, "Employee Review": 3, "Tips and tricks for Windows and Office365": 3, "Fiverr Friendship": 3, "AI Ben's AI Camry": 2, "AI Slop": 3, "AI Fingers": 2, "Walmart Parking Lot": 2, "Lowes Shopping Cart": 1},
+ fill=["econ", "draw"], copies=2, exclude=SELFHARM, seed=319)
+deck("Phreak Week", 90, ["phreaking", "economy", "theme"],
+ "Phreakers and phones: Ben the Phreak, PhreakMyst and the payphone crowd.",
+ "Phones for economy, benthephreak to take any Center Row card, PhreakMyst for a +6 no-buy turn.",
+ ["`benthephreak` acquires any Center Row card.",
+  "`Altk3y` can discard your `Unattended Phone` before its die roll costs you.",
+  "`PhreakMyst` +6 when you skip buying."],
+ {"benthephreak": 2, "PhreakMyst": 2, "MogMyst": 0, "Altk3y": 4, "Unattended Phone": 4, "Payphone": 3, "Payphone Karaoke": 3, "Dick Van Dyke Stamp": 2},
+ fill=["econ", "perm"], copies=2, exclude=NOPERM, seed=320)
+deck("Reserve and Refresh", 80, ["market", "control"],
+ "Control the market: reserve, refresh and acquire.",
+ "Tips and tricks lets you reserve even after buying; NotLarry Cardboard Cutout and Phreaknic Website Refresh cycle the Center Row; itsamenathan and Treasure Hunters acquire extra cards.",
+ ["`Tips and tricks for Windows and Office365` reserves a card after you buy.",
+  "`Phreaknic Website Refresh` deals a new Center Row.",
+  "`itsamenathan` acquires a card costing 4 or less."],
+ {"Tips and tricks for Windows and Office365": 4, "Tips and tricks for Windows and Mog": 0, "NotLarry Cardboard Cutout": 4, "Phreaknic Website Refresh": 4, "itsamenathan": 4, "Treasure Hunters": 4, "benthephreak": 2},
+ fill=["econ", "draw"], copies=2, exclude=SELFHARM, seed=321)
+deck("Grass Is Greener", 86, ["lock", "aggro", "disruption"],
+ "Touch grass: nobody can buy, but you're the one with damage in hand.",
+ "Grass stops all buying until the end of your next turn. Play it when you're ahead in damage; Zenthere, Mind Goblin deals 2 when you acquire nothing.",
+ ["`Grass` stops all buying while `Zenthere, Mind Goblin` deals 2 for acquiring nothing.",
+  "`PhreakMyst` +6 on a no-buy turn pays for `Non-Infringing Game Show` damage."],
+ {"Grass": 3, "Touch Mog": 1, "Zenthere, Mind Goblin": 4, "PhreakMyst": 2, "Non-Infringing Game Show": 4, "Jenny": 2},
+ fill=["damage", "econ"], copies=2, seed=322)
+deck("Nashville Lockdown", 84, ["lock", "actions", "disruption"],
+ "Nashville 2600 bans permanents: an all-action deck.",
+ "Nashville 2600 discards all other permanents and stops new ones until someone pays 6. The deck is mostly actions, so the lock hurts opponents more.",
+ ["`Nashville 2600` wipes permanents; `Clarion Inn Morning Coffee` is the backup wipe.",
+  "`Lightning Talks` and `Kevin Mitnick Cardboard Cutout` keep you going without permanents."],
+ {"Nashville 2600": 3, "Clarion Inn Morning Coffee": 3, "Lightning Talks": 4, "Kevin Mitnick Cardboard Cutout": 4},
+ fill=["heroes", "exploits", "events"], copies=2, exclude=["Botnet", "Payphone", "pTFS", "The Book"] + POOL['tech'] + POOL['ice'], seed=323)
+deck("Recycling Center", 96, ["recursion", "value"],
+ "Nothing stays discarded: return, replay and recover.",
+ "Registration and Speakers Needed recover Heroes; G4nd4lf and JousterL stack your next draw; John Titor shuffles back in. Under New Management takes Clarions from discards.",
+ ["`G4nd4lf` puts a card from your discard on top when bought.",
+  "`John Titor` shuffles back into your deck.",
+  "`Clarion Inn Chandeliers` returns a removed card."],
+ {"G4nd4lf": 4, "JousterL": 4, "John Titor": 4, "Registration": 4, "Speakers Needed": 4, "Clarion Inn Chandeliers": 3, "Fore04": 3},
+ fill=["econ", "draw"], copies=2, exclude=SELFHARM, seed=324)
+deck("Hand Hate", 88, ["disruption", "discard", "control"],
+ "Empty their hands: every turn the opponents discard.",
+ "The Reason, AI Ben's AI Camry and Never Gonna Let You Down make opponents discard. Doom on a Trading Card punishes their technology.",
+ ["`AI Ben's AI Camry`: 2 hacking per forced discard, as often as you like.",
+  "`Never Gonna Let You Down` + `Never Gonna Give You Up` makes each opponent discard.",
+  "`Doom on a Trading Card` discards per opposing Technology."],
+ {"The Reason": 4, "AI Ben's AI Camry": 2, "Mog’s AI Camry": 2, "Never Gonna Let You Down": 3, "Never Gonna Give You Up": 3, "Doom on a Trading Card": 4, "I've got the Logs": 3},
+ fill=["disrupt", "econ"], copies=2, seed=325)
+deck("Super Friends", 100, ["heroes", "combo"],
+ "Cheap Heroes and Super r0nk: chain Heroes for big turns.",
+ "Lectern makes Heroes cheap; Super r0nk adds hacking for each other Hero. A 4-Hero turn buys anything.",
+ ["`Super r0nk` + three Heroes: +3 extra hacking.",
+  "`Makeshift Lectern` discounts every Hero.",
+  "`Registration` returns `Super r0nk`."],
+ {"Super r0nk": 2, "Makeshift Lectern": 4, "Mog’s Makeshift Lectern": 0, "Registration": 4},
+ fill=["heroes"], copies=3, exclude=SELFHARM, seed=326)
+
+# ===================== LARGE: 120-159 (20) =====================
+def big(name, size, tags, desc, style, combos, core, fill, copies=2, exclude=(), seed=None):
+    deck(name, size, tags, desc, style, combos, core, fill=fill, copies=copies, exclude=exclude, seed=seed)
+big("Big Botnet", 130, ["botnet", "economy", "big-deck"], "A large economy market built around Botnet.",
+ "Botnets are only 4 of 130 cards, so grab them when seen and fill in with permanents.",
+ ["Four `Botnet` stack."],
+ {"Botnet": 4, "Tyler Crumpton": 4, "Payphone": 3}, ["perm", "econ", "draw"], exclude=NOPERM + ["Botnet Takeover"], seed=401)
+big("FOTTR Reunion Tour", 136, ["fottr", "heroes", "big-deck"], "The whole Fellowship plus a wide supporting cast.",
+ "Look for The Fellowship of the Token Ring and the trio; elsewhere play value.",
+ ["`5ud0` + `crook3dfingers` ping each other."],
+ {"5ud0": 4, "crook3dfingers": 4, "bitwize": 4, "The Fellowship of the Token Ring": 2}, ["fottr", "heroes", "draw"], exclude=SELFHARM, seed=402)
+big("Rickroll Festival", 124, ["rickroll", "big-deck"], "Rick Astley's festival: all the songs and rickrolls in a big market.",
+ "Rickrolls in the Center Row must be bought: watch them.",
+ ["`Never Gonna Give You Up` + `Never Gonna Let You Down`."],
+ {"Rick Astley": 2, "Rickroll": 4, "Never Gonna Give You Up": 4, "Never Gonna Let You Down": 4}, ["draw", "damage", "econ"], exclude=SELFHARM, seed=403)
+big("Payphone Empire", 140, ["phreaking", "big-deck", "permanents"], "Payphones everywhere in a big permanent-rich market.",
+ "Get Payphones down and protect them.",
+ ["`Payphone` + `The Tone Whisperer`."],
+ {"Payphone": 4, "The Tone Whisperer": 4, "Payphone Dave": 4, "Shell Speech": 3}, ["perm", "ice", "damage"], exclude=NOPERM, seed=404)
+big("Clarion Megaresort", 150, ["clarion", "ice", "big-deck"], "Every Clarion card in a huge resort market.",
+ "Clarion Inn Staff turns are huge; save the big Clarion for them.",
+ ["`Clarion Inn Staff` buys `Clarion Inn Carpeted Pool` free."],
+ {"Clarion Inn Staff": 4, "Under New Management": 4, "Clarion Inn Carpeted Pool": 4, "The Clarion Inn": 3}, ["ice", "draw", "econ", "damage"], exclude=["Nashville 2600"], seed=405)
+big("Mog Supreme", 144, ["mog", "mognet", "big-deck"], "A huge Mog-first market.",
+ "Mog printings nearly everywhere, so Rookie Numbers is always live.",
+ ["`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`.", "Four `Mognet` stack."],
+ {"Mognet": 4, "Rookie Numbers": 2, "Rookie Numbers (Mog)": 2, "Mog's Lemon Custard Ice Cream (Mog)": 2}, ["mog", "set2026"], copies=2, exclude=["Touch Mog", "Grass"], seed=406)
+big("Exploit Factory", 128, ["exploits", "big-deck", "aggro"], "A big Exploit-heavy market with cyberMonk3y.",
+ "Exploits everywhere; cyberMonk3y and Foundation make them better.",
+ ["`cyberMonk3y` makes Exploits like `Share a Link` cheaper."],
+ {"cyberMonk3y": 4, "Foundation of Time/Temporal Reconstruction": 2, "Share a Link": 4}, ["exploits", "econ"], copies=3, seed=407)
+big("Life and Death", 132, ["lifegain", "drain", "big-deck"], "Big swings of life: drains on one side, heals on the other.",
+ "Track life totals: Corporate Retreat and Clarion Inn Air Conditioning decide who's ahead.",
+ ["`Clarion Inn Air Conditioning` drains everyone; `Fiverr Friendship` buys it back."],
+ {"Clarion Inn Air Conditioning": 2, "Fiverr Friendship": 3, "Corporate Retreat": 4, "r0nk": 3, "Nirtom": 3, "Venaul": 3}, ["draw", "econ", "damage"], exclude=["The Juice"], seed=408)
+big("Card Draw Marathon", 120, ["draw", "big-deck", "control"], "Everything draws cards.",
+ "The player who converts cards into damage fastest wins.",
+ ["`Lightning Talks` into `Should have Preregistered`."],
+ {"Lightning Talks": 4, "Should have Preregistered": 3, "White Python Boots": 3}, ["draw", "events"], copies=3, exclude=SELFHARM, seed=409)
+big("Permanent Collection", 148, ["permanents", "big-deck", "economy"], "A museum of permanents.",
+ "Build a board and defend it. Disruption is rare, so permanents stay.",
+ ["`CTF Bangers` boosts `Bribery`."],
+ {"CTF Bangers": 3, "Bribery": 3, "Hardware Hacking Village": 3, "Shell Speech": 3}, ["perm", "tech", "ice"], exclude=["Nashville 2600", "Clarion Inn Morning Coffee", "The Juice"], seed=410)
+big("Hero Hall of Fame", 156, ["heroes", "legendary", "big-deck"], "Every Hero and Legendary Hero.",
+ "Hero turns with Super r0nk and Makeshift Lectern.",
+ ["`Super r0nk` gains per Hero."],
+ {"Super r0nk": 2, "Makeshift Lectern": 4, "Kevin Mitnick Cardboard Cutout": 4}, ["heroes", "legend"], copies=2, exclude=SELFHARM, seed=411)
+big("Chaos Engine", 159, ["chaos", "big-deck", "variety"], "Random-feeling but legal: a bit of everything, including the weird cards.",
+ "Anything can happen: Grass, Nashville 2600 and The Juice are all in. Adapt.",
+ ["`Grass` stops buys; `Zenthere, Mind Goblin` loves that."],
+ {"Grass": 2, "Zenthere, Mind Goblin": 3, "Nashville 2600": 2, "Botnet": 3}, ["oddball", "disrupt", "all"], copies=2, seed=412)
+big("Disruption Grand Prix", 138, ["disruption", "big-deck", "control"], "A market where every other card hurts someone else.",
+ "Keep hand and board light; the opponents will be attacking both.",
+ ["`AI Slop` strips permanents."],
+ {"AI Slop": 4, "The Reason": 4}, ["disrupt", "damage", "draw"], copies=3, seed=413)
+big("Location Scout", 126, ["locations", "ice", "big-deck"], "Every location, many copies.",
+ "Hotel Roof Chair Toss scales with your locations; Tennessee Department of Health is the counter.",
+ ["`Hotel Roof Chair Toss` + many locations."],
+ {"Hotel Roof Chair Toss": 4, "Tennessee Department of Health": 2, "The Clarion Inn": 3}, ["ice", "econ", "draw"], copies=3, exclude=["Nashville 2600"], seed=414)
+big("Singleton Century", 150, ["singleton", "big-deck", "variety"], "One copy of almost every card in the game.",
+ "Every card is unique. Track the public list as cards leave.",
+ ["`Treasure Hunters` digs for a cost."],
+ {"Treasure Hunters": 1, "NotLarry Cardboard Cutout": 1}, ["all"], copies=1, seed=415)
+big("The Long Con", 144, ["economy", "big-deck", "alt-win"], "Long-game economy with an alternate win.",
+ "Builds slowly: ICE, economy, and Lowes Shopping Cart to win outright.",
+ ["`Lowes Shopping Cart` + `Botnet`."],
+ {"Lowes Shopping Cart": 4, "Botnet": 4, "Time Travel": 2}, ["perm", "ice", "econ"], exclude=NOPERM, seed=416)
+big("Speedrun", 120, ["aggro", "budget", "big-deck"], "Cheap damage in a big deck: fast games anyway.",
+ "Buy damage, play damage, repeat.",
+ ["`heartsh8ped` + `Elevator Noises` cheap damage."],
+ {"heartsh8ped": 4, "Elevator Noises": 4, "Two Hump Camel": 4}, ["cheap", "damage"], copies=2, exclude=SELFHARM, seed=417)
+big("Oprah Megachurch", 132, ["oprah", "legendary", "big-deck"], "O.P.R.A.H., Oprah Wonka and every way to reach them.",
+ "Flesh Oprah to get O.P.R.A.H. free; PhreakNIC discounts.",
+ ["`Flesh Oprah` → free `O.P.R.A.H.`."],
+ {"O.P.R.A.H.": 2, "Flesh Oprah": 4, "Oprah Wonka": 1, "Mog Wonka": 1, "PhreakNIC": 2}, ["econ", "draw", "legend"], exclude=SELFHARM, seed=418)
+big("Tag Team Tour", 140, ["tag-team", "heroes", "big-deck"], "Nirtom and Reps4Thor on tour in a big hero market.",
+ "Pair Nirtom and Reps4Thor when you can; otherwise play hero value.",
+ ["`Nirtom` + `Reps4Thor`: 3 damage."],
+ {"Nirtom": 4, "Reps4Thor": 4, "Nirtom Unleashed": 2}, ["heroes", "draw"], exclude=SELFHARM, seed=419)
+big("Even Split", 154, ["balanced", "big-deck"], "Two of every economy, draw and damage card.",
+ "A neutral reference market: good for comparing bots and players.",
+ ["`DeMartian` + `m8trix`."],
+ {"DeMartian": 2, "m8trix": 2, "Payphone": 2, "The Tone Whisperer": 2}, ["econ", "draw", "damage"], copies=2, exclude=SELFHARM, seed=420)
+
+# ===================== HUGE: 160-200 (20) =====================
+big("Everything Bagel", 200, ["big-deck", "chaos", "max"], "200 cards: two of almost everything.",
+ "The market is wide open. Build a plan from what shows up early.",
+ ["`Botnet` stacking."], {"Botnet": 2, "Payphone": 2, "The Tone Whisperer": 2}, ["all"], copies=2, exclude=SELFHARM, seed=501)
+big("Max Chaos", 200, ["big-deck", "chaos", "max"], "Every weird card in a 200-card pile.",
+ "Includes all the lock and self-harm cards. Expect strange games.",
+ ["`The Juice` with `_NASKEY`."], {"The Juice": 2, "_NASKEY": 3, "Grass": 2, "Zenthere, Mind Goblin": 3}, ["oddball", "all"], copies=1, seed=502)
+big("Kitchen Sink", 200, ["big-deck", "max", "midrange"], "200 cards without disruption: everyone gets to build.",
+ "Build engines; the main risk is damage.",
+ ["`Tyler Crumpton` + `Botnet`."], {"Tyler Crumpton": 3, "Botnet": 4, "Makeshift Lectern": 3, "Super r0nk": 2}, ["econ", "perm", "draw", "damage", "ice"], copies=2, exclude=POOL['disrupt'] + SELFHARM, seed=503)
+big("Mog Marathon", 180, ["mog", "big-deck", "mognet"], "Every Mog printing, at length.",
+ "Rookie Numbers is always live. Mognet economy.",
+ ["`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`.", "Four `Mognet` stack."], {"Mognet": 4, "Rookie Numbers": 2, "Mog's Lemon Custard Ice Cream": 2}, ["mog", "all"], copies=2, exclude=SELFHARM + ["Touch Mog"], seed=504)
+big("FOTTR Fan Club", 170, ["fottr", "big-deck"], "A huge FOTTR-centered market.",
+ "FOTTR Heroes plus Greatest Hits and Capture the Flag everywhere.",
+ ["`BONY` → free `F.O.T.T.R. Greatest Hits`."], {"BONY": 4, "F.O.T.T.R. Greatest Hits": 4, "bitwize": 4, "5ud0": 4}, ["fottr", "heroes", "all"], copies=2, exclude=SELFHARM, seed=505)
+big("Con Weekend", 190, ["con-life", "big-deck"], "The full con experience in 190 cards.",
+ "Events, talks and the con network.",
+ ["`Registration` + `Speakers Needed`."], {"Registration": 4, "Speakers Needed": 4, "PhreakNIC": 2, "Super r0nk": 2}, ["events", "heroes", "all"], copies=2, exclude=SELFHARM, seed=506)
+big("Botnet Planet", 175, ["botnet", "big-deck", "economy"], "Botnet and Mognet in a big tech world.",
+ "Pick one network family and build on it.",
+ ["`Botnet` and `Mognet` don't stack together."], {"Botnet": 2, "Mognet": 2, "Botnet Takeover": 3}, ["tech", "perm", "all"], copies=2, exclude=NOPERM, seed=507)
+big("Rick's Endless Party", 165, ["rickroll", "big-deck"], "Rick Astley's party never ends.",
+ "Rickrolls in the Center Row force buys.",
+ ["`Never Gonna Give You Up` + `Never Gonna Let You Down`."], {"Rick Astley": 2, "Rickroll": 4, "Never Gonna Give You Up": 4, "Never Gonna Let You Down": 4, "F.O.T.T.R. Greatest Hits Volume 2": 2}, ["all"], copies=2, exclude=SELFHARM, seed=508)
+big("Clarion Forever", 185, ["clarion", "big-deck", "ice"], "Checkout time never comes.",
+ "Clarion everything, plus a broad market.",
+ ["`Clarion Inn Staff` → free `The Clarion Inn`."], {"Clarion Inn Staff": 4, "The Clarion Inn": 4, "Egg in Your Soup": 3, "The Sandwich Factory": 3}, ["ice", "all"], copies=2, exclude=["Nashville 2600"], seed=509)
+big("Damage Galore", 195, ["aggro", "big-deck", "damage"], "Damage cards at 3 copies in a huge deck.",
+ "Fast for its size: buy damage.",
+ ["`DeMartian` + `m8trix`."], {"DeMartian": 3, "m8trix": 3, "Drunk Riddler": 3}, ["damage", "exploits", "all"], copies=3, exclude=SELFHARM, seed=510)
+big("Heroes Unlimited", 160, ["heroes", "big-deck"], "Heroes, Heroes, Heroes.",
+ "Lectern and Super r0nk turns.",
+ ["`Super r0nk` per Hero."], {"Super r0nk": 2, "Makeshift Lectern": 4, "John Titor": 3}, ["heroes", "events", "all"], copies=3, exclude=SELFHARM + [n for n in POOL['legend'] if n != "Super r0nk"], seed=511)
+big("Permanent Residents", 170, ["permanents", "big-deck"], "Permanents and locations everywhere.",
+ "Board building.",
+ ["`CTF Bangers` + `Payphone`."], {"CTF Bangers": 3, "Payphone": 4, "Randy": 3, "Candy Factory": 3}, ["perm", "ice", "tech", "all"], copies=2, exclude=["Nashville 2600", "Clarion Inn Morning Coffee"], seed=512)
+big("Draw Til Dawn", 180, ["draw", "big-deck", "control"], "A huge draw-heavy market.",
+ "Cards in hand are everything.",
+ ["`Lightning Talks` + `Should have Preregistered`."], {"Lightning Talks": 4, "Should have Preregistered": 3, "Errorgone": 4}, ["draw", "events", "all"], copies=3, exclude=SELFHARM, seed=513)
+big("One of Each, Plus", 200, ["big-deck", "max", "variety"], "Every card once, then the best ones again up to 200.",
+ "Huge and broad.",
+ ["`Treasure Hunters` digs for a cost."], {"Treasure Hunters": 2, "Botnet": 4}, ["all", "econ", "draw"], copies=1, seed=514)
+big("Market Wars", 188, ["market", "disruption", "big-deck"], "Fight over the Center Row.",
+ "Refresh, reserve, acquire, and deny.",
+ ["`Phreaknic Website Refresh` resets the row."], {"Phreaknic Website Refresh": 4, "benthephreak": 2, "NotLarry Cardboard Cutout": 4, "Tips and tricks for Windows and Office365": 4}, ["disrupt", "econ", "all"], copies=2, seed=515)
+big("Legendary Tournament", 165, ["legendary", "big-deck"], "Every Legendary at 2 copies.",
+ "PhreakNIC turns are big.",
+ ["`PhreakNIC` discounts `Brimstone, Fabulous`."], {"PhreakNIC": 2, "Brimstone, Fabulous": 2, "benthephreak": 2}, ["legend", "econ", "all"], copies=2, exclude=SELFHARM, seed=516)
+big("Low Budget Epic", 172, ["budget", "big-deck"], "Only cheap cards, many copies.",
+ "Two buys a turn forever.",
+ ["`Botnet` stacking."], {"Botnet": 4, "heartsh8ped": 4, "Two Hump Camel": 4}, ["cheap"], copies=4, exclude=SELFHARM, seed=517)
+big("Expensive Taste", 168, ["heavy", "big-deck"], "Only cards costing 4 or more.",
+ "Slow and rich.",
+ ["`Hardware Hacking Village` discounts `Bribery`."], {"Hardware Hacking Village": 3, "Bribery": 3, "Flesh Oprah": 4, "O.P.R.A.H.": 2}, ["mid", "pricey"], copies=3, exclude=SELFHARM, seed=518)
+big("Original Recipe", 162, ["base", "big-deck"], "A big Base Set-only deck.",
+ "The original game, bigger.",
+ ["`Nirtom` + `Reps4Thor`."], {"Nirtom": 3, "Reps4Thor": 3, "Payphone": 3, "The Tone Whisperer": 3}, ["set2025"], copies=2, seed=519)
+big("Expansion Saga", 178, ["expansion", "mog", "big-deck"], "A big Expansion 1 + Mog deck.",
+ "All the newer cards.",
+ ["`pTFS` buys `JousterL` free."], {"pTFS": 3, "JousterL": 3, "Rookie Numbers": 3, "Mog's Lemon Custard Ice Cream": 3}, ["set2026"], copies=2, seed=520)
+
+# Two-card combo lines for decks whose notes were single-card.
+EXTRA_COMBOS = {
+"Cardboard Cutout Convention": "`Phreaknic Website Refresh` then `NotLarry Cardboard Cutout`: wipe the row, then swap the one bad card left.",
+"Stamp Collector": "`Dick Van Dyke Stamp` + `Pooping in the Dark`: redraw a hand of starters and every one does something.",
+"Kevin's Heist": "`AI Fingers` on an opponent's `Payphone`: it now pays you every turn.",
+"Singleton Sampler C": "`Treasure Hunters` + `NotLarry Cardboard Cutout`: hunt one specific single in the deck or the row.",
+"Highlander Heroes": "`Super r0nk` + `Makeshift Lectern`: cheap Heroes that each add hacking.",
+"Draw Go": "`White Python Boots` + `Military-Grade Card Encapsulation`: draw into answers while you take no damage.",
+"Corporate Ladder": "`Fiverr Friendship` + `Corporate Retreat`: buy life to stay ahead, then Retreat deals 2.",
+"Reserve and Refresh": "`Phreaknic Website Refresh` + `Tips and tricks for Windows and Office365`: new row, then buy one card and reserve another.",
+"Recycling Center": "`Registration` returns a Hero to hand while `G4nd4lf` puts another discard card on top.",
+"Disruption Grand Prix": "`AI Slop` + `The Reason`: each opponent loses a permanent and a card in one turn.",
+"Singleton Century": "`Treasure Hunters` + `NotLarry Cardboard Cutout`: hunt one specific single in the deck or the row.",
+"One of Each, Plus": "`Treasure Hunters` + `Botnet`: pay 2 to dig up a 2-cost card, maybe another Botnet.",
+"Market Wars": "`Phreaknic Website Refresh` + `benthephreak`: deal a new row, then take its best card.",
+}
+for _d in DECKS:
+    if _d['name'] in EXTRA_COMBOS and EXTRA_COMBOS[_d['name']] not in _d['combos']:
+        _d['combos'] = list(_d['combos'])[:4] + [EXTRA_COMBOS[_d['name']]]
+
+# Full combo notes for the large and huge decks (replace the short ones).
+BIG_COMBOS = {
+"Big Botnet": ["Four `Botnet` pay +4 each per turn; take every copy you see.", "`Tyler Crumpton` makes `Botnet` and `Payphone` 1 cheaper this turn.", "`Payphone` adds +2 or 2 damage every turn on top of the `Botnet` stack."],
+"FOTTR Reunion Tour": ["`5ud0` + `crook3dfingers` + `bitwize`: each deals 1 when another is played.", "`The Fellowship of the Token Ring` makes `bitwize` and the other FOTTR Heroes free."],
+"Rickroll Festival": ["`Never Gonna Give You Up` + `Never Gonna Let You Down`: a discard and a permanent discard for each opponent.", "`Rick Astley` moves a `Rickroll` from your discard into an opponent's.", "A `Rickroll` left in the Center Row must be bought at the start of a turn: leave it for the next player."],
+"Payphone Empire": ["`Payphone` in play: `The Tone Whisperer` deals 3.", "`Payphone Dave` buys `Payphone` or `Shell Speech` free.", "`Shell Speech` draws each turn and can leave play for 2 damage."],
+"Clarion Megaresort": ["`Clarion Inn Staff` buys `Clarion Inn Carpeted Pool` or `The Clarion Inn` free.", "`Under New Management` deals 2 and takes a Clarion card from any discard pile."],
+"Mog Supreme": ["`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: 2 damage, then draw 3.", "Four `Mognet` pay +4 each per turn.", "`Rookie Numbers` costs 2 life to every player with a Mog card in their discard, and here that's nearly everyone."],
+"Exploit Factory": ["`cyberMonk3y` makes Exploits like `Share a Link` 1 cheaper this turn.", "`Foundation of Time/Temporal Reconstruction` deals 1 for each Exploit you play, so `Share a Link` hits for 3."],
+"Life and Death": ["`Clarion Inn Air Conditioning` drains everyone; `Fiverr Friendship` buys the life back.", "`Corporate Retreat` deals 2 while you have more life than someone.", "`Nirtom` and `Venaul` heal everyone, which keeps `r0nk` from ending games early."],
+"Card Draw Marathon": ["`Lightning Talks` fills your hand, then `Should have Preregistered` removes it for 1 damage per card.", "`White Python Boots` turns 2 hacking into a card, as often as you like."],
+"Permanent Collection": ["`CTF Bangers` makes `Bribery` deal 2 per 2 hacking.", "`Hardware Hacking Village` makes Technology like `Shell Speech` 1 cheaper."],
+"Hero Hall of Fame": ["`Super r0nk` adds hacking for each other Hero played this turn.", "`Makeshift Lectern` makes `Kevin Mitnick Cardboard Cutout` and every Hero 1 cheaper."],
+"Chaos Engine": ["`Grass` stops all buying, and `Zenthere, Mind Goblin` deals 2 when you acquire nothing.", "`Nashville 2600` discards every `Botnet` in play: time it against the network player."],
+"Disruption Grand Prix": ["`AI Slop` + `The Reason`: each opponent loses a permanent and a card in one turn.", "`Talks Fun Police` hits every player, so play it when your board is empty."],
+"Location Scout": ["`Hotel Roof Chair Toss` deals 1 more for each Location you control.", "`Tennessee Department of Health` strips ICE counters from an opposing `The Clarion Inn`."],
+"Singleton Century": ["`Treasure Hunters` + `NotLarry Cardboard Cutout`: hunt one specific single in the deck or the row.", "`Treasure Hunters` is best late: the public list tells you which costs are still in the deck."],
+"The Long Con": ["`Lowes Shopping Cart` + four `Botnet`: 4+ counters a turn toward 25.", "`Time Travel` gives the extra turn that finishes the cart."],
+"Speedrun": ["`heartsh8ped` + `Elevator Noises`: 2 damage and a card for 3 hacking.", "`Two Hump Camel` gives both hacking and damage, so it is never dead."],
+"Oprah Megachurch": ["`Flesh Oprah` removes itself to buy `O.P.R.A.H.` free.", "`PhreakNIC` makes `Oprah Wonka` and `O.P.R.A.H.` 2 cheaper this turn."],
+"Tag Team Tour": ["`Nirtom` + `Reps4Thor`: Reps4Thor deals 3.", "`Nirtom Unleashed` may share a turn with `Reps4Thor`: 5 hacking and 5 damage."],
+"Even Split": ["`DeMartian` + `m8trix`: m8trix deals 4, DeMartian makes 4.", "`Payphone` in play: `The Tone Whisperer` deals 3."],
+"Everything Bagel": ["`Payphone` in play: `The Tone Whisperer` deals 3.", "Two `Botnet` are only +2 each, so in a deck this wide they're a bonus, not a plan."],
+"Max Chaos": ["`_NASKEY` deals and draws twice while `The Juice` is in play.", "`Grass` stops all buying, and `Zenthere, Mind Goblin` deals 2 when you acquire nothing."],
+"Kitchen Sink": ["`Tyler Crumpton` makes `Botnet` cost 1 this turn.", "`Makeshift Lectern` + `Super r0nk`: cheaper Heroes that each add hacking."],
+"Mog Marathon": ["`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: 2 damage, then draw 3.", "Four `Mognet` pay +4 each per turn."],
+"FOTTR Fan Club": ["`BONY` buys `F.O.T.T.R. Greatest Hits` free and gains 2 life.", "`bitwize` + `5ud0`: each deals 1 when the other is played."],
+"Con Weekend": ["`Speakers Needed` finds a Hero; `Registration` returns another from the discard.", "`PhreakNIC` makes `Super r0nk` 2 cheaper this turn."],
+"Botnet Planet": ["`Botnet` and `Mognet` count only their own name, so pick one family.", "`Botnet Takeover` discards every `Botnet` in play but leaves `Mognet` alone."],
+"Rick's Endless Party": ["`Never Gonna Give You Up` + `Never Gonna Let You Down`: each opponent discards a card and a permanent.", "`Rick Astley` passes a `Rickroll` into an opponent's discard pile.", "`F.O.T.T.R. Greatest Hits Volume 2` costs 2 life to anyone who ends a turn without a Rick Astley card."],
+"Clarion Forever": ["`Clarion Inn Staff` buys `The Clarion Inn` free.", "`Egg in Your Soup` adds 2 ICE to `The Sandwich Factory`."],
+"Damage Galore": ["`DeMartian` + `m8trix`: m8trix deals 4.", "`Drunk Riddler` removes itself for 3 damage."],
+"Heroes Unlimited": ["`Super r0nk` adds hacking for each other Hero played.", "`Makeshift Lectern` makes `John Titor` 4, and he shuffles back into your deck."],
+"Permanent Residents": ["`CTF Bangers` makes `Payphone` deal 3.", "`Randy` makes `Candy Factory` cost 3; feed it spare Heroes for ICE."],
+"Draw Til Dawn": ["`Lightning Talks` fills your hand, then `Should have Preregistered` removes it for damage.", "`Errorgone` draws and discards to filter out Hackers."],
+"One of Each, Plus": ["`Treasure Hunters` + `Botnet`: pay 2 to dig up a 2-cost card, maybe another Botnet.", "`NotLarry Cardboard Cutout` flushes a weak row; with most cards single, each one you remove is gone for good."],
+"Market Wars": ["`Phreaknic Website Refresh` + `benthephreak`: deal a new row, then take its best card.", "`Tips and tricks for Windows and Office365` + `NotLarry Cardboard Cutout`: swap a row card, then buy one and reserve one."],
+"Legendary Tournament": ["`PhreakNIC` makes `Brimstone, Fabulous` 2 cheaper this turn.", "`benthephreak` acquires any Center Row card, Legendaries included."],
+"Low Budget Epic": ["Four `Botnet` at 2 hacking each snowball fast.", "`heartsh8ped` + `Two Hump Camel`: cheap damage every turn."],
+"Expensive Taste": ["`Hardware Hacking Village` makes `Bribery` 1 cheaper.", "`Flesh Oprah` removes itself to buy `O.P.R.A.H.` free."],
+"Original Recipe": ["`Nirtom` + `Reps4Thor`: Reps4Thor deals 3.", "`Payphone` in play: `The Tone Whisperer` deals 3."],
+"Expansion Saga": ["`pTFS` lets you buy `JousterL` free.", "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: 2 damage, then draw 3."],
+}
+for _d in DECKS:
+    if _d['name'] in BIG_COMBOS: _d['combos'] = BIG_COMBOS[_d['name']]

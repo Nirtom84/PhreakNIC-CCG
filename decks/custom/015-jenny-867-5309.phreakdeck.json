@@ -1,0 +1,43 @@
+{
+  "cards": [
+    "2 × Altk3y [Altk3y]",
+    "4 × Botnet [Botnet]",
+    "4 × Clarion Inn Chandeliers [Clarion Inn Chandeliers]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "4 × Jenny [Jenny]",
+    "2 × JousterL [JousterL]",
+    "2 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × Payphone [Payphone]",
+    "2 × Payphone Dave [Payphone Dave]",
+    "2 × PhreakMyst [PhreakMyst]",
+    "2 × Still Not Spock [Still Not Spock]",
+    "2 × Talks Fun Police [Talks Fun Police]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "3 × Tyler Crumpton [Tyler Crumpton]",
+    "2 × Venaul [Venaul]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "4 × c14ud3 [c14ud3]",
+    "4 × hardwarez [hardwarez]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "2 × itsamenathan [itsamenathan]",
+    "2 × mog [mog]",
+    "3 × notlarry [notlarry]",
+    "2 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJxtkE9PwzAMxb-KlXORgA4YvUEn_owNTWwaEresMSRq5lSJM9RN--5kKRckLonyfn52ng-ikV4FUR3EneW27EV1WYh7x4QsqlEhaiu9cQTPRFBrSQqtQR8ym_hILbwZpSz6bJwiUZ_Z1MXA6GdZfsGdIZgbJtO0UKeJG5cOqCO7yLnk1fFMet__Txey77Qj_POAidz9KtqjbOd9GKqXbKyF1BGWnWvarK2kbQM8RIKFs6YZfKtkC9EjPEXinOok9ikN1D5uO3YkqrIQayQZbaYfSKzRY5HikIJHt7GGMmkuRlGVObxO3_-WHvfDC6XnoMcdqlxoOMht6shpnVnYuq98k2N72kGeuZe20_Ld2c_Ejgkmj6iGDcP4-ubsqjy_FccfTnWQdQ",
+  "combos": [
+    "`Jenny` pays 9 hacking for 9 damage.",
+    "`Clarion Inn Chandeliers` returns `Jenny` after she removes herself.",
+    "`PhreakMyst` gives +6 on a no-buy turn: that's `Jenny` money."
+  ],
+  "count": 60,
+  "description": "Call Jenny: pay up to 9 hacking for 9 damage, then bring her back.",
+  "name": "Jenny 867-5309",
+  "play_style": "Build a big hacking turn (Botnets, PhreakMyst) and dump it into Jenny for 9. Jenny removes herself, so Clarion Inn Chandeliers returns her to hand for another call.",
+  "tags": [
+    "combo",
+    "burst",
+    "economy"
+  ]
+}

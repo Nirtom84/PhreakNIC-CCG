@@ -1,0 +1,38 @@
+{
+  "cards": [
+    "2 × Botnet Takeover [Botnet Takeover]",
+    "2 × Doom on a Trading Card [Doom on a Trading Card]",
+    "4 × Drunk Riddler [Drunk Riddler]",
+    "4 × Elevator Noises [Elevator Noises]",
+    "4 × Even More Logo [Even More Logo]",
+    "4 × Hotel Roof Chair Toss [Hotel Roof Chair Toss]",
+    "2 × I've got the Logs [I've got the Logs]",
+    "2 × Jenny [Jenny]",
+    "2 × CRT LAN Party [LAN Party]",
+    "4 × Non-Infringing Game Show [Non-Infringing Game Show]",
+    "4 × You've Got Mail [Reverse Shell]",
+    "4 × Rookie Numbers [Rookie Numbers]",
+    "4 × Share a Link [Share a Link]",
+    "2 × Should have Preregistered [Should have Preregistered]",
+    "4 × Two Hump Camel [Two Hump Camel]",
+    "2 × _NASKEY [_NASKEY]",
+    "4 × evildagmar [evildagmar]",
+    "4 × heartsh8ped [heartsh8ped]",
+    "2 × m8trix [m8trix310]"
+  ],
+  "code": "PNDK1.eJwtUMtuwjAQ_JWVL71Qqa8D4kYLKrQ0QpBLT9W2WWIrthfZTihC_Hs3dk_2zozHs3NRPxiaqGYX9czJU4IaO-KBgpo9TNSC2QF7QKgDNsa38CLyQoXed7AzTWNH8dNELS0NmDhAxSZSLNhAHj44EGy45QytOJGFHfMBXjSaADXHIl7fDAQtJ0g662P-6I28P-fbZl7BFkMqU8X-du0PQVKNwV7REew1n7LVjmSFOAJkbUGYO0NQ9e5bmAztNUowhI3x3T_AvW1Ao-TYBgrUmpjkKBvXJ4ZV747SgaNi-lXN9-_Lz0zTYGyDrcPShiZJGvX0OL6W2U1TML-P93civk6UFw81Uwt02BIsCKXFCHPP_uy4j-r6B07XgzY",
+  "combos": [
+    "`Drunk Riddler` removes itself for 3 damage; `Share a Link` can remove itself for +2 hacking.",
+    "`Non-Infringing Game Show` spends up to 3 hacking for that much damage.",
+    "`heartsh8ped` and `Two Hump Camel` keep the hits cheap."
+  ],
+  "count": 60,
+  "description": "No tricks, just damage: cheap hits and burst Heroes.",
+  "name": "Damage Dealers Anonymous",
+  "play_style": "Buy damage every turn and point it at the weakest player. Drunk Riddler and Share a Link trade themselves for burst. Non-Infringing Game Show converts late hacking into damage.",
+  "tags": [
+    "aggro",
+    "damage",
+    "lean"
+  ]
+}

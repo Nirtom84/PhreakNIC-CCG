@@ -2,6 +2,7 @@ class_name BotPlayer
 extends RefCounted
 const MAX_ACTIONS = 200
 var engine
+var custom_planner
 var continue_turn: Callable
 var action_completed: Callable
 var action_delay: float = 0.0
@@ -9,7 +10,9 @@ var pace_provider: Callable
 var yield_frame: bool = false
 var purchase_policy: Callable # Offline randomized purchase experiments only.
 var search_budget_ms = 0 # 0 uses DefconSearch.DECISION_MS; server overrides it.
-func _init(game): engine = game
+func _init(game):
+	engine = game
+	if engine.state != null and engine.state.card_pool == "custom": custom_planner = engine.get_meta("custom_planner", null)
 func take_turn(p):
 	var turn_search = null
 	if p.difficulty == 3:
@@ -131,6 +134,11 @@ func estimate_hacking(p) -> int:
 	for c in cards: total += engine.db().get_card(c.id).hack
 	return int(total * 5.0 / maxf(1, cards.size()))
 func purchase_value(ai, card, p) -> float:
+	if engine.state.card_pool == "custom" and p.difficulty > 0:
+		if custom_planner == null:
+			custom_planner = CustomDeckPlanner.new(engine)
+			engine.set_meta("custom_planner", custom_planner)
+		return custom_planner.value(ai, card, p)
 	var result = ai.buy_value(card, p) if ai is BotDecider and ai.defcon else ai.value(card, p)
 	if p.difficulty == 3 and p.turns >= 10 and engine.effective_cost(p, card) <= 3:
 		result -= float(DefconValues.knobs(engine.state.card_pool, p.starting_life > engine.state.starting_life).late_filler)

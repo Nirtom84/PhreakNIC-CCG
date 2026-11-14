@@ -1,0 +1,48 @@
+{
+  "cards": [
+    "2 × benthemeek [Ben The Meek]",
+    "2 × bitwize [Bitwize]",
+    "4 × Botnet [Botnet]",
+    "2 × Botnet Takeover [Botnet Takeover]",
+    "2 × Brimstone, Fabulous [Brimstone, Fabulous]",
+    "2 × F.O.T.T.R. Capture the Flag [Capture the Flag]",
+    "1 × Clarion Inn Morning Coffee [Clarion Inn Morning Coffee]",
+    "3 × Elevator Noises [Elevator Noises]",
+    "2 × Elonka [Elonka]",
+    "2 × Even More Logo [Even More Logo]",
+    "2 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "2 × F.O.T.T.R. Greatest Hits Volume 2 [FOTTR Greatest Hits Vol 2]",
+    "2 × Hardware Hacking Village [Hardware Hacking Village]",
+    "2 × CRT LAN Party [LAN Party]",
+    "3 × Lightning Talks [Lightning Talks]",
+    "2 × Nirtom Unleashed [Nirtom Unleashed]",
+    "2 × O.P.R.A.H. [O.P.R.A.H.]",
+    "2 × Payphone [Payphone]",
+    "3 × Reps4Thor [Reps4Thor]",
+    "2 × You've Got Mail [Reverse Shell]",
+    "4 × Share a Link [Share a Link]",
+    "4 × The Tone Whisperer [The Tone Whisperer]",
+    "2 × Two Hump Camel [Two Hump Camel]",
+    "2 × c14ud3 [c14ud3]",
+    "2 × cyberMonk3y [cybermonkey]",
+    "2 × Errorgone [errorgone]",
+    "2 × evildagmar [evildagmar]",
+    "2 × mog [mog]",
+    "4 × Nirtom [nirtom]",
+    "2 × pouipoui [pouipoui]"
+  ],
+  "code": "PNDK1.eJx1UcuOwjAM_BUrZ1QJllNvgGC7Ei-VLns21LRR07hK0iIW8e-bJuK4h0r2uOOMZ57iiqa0In2KJWkoaoIdUSPS2UQspbvLX4o1O01OpPN3CQU2xAOZODaytY41TWCDl15xbwO-ws71hsD5vRuFVQQVGskavrSGHRstdQUrvt3IPzWdiLWiAR0b2LO05Pd8jBjrBgN7PVCgEWy54gBtDkWRw6chdGQdZNLZ_3A4s4JZmGb-8Dv6PRlem1HDWSovMd67XezhiMY9Yier2gWdBaomStpL47iFb60IbU1l-PGQHJM8WSRZEtojPrrauxKanDo7L2o2gZ6T984SnGpSKsxP9SgGYSt1E4wewyg8G35qaTsyo9cjfGfI-raDFbYUqdfpvC8_Yvm4kGm9WxSlkzFsqrcGGqQqsWoxxtZyTESHW8L2jns5fh5_-YF_QqRiiaNSH7qPzlp5Fa8_FjSzaA",
+  "combos": [
+    "`Payphone` + `The Tone Whisperer` for 3 damage.",
+    "`Nirtom` + `Reps4Thor` for 3 damage.",
+    "Four `Botnet` snowball."
+  ],
+  "count": 70,
+  "description": "Only Base Set cards: the original 2025 game with a curated market.",
+  "name": "Base Set Classic",
+  "play_style": "Plays like the original game with trimmed filler. Botnets and Payphones for economy, Elevator Noises and Share a Link for steady damage.",
+  "tags": [
+    "base",
+    "midrange"
+  ]
+}

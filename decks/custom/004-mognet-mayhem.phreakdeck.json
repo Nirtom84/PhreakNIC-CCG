@@ -1,0 +1,44 @@
+{
+  "cards": [
+    "2 × Mog's CTF Bangers [CTF Bangers@mog]",
+    "2 × Mog’s Candy Factory [Candy Factory@mog]",
+    "2 × Mog's Disassembled Sink [Disassembled Sink@mog]",
+    "4 × Mog Filler [Filler@mog]",
+    "2 × Mog’s Lowes Shopping Cart [Lowes Shopping Cart@mog]",
+    "4 × Mog's Lemon Custard Ice Cream [Mog's Ice Cream@mog]",
+    "4 × Mognet [Mognet]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast@mog]",
+    "2 × Mog's OSINT for Dummies [OSINT for Dummies@mog]",
+    "3 × Rookie Numbers [Rookie Numbers@mog]",
+    "2 × Mog Should Have Preregistered [Should have Preregistered@mog]",
+    "2 × Still not Mog [Still Not Spock@mog]",
+    "2 × MOGTAU [TOCTOU@mog]",
+    "2 × The Mog [The Book@mog]",
+    "2 × Tips and tricks for Windows and Mog [Tips and tricks for Windows OS and Office365@mog]",
+    "4 × Mog Crumpton [Tyler Crumpton@mog]",
+    "2 × Mognaul [Venaul@mog]",
+    "2 × Who is Mog? [What is Truth@mog]",
+    "2 × Where's Mog?! [Wheres Apache@mog]",
+    "2 × Mog’s White Python Boots [White Python Boots@mog]",
+    "2 × [Mog’s Restaurant Name] Restaurant [[Restaurant Name] Restaurant@mog]",
+    "3 × Mogwarez [hardwarez@mog]",
+    "2 × pTFMOG [pTFS@mog]",
+    "4 × Mogdy [randy@mog]",
+    "4 × MogAlphaWolf [zalphaWolf@mog]"
+  ],
+  "code": "PNDK1.eJxNUj1vwjAQ_SsnL10ylbYDU0tQJKSSIJKWoepwJJfYSmxHtlMUEP-9hlKHyb53H37v-U6sRFNZNj-xuEhggaohY1-lbtj8MWIxqmqEBEunzRjQpbBoLcl9RxXkQrUhk4iuI_MXPkXsXR_IQs513wvVQIzGhdK1bh4srEqC2BDK0ONxRe7_amGDqsSWYOGr2hrtNCHLV2kBtTawHKQUNNHeat0KgnSQ-6BmFjFPZOgq4PhDsDFkqBHW-aMKjbnzAiDVDvJel5OuIouL7GMKuefj35gA0VvwXoEzomztldROqEofLGT5NZPVtShp9vI8NY3eK69-kL3TKhjwSQqHLlTtODoQFgozOH6Het4W3nosOd2hwnlpo-NaXQi6yZKvLVmHg0HlIEVJ3zABoYj7XTigoWOwrC-SPKTNZRsCzyN2Pced7uobdI6Y8pPZ_PaHsMaRk2TnX-FfyoM",
+  "combos": [
+    "Four `Mognet` = +4 hacking each per turn.",
+    "`Mog Crumpton` makes `Mognet` cost 1.",
+    "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: draw 3."
+  ],
+  "count": 64,
+  "description": "The Mog Variant engine: Mognet stacks while Mog-branded tech smooths the draw.",
+  "name": "Mognet Mayhem",
+  "play_style": "Same plan as a Botnet farm but in Mog colors: Mognets first, Mog Crumpton to discount technology, then Mog's Lowes Shopping Cart as the sink. Rookie Numbers punishes everyone holding Mog cards in their discard.",
+  "tags": [
+    "economy",
+    "mog",
+    "mognet"
+  ]
+}

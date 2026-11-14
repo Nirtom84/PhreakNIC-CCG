@@ -1,0 +1,40 @@
+{
+  "cards": [
+    "4 × Bedtime Story [Bedtime Story]",
+    "2 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "2 × Egg in Your Soup [Egg in Your Soup]",
+    "3 × Employee Review [Employee Review]",
+    "4 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "3 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "4 × Lightning Talks [Lightning Talks]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "2 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "4 × OSINT for Dummies [OSINT for Dummies]",
+    "2 × Payphone Karaoke [Payphone Karaoke]",
+    "2 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "4 × Pooping in the Dark [Pooping in the Dark]",
+    "2 × Registration [Registration]",
+    "3 × Should have Preregistered [Should have Preregistered]",
+    "2 × Speakers Needed [Speakers Needed]",
+    "2 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "2 × What is Truth? [What is Truth]",
+    "4 × Where's Apache!? [Wheres Apache]",
+    "4 × Errorgone [errorgone]",
+    "3 × tipsybacchus [tipsybacchus]"
+  ],
+  "code": "PNDK1.eJxdUDtvwjAQ_isnz0yl7cBWoA9USlASCXU8nEtsJbGjsw2KEP-9jtOh6mT5vtfddxMSuXJidRNrqrzuCQpveRSrx4XYdMjaGtgZA2smbGt0XqweFuK1aUAb-LaBobBhmIf90NmRCHK6aLqK1TLN_Ah7K9tBy1abBko8d5Ts37KyzOE9GntyHj60d0mz143yZuZ2rUvcL9s4OKKR2NK_XQ6hPxNDZgiOakIOuw3kYQqJaFbsDiXUlmEb-l7TbHfEcVA2Kj6R0bYzdVYbLeFEZ6f9dEjN5NSMWjtMO8WzvSLYIrfJKqdGO8_oY1OJWCgbugoUXuJCTJzw-FTpuGKIGcQODkTVNIuKUg8O0FTgOZbk0rYnbSp7dZAVCcnqWktaPj8lwUmhB-2g5ODV7yQmOHgZUKq5XWK23MQb08_HiPGMUqowlXxfCIN9hP6UndtgKnH_ARjEryU",
+  "combos": [
+    "Draw with `Lightning Talks`, then `Should have Preregistered` removes the hand for 1 damage each.",
+    "`F.O.T.T.R. Greatest Hits` removes a card each turn for 2 damage.",
+    "`Errorgone` and `tipsybacchus` filter Hackers out."
+  ],
+  "count": 60,
+  "description": "Draw everything, then throw your hand at someone.",
+  "name": "Lightning Round",
+  "play_style": "Lightning Talks, Bedtime Story and Where's Apache fill your hand, then Should have Preregistered removes the hand for 1 damage per card. F.O.T.T.R. Greatest Hits turns one card per turn into 2 damage.",
+  "tags": [
+    "draw",
+    "combo",
+    "burst"
+  ]
+}

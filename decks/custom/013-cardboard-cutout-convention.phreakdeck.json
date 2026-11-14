@@ -1,0 +1,47 @@
+{
+  "cards": [
+    "2 × Altk3y [Altk3y]",
+    "2 × DeMartian [DeMartian]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "1 × Elonka [Elonka]",
+    "2 × fred rogers [Fred Rogers]",
+    "2 × John Titor [John Titor]",
+    "4 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "2 × Makeshift Lectern [Makeshift Lectern]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × Mog Cardboard Cutout [NotLarry Cardboard Cutout@mog]",
+    "2 × Payphone Dave [Payphone Dave]",
+    "4 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "2 × Talks Fun Police [Talks Fun Police]",
+    "3 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "4 × Treasure Hunters [Treasure Hunters]",
+    "2 × Two Hump Camel [Two Hump Camel]",
+    "2 × Tyler Crumpton [Tyler Crumpton]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "2 × hfuller [hfuller]",
+    "4 × itsamenathan [itsamenathan]",
+    "2 × mog [mog]",
+    "4 × notlarry [notlarry]",
+    "2 × pouipoui [pouipoui]",
+    "2 × Randy [randy]",
+    "2 × tipsybacchus [tipsybacchus]",
+    "2 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJx9UU1LAzEQ_StDzr1oVWRPSrWKWiu1UPCW7s6asGlmmUxaVvG_O93gRcRDAvP13ps3n6a23CRTfZrrIN10MNXpxNzgwrJ4G0vEOXaw8k0TkMfMbaDYWVOdTMycsYEVvSOnsfRALsLaC5XOR9z7CAsv0dcdzJRrS_rBLAtlMdXZxCxsh8n5VuAJa0EupM8kT5Z5-GPmv-rVjt7Hjhc79I4iwo3dY8k4RtupDtjgNnlBWGHLSj2qWNvQJZjnCC8UfF1G1r5PYGMDwio_QUsMGx8bOiRYvo6VZdtq9_Ti3FRTHVCKlBnhPkcZLTlCH0jjXa9idxgK8KBWwow1K1QWfsMoDhkn6pbi3tE2-FJxqMdI7rLHpsRtDj-X8JIUNFpxx2Mp2c_-kSQcHRqTPWV_fGOFVXY5s-h6w9bWtcvleB829M5uKLQafimIYpvK_DYZZhT3Kter9K9voie_Ew",
+  "combos": [
+    "`NotLarry Cardboard Cutout` swaps a Center Row card for a new one.",
+    "`Phreaknic Website Refresh` deals out a fresh Center Row and draws.",
+    "`Treasure Hunters` acquires an exact cost from the Center Deck.",
+    "`Phreaknic Website Refresh` then `NotLarry Cardboard Cutout`: wipe the row, then swap the one bad card left."
+  ],
+  "count": 64,
+  "description": "Every cutout at the con: reshape the Center Row until it shows what you need.",
+  "name": "Cardboard Cutout Convention",
+  "play_style": "Use NotLarry Cardboard Cutout and Phreaknic Website Refresh to flush bad Center Rows and fish for your combo pieces; since the deck list is public, count what is left. Kevin Mitnick Cardboard Cutout keeps the cards flowing.",
+  "tags": [
+    "market",
+    "midrange",
+    "mog"
+  ]
+}

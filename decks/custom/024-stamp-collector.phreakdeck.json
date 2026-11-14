@@ -1,0 +1,42 @@
+{
+  "cards": [
+    "4 × Bedtime Story [Bedtime Story]",
+    "2 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "4 × Dick Van Dyke Stamp [Dick Van Dyke Stamp]",
+    "2 × Egg in Your Soup [Egg in Your Soup]",
+    "4 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "2 × Foundation of Time/Temporal Reconstruction [Foundation of Time Temporal Reconstruction]",
+    "4 × CRT LAN Party [LAN Party]",
+    "4 × Lightning Talks [Lightning Talks]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "2 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "2 × OSINT for Dummies [OSINT for Dummies]",
+    "2 × Payphone Karaoke [Payphone Karaoke]",
+    "2 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "4 × Pooping in the Dark [Pooping in the Dark]",
+    "2 × Registration [Registration]",
+    "4 × Speakers Needed [Speakers Needed]",
+    "2 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "2 × What is Truth? [What is Truth]",
+    "2 × Where's Apache!? [Wheres Apache]",
+    "2 × c14ud3 [c14ud3]",
+    "3 × hfuller [hfuller]",
+    "2 × proudF00F [proudF00F]",
+    "1 × tipsybacchus [tipsybacchus]"
+  ],
+  "code": "PNDK1.eJxVkkFv2zAMhf8KoXMO7dLtkFubNECwzAliY8GOjExbgm1RoCQMRtH_PlkeBuwm8L1HfpT0oTRKG9TuQ71RG-1EUEeWWe1eNmo_olh2cHIO3oRw6DBEtfuyUQerB_iJDg7zsCRw8iXx3vdgHfziJFBz8sX8Pvk4w5n14HPMuh4afIxUAkdOrsW4TOEOmmV-Q5NnwRFupNmFKEkveml1fq3gihJXvrPtTXRrw3EIpfaD-5AtTmMG-x-6StODBC6O4GoWpTrt4ZYWkqxe6lPVQMcChzRNlkKpXnH2hnPiOwrysFrXtLMa7vQINlJG7YSCWVVmvzDle4iG4IAyFLIb9TZvg_-WqX3uQhKgImqpLabG-gDoWoiS7yoUnrt1Lf8OcKmLcuk6q2n77WtpcjcYwQZoJEXzt0KZBV49arPy6ueX1G7L0XRpHEnUbrtRXji1x6enY1Finjw_UGuT8urPnxvlcMp5VV4X9pxzOn8N9fkHCoy4gA",
+  "combos": [
+    "`Dick Van Dyke Stamp`: each Hacker deals 1, each Attack gives +1.",
+    "`hfuller` gains life for every Attack revealed.",
+    "`CRT LAN Party` hits players whose top card is cheapest, often a starter.",
+    "`Dick Van Dyke Stamp` + `Pooping in the Dark`: redraw a hand of starters and every one does something."
+  ],
+  "count": 60,
+  "description": "Starter cards matter: Hackers deal damage and Attacks make hacking.",
+  "name": "Stamp Collector",
+  "play_style": "Dick Van Dyke Stamp makes every Hacker a damage card and every Attack a hacking card, so this deck keeps its starters instead of thinning. Cycle with Pooping in the Dark and Empty Lockpicking Table to replay them.",
+  "tags": [
+    "starters",
+    "combo"
+  ]
+}

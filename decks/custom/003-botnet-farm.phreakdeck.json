@@ -1,0 +1,47 @@
+{
+  "cards": [
+    "1 × Altk3y [Altk3y]",
+    "4 × Botnet [Botnet]",
+    "2 × Bribery [Bribery]",
+    "2 × Brimstone [Brimstone]",
+    "2 × DeMartian [DeMartian]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "3 × Filler [Filler]",
+    "2 × fred rogers [Fred Rogers]",
+    "2 × Hardware Hacking Village [Hardware Hacking Village]",
+    "2 × JousterL [JousterL]",
+    "2 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "2 × Lowes Shopping Cart [Lowes Shopping Cart]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × Tableskirts [Tableskirts]",
+    "4 × Tyler Crumpton [Tyler Crumpton]",
+    "3 × Unattended Phone [Unattended Phone]",
+    "2 × Venaul [Venaul]",
+    "2 × White Python Boots [White Python Boots]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "4 × c14ud3 [c14ud3]",
+    "2 × hardwarez [hardwarez]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "2 × hfuller [hfuller]",
+    "2 × itsamenathan [itsamenathan]",
+    "2 × mog [mog]",
+    "2 × notlarry [notlarry]",
+    "3 × pouipoui [pouipoui]",
+    "2 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJxtUctuwjAQ_BXLZy6UHqrcChVFLVSIUpB6c-IltuLY0XpdFBD_3sVJbz3E2dnHeGZ9lZVCHWVxlc-Omlkvi-lEzgN5IFk8coi2BOT0Q47bSMFDRi-wUUhW-QFh8o3YWa0dYM4srcvhjEMELXahBoy5tOI7zwpBrFTVWF-LA_eqeuB9CykS4DqDd_ixXmwseVs1YsFzZeBDLBKFRLllHc4QxacJXXen4p4h_xForRD7_6f2qnQQG4s0SNr3LFYsMLUdO8zWv7wiAq9Z-9Zk12zlAF4ll0eOxhKIbU9cFPMQRqZv8GQAYcKyvRavoXR22FE1fUx6lrnNuIFLLhhg0dE8daAHfErub42Womr5UjLjpttQ578P5O7-MuhCsvcva7wo1xl1DO7EtRt3MoEsxlcVS4WtvP0CsCukJw",
+  "combos": [
+    "Four `Botnet` = +4 hacking each per turn.",
+    "`Tyler Crumpton` and `Hardware Hacking Village` cut `Botnet` to 1 hacking.",
+    "Surplus hacking goes into `Lowes Shopping Cart` (25 counters wins) or `Bribery`."
+  ],
+  "count": 64,
+  "description": "Stack four Botnets and turn the hacking into an alternate win or a damage machine.",
+  "name": "Botnet Farm",
+  "play_style": "Race for Botnets: each one pays +1 per Botnet you control. Technology discounts (Tyler Crumpton, Hardware Hacking Village) make them nearly free. Spend surplus in Lowes Shopping Cart or Bribery.",
+  "tags": [
+    "economy",
+    "botnet",
+    "combo"
+  ]
+}

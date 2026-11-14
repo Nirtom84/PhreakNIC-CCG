@@ -1,0 +1,52 @@
+{
+  "cards": [
+    "2 × Botnet [Botnet]",
+    "2 × Clarion Inn Staff [Clarion Inn Staff]",
+    "2 × DeMartian [DeMartian]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "2 × Elonka [Elonka]",
+    "2 × fred rogers [Fred Rogers]",
+    "2 × John Titor [John Titor]",
+    "2 × JousterL [JousterL]",
+    "2 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "2 × Lowes Shopping Cart [Lowes Shopping Cart]",
+    "2 × Mog’s Lowes Shopping Cart [Lowes Shopping Cart@mog]",
+    "2 × Mognet [Mognet]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "3 × Payphone [Payphone]",
+    "2 × Payphone Dave [Payphone Dave]",
+    "2 × PhreakMyst [PhreakMyst]",
+    "2 × Still Not Spock [Still Not Spock]",
+    "3 × Tableskirts [Tableskirts]",
+    "2 × Talks Fun Police [Talks Fun Police]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "3 × Tyler Crumpton [Tyler Crumpton]",
+    "3 × Unattended Phone [Unattended Phone]",
+    "2 × Venaul [Venaul]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "4 × c14ud3 [c14ud3]",
+    "3 × hardwarez [hardwarez]",
+    "1 × heartsh8ped [heartsh8ped]",
+    "2 × hfuller [hfuller]",
+    "2 × itsamenathan [itsamenathan]",
+    "2 × notlarry [notlarry]",
+    "2 × pouipoui [pouipoui]",
+    "2 × Randy [randy]",
+    "2 × tipsybacchus [tipsybacchus]"
+  ],
+  "code": "PNDK1.eJx1UU1PIzEM_StRzr3wcVjNCVFgF2hRRWf3sDd34jbRpPbIcUAD4r-TZugiJPaQKO8578l-frUdiEu2ebWXrIRqm9OZnUeQwGRuicxaYbut7BUuQTQATUgy9eYxOBdRKnMdmXqozxtBZx55h5IqvmNPpg3K8gFzUpRFBff4FMgsg1LoejMv7Wy4XGaelfPUz4KfMZm152EItDv8-S9_seddrS15dxzngXUBIuP35isYB8-Etjn7BOYKnnAqe0Hol2Oafq81xGiKo1kP3PWVa2ETMfVBNFWTFmKfzE0ms-IYusmnLTYpC5pfmfSYSzuW8Mxc8n5Qpir-TaCK5EqAq39t_UGCHKvkL5J6FJyVyMiZn7yJYdpId3Ke3ZltzmfWlxmfQfClqj2WYJL_MaCzzUnB2xyPSwuaYF_c1X_slVjjIawKBs7hcCoQIDfRGoY0bqDrfD7M8VZUxcQ29ssqSkISSO3bO3VGyAM",
+  "combos": [
+    "`PhreakMyst` +6 hacking straight into `Lowes Shopping Cart`.",
+    "`Botnet` and `Mognet` each count only their own name, so pick one family.",
+    "`hardwarez` discards dead cards for extra hacking."
+  ],
+  "count": 72,
+  "description": "Fill a shopping cart with 25 counters and win the game outright.",
+  "name": "Shopping Cart Sprint",
+  "play_style": "Lowes Shopping Cart wins at 25 counters. Build hacking with Botnets, Mognets and phones, then dump it into the cart every turn. PhreakMyst's +6 is perfect: you can't buy, but you can fill the cart.",
+  "tags": [
+    "alt-win",
+    "economy",
+    "mog"
+  ]
+}

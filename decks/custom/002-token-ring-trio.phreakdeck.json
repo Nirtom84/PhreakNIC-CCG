@@ -1,0 +1,42 @@
+{
+  "cards": [
+    "4 × 5ud0 [5ud0]",
+    "4 × bitwize [Bitwize]",
+    "2 × BONY [Bony]",
+    "2 × CTF Bangers [CTF Bangers]",
+    "2 × F.O.T.T.R. Capture the Flag [Capture the Flag]",
+    "2 × Employee Review [Employee Review]",
+    "2 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "4 × Fore04 [Fore04]",
+    "4 × G4nd4lf [G4nd4lf]",
+    "3 × Lightning Talks [Lightning Talks]",
+    "3 × Makeshift Lectern [Makeshift Lectern]",
+    "2 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "2 × Payphone Karaoke [Payphone Karaoke]",
+    "4 × Registration [Registration]",
+    "3 × Speakers Needed [Speakers Needed]",
+    "2 × The Fellowship of the Token Ring [The Fellowship of the Token Ring]",
+    "1 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "4 × What is Truth? [What is Truth]",
+    "4 × crook3dfingers [crook3dfingers]",
+    "2 × cyberMonk3y [cybermonkey]",
+    "2 × Errorgone [errorgone]",
+    "2 × proudF00F [proudF00F]"
+  ],
+  "code": "PNDK1.eJxFkEFvgzAMhf-KlTMHttIdOLYa3bSuVDRSzxkxYAEJcsKqrup_Xxom7WY_J9_z803UirUT-U2sZ52KPEvEhvyFfnCprbmK_DkRW1nARpkW2S29mvzMCL5DKAbVRvF1nAZ7RYQKvwkvUStKKSvYMSqPzsMb-QVQWMY0iya7zOhsaGK9p7bzhkwLUg19eLpKxKfq0XXUeNhj7ZFNVA_z-IUMpUE4dgHfH963UM0DRvxRXafOhtmHYmX7RaywJedZebImup2m8C9EggOiRh258pEIh8FegucEtokZZWAYqMJikSRpcqCMBs9U9w4ay3Amo8MnKE9xUjYN1bh6WYv8KRHnTnkgB5Jn30Xvmq3tV7qhv6M-pGtINFrT43J0ZLbchhSxm9jOukjTInT3RBg1Bl38LxbYZMX9F80llbs",
+  "combos": [
+    "`5ud0` + `bitwize` + `crook3dfingers`: each deals 1 when another of them is played.",
+    "`What is Truth?` counts as all three names for the trio's triggers.",
+    "`The Fellowship of the Token Ring` lets you buy FOTTR Heroes free and put Heroes in hand.",
+    "`Fore04` and `G4nd4lf` set up the next draw so the trio meets."
+  ],
+  "count": 60,
+  "description": "5ud0, bitwize and crook3dfingers ping each other; the market is built so you see them constantly.",
+  "name": "Token Ring Trio",
+  "play_style": "Take the trio early and keep two of the three in hand: each one played with another deals 1 extra. Lectern and the free-Hero Fellowship turn the trio into a 3-hero turn. Registration and Speakers Needed recover them.",
+  "tags": [
+    "combo",
+    "fottr",
+    "aggro"
+  ]
+}

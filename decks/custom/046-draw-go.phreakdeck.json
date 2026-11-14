@@ -1,0 +1,51 @@
+{
+  "cards": [
+    "3 × Bedtime Story [Bedtime Story]",
+    "3 × Candy Factory [Candy Factory]",
+    "3 × Clarion Inn Carpeted Pool [Carpeted Pool]",
+    "3 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "3 × Clarion Inn Storage Closet [Clarion Inn Closet]",
+    "3 × Corporate SWAG Table [Corporate SWAG Table]",
+    "4 × Egg in Your Soup [Egg in Your Soup]",
+    "4 × Employee Review [Employee Review]",
+    "4 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "3 × Hardware Hacking Village [Hardware Hacking Village]",
+    "3 × Lightning Talks [Lightning Talks]",
+    "3 × Military-Grade Card Encapsulation [Military-Grade Card Encapsulation]",
+    "4 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "4 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "4 × OSINT for Dummies [OSINT for Dummies]",
+    "3 × Payphone Karaoke [Payphone Karaoke]",
+    "3 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "3 × Pooping in the Dark [Pooping in the Dark]",
+    "3 × Registration [Registration]",
+    "4 × Speakers Needed [Speakers Needed]",
+    "3 × TOCTOU Photo-Finish [TOCTOU]",
+    "1 × MOGTAU [TOCTOU@mog]",
+    "3 × The Clarion Inn [The Clarion Inn]",
+    "3 × Phreaknic Network [The Phreaknic Network]",
+    "3 × The Sandwich Factory [The Sandwich Factory]",
+    "4 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "3 × Walmart Parking Lot [Walmart Parking Lot]",
+    "3 × What is Truth? [What is Truth]",
+    "4 × Where's Apache!? [Wheres Apache]",
+    "3 × White Python Boots [White Python Boots]",
+    "3 × [Restaurant Name] Restaurant [[Restaurant Name] Restaurant]"
+  ],
+  "code": "PNDK1.eJxlUsGOm0AM_RVrzttDtW0POXWT3WajphAFWlRVPTjgMCNgjDxDEVrtv3dgEm2q3uA9e_zes19UiVI5tXpRa6q86QgyzzKp1f2d2qCtJviC5Q0iPXmq4MDcRqRFMWxhZy2shbA5o_P_MZuWHV1glp4FfRhUPGwhx1NLC_FU12As_ORBIOOhV6sPAez6liciONIfQ-MV8xPsuWx6UzbG1tdHAvcc3IwoBM8YqR-mbbGOE_am1t7GhrZxC_bNtMajTO-2ghVBMFjBky2xd0OLPuiPVVw7OGDAG7q1GSYmQ3cigdQSHPTMJLsNHIeLnjTbJTmcWeBx6DpDbkEPOPWaQ8dXFOQmqovd1pRQ0MkZP3s-CzkdWeZ-Vh4S8prgEaVZ8CPVxnl5k5r14RUSBwlRRdUyL083efp9oePn545rtXoffsNbN4uKJfpqZRaTkB_5MmxmsnAUoyn1P3eRm95BIMBLWIlbDBfGVjw6SLOFSc9nU9L9p4-LogLbDsWHTGVZ057jdRQaPRgHuQxeXxAKIcBDj6WOmRZ6Ducw-RAhrJl93OSvIzmPg6D1kGBHv-ENCAWvd8oGVK3Uo-AIW1avfwFjofpw",
+  "combos": [
+    "`Military-Grade Card Encapsulation` blocks all damage until your turn.",
+    "`TOCTOU Photo-Finish` saves you at 1 life and takes an extra turn.",
+    "`White Python Boots` turns spare hacking into cards.",
+    "`White Python Boots` + `Military-Grade Card Encapsulation`: draw into answers while you take no damage."
+  ],
+  "count": 100,
+  "description": "Draw, defend, survive: the long game for patient players.",
+  "name": "Draw Go",
+  "play_style": "ICE and card draw. Military-Grade Card Encapsulation and TOCTOU Photo-Finish stop surprise lethal, then late burst wins.",
+  "tags": [
+    "control",
+    "draw",
+    "ice"
+  ]
+}

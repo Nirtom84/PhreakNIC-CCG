@@ -1,0 +1,45 @@
+{
+  "cards": [
+    "2 × Mog's CTF Bangers [CTF Bangers@mog]",
+    "2 × Mog's Disassembled Sink [Disassembled Sink@mog]",
+    "2 × Mog’s Etch-a-Sketch Skillz [Etch-a-Sketch Skillz@mog]",
+    "2 × Mog Filler [Filler@mog]",
+    "4 × MogsterL [JousterL@mog]",
+    "2 × Mog’s Desk [Kevin's Desk@mog]",
+    "2 × Mog's Lemon Custard Ice Cream [Mog's Ice Cream]",
+    "2 × Mog's Lemon Custard Ice Cream [Mog's Ice Cream@mog]",
+    "4 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "1 × Mog's OSINT for Dummies [OSINT for Dummies@mog]",
+    "2 × MogMyst [PhreakMyst@mog]",
+    "2 × Mog’s PhreakNIC [PhreakNIC@mog]",
+    "2 × Mog Pooping in the Dark [Pooping in the Dark@mog]",
+    "2 × Rookie Numbers [Rookie Numbers]",
+    "2 × Rookie Numbers [Rookie Numbers@mog]",
+    "2 × Mog's Speakers Needed [Speakers Needed@mog]",
+    "4 × Still not Mog [Still Not Spock@mog]",
+    "4 × Mog Fun Police [Talks Fun Police@mog]",
+    "2 × Mog Crumpton [Tyler Crumpton@mog]",
+    "3 × Mognaul [Venaul@mog]",
+    "2 × Mogmart Parking Lot [Walmart Parking Lot@mog]",
+    "2 × Where's Mog?! [Wheres Apache@mog]",
+    "4 × Mogwarez [hardwarez@mog]",
+    "4 × mog [mog]",
+    "2 × pTFMOG [pTFS@mog]",
+    "4 × MogAlphaWolf [zalphaWolf@mog]"
+  ],
+  "code": "PNDK1.eJxtkctuwjAQRX9l5E03YdHHilULaVRaSFETlfWQDInlV2Q7rQDx7zUFHBas7DlzdT1zvWcV2tqx8Z5NywwmqBuy7lmZho0fEpZyh86RWkuqoeBaxM6rr9oRjgpB4QKF4FLuYjMLFdlYvpveebLzE3hK2Af9cH3nICU3OC5ME9CsIphaQnWLXWsdLFFXKAgmoSU26Py_92cxy0vYGAtprxSn8zL3CVu2R-Fi63z0OaF8Nh2IMR3XDXANviVI0Q4TfhkjOEHeq3UI6QaKyqILtgFATlRTPXAfkoHceCg6U4kYSIlSOMh6DUsjeUVDYxuCDMv3qvNGR59v0tjLU_mYsBVKhdaHRKw4Dj83w4qrliw5eOmwainSNvz6L1raxZcuZ1dmRZTtUHYtrozcnHWHhGlUxMaXzcNPwFuvPTv8ASRdv0c",
+  "combos": [
+    "`Rookie Numbers` drains 2 from each player with a Mog card in their discard.",
+    "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: draw 3.",
+    "`MogAlphaWolf` can remove itself to draw."
+  ],
+  "count": 66,
+  "description": "Mog cards everywhere, so every Rookie Numbers hits every discard pile.",
+  "name": "Rookie Mog Hunt",
+  "play_style": "Nearly every card is a Mog printing, so everyone's discard soon has Mog cards in it, including yours; Rookie Numbers costs every such player 2 life. Plan to land more Rookies than your opponents.",
+  "tags": [
+    "mog",
+    "combo",
+    "drain"
+  ]
+}

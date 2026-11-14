@@ -1,0 +1,45 @@
+{
+  "cards": [
+    "3 × AI Ben's AI Camry [AI Bens AI Camry]",
+    "4 × Botnet [Botnet]",
+    "4 × Bribery [Bribery]",
+    "4 × CTF Bangers [CTF Bangers]",
+    "4 × Clarion Inn Chandeliers [Clarion Inn Chandeliers]",
+    "3 × Dick Van Dyke Stamp [Dick Van Dyke Stamp]",
+    "4 × Disassembled Sink [Disassembled Sink]",
+    "4 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "3 × F.O.T.T.R. Greatest Hits Volume 2 [FOTTR Greatest Hits Vol 2]",
+    "3 × Filler [Filler]",
+    "4 × Fiverr Friendship [Fivrr Friendship]",
+    "3 × Hardware Hacking Village [Hardware Hacking Village]",
+    "4 × Kevin's Desk [Kevin's Desk]",
+    "4 × Lowes Shopping Cart [Lowes Shopping Cart]",
+    "3 × Makeshift Lectern [Makeshift Lectern]",
+    "3 × Military-Grade Card Encapsulation [Military-Grade Card Encapsulation]",
+    "4 × Payphone [Payphone]",
+    "4 × Powered-On Taser Maintenance [Powered On Taser Maintenance]",
+    "4 × Shell Speech [Shell Speech]",
+    "4 × Tableskirts [Tableskirts]",
+    "4 × The Big Dipper [The Big Dipper]",
+    "2 × The Book [The Book]",
+    "3 × Time Travel [Time Travel]",
+    "4 × Tyler Crumpton [Tyler Crumpton]",
+    "3 × Unattended Phone [Unattended Phone]",
+    "3 × White Python Boots [White Python Boots]"
+  ],
+  "code": "PNDK1.eJx1UMFO5DAM_RUrl72wF9jT3HZahkHLiNE2DGfTeqdWUzdywqAK8e-4KRz3FPvl-fn5vbsWtUtu8-5-38OWJIG9FY46u83NldtOWSi7zS8rlV9oga2u_A62KGfStPYBlSeBexGoepSOAn__1dwOcEKBeh4ImoxjLNI1J0yJxpdAHTQsQ2HvHr3_C3dKmCll2HNO_8PhNAW4Llo7DoH0q7yowk6ZpEs9xzK9tyPfUAn22A4sZzjZAJ6pTPyhC8uPBDWl1cPD9EYJmn6KceFWqGsCBxzIJP9leKA2k0oZP3DgjDr_vFPsaGF3cCstxvQaMFsqhXXEOfaTUBE62gK1qx8FPCZSOCBLJkFpV0LTUwjQRKK2L4BHiykNrF9x-J5gy2eoOcbl8G9omuyEa2t4JPCKFwplvZ8tH6j0dYx5cWT8J8FsOzvzcVydGe-550xwnLMhi9qy7ubjygmORnDe_Jgskfv4BAPft6s",
+  "combos": [
+    "`Hardware Hacking Village` + `Tyler Crumpton`: Technology 2 cheaper.",
+    "`CTF Bangers` + `Bribery`: 2 damage per 2 hacking.",
+    "`Shell Speech` draws each turn."
+  ],
+  "count": 92,
+  "description": "Technology everywhere, discounted by Tyler Crumpton and Hardware Hacking Village.",
+  "name": "Tech Tree",
+  "play_style": "Get discounts first, then a permanent engine. CTF Bangers makes damaging permanents hit harder.",
+  "tags": [
+    "technology",
+    "permanents",
+    "economy"
+  ]
+}

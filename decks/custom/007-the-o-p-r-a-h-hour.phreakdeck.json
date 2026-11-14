@@ -1,0 +1,50 @@
+{
+  "cards": [
+    "2 × Brimstone [Brimstone]",
+    "2 × Clarion Inn Staff [Clarion Inn Staff]",
+    "2 × DeMartian [DeMartian]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "4 × Elonka [Elonka]",
+    "3 × Employee Review [Employee Review]",
+    "4 × Flesh Oprah [Flesh Oprah]",
+    "4 × fred rogers [Fred Rogers]",
+    "1 × JousterL [JousterL]",
+    "3 × Lightning Talks [Lightning Talks]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × O.P.R.A.H. [O.P.R.A.H.]",
+    "2 × Oprah Wonka [Oprah Wonka]",
+    "2 × Payphone Dave [Payphone Dave]",
+    "2 × PhreakNIC [PhreakNIC]",
+    "2 × Pooping in the Dark [Pooping in the Dark]",
+    "2 × Still Not Spock [Still Not Spock]",
+    "2 × Talks Fun Police [Talks Fun Police]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "2 × Two Hump Camel [Two Hump Camel]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "3 × evildagmar [evildagmar]",
+    "2 × hardwarez [hardwarez]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "2 × hfuller [hfuller]",
+    "2 × itsamenathan [itsamenathan]",
+    "2 × mog [mog]",
+    "2 × pouipoui [pouipoui]",
+    "2 × Randy [randy]",
+    "4 × tipsybacchus [tipsybacchus]",
+    "2 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJxFUctu2zAQ_JUFz4KAPg6Fbq1TxymcxLANBOhtLa1FQhSXWJIxlCD_Xops0QNFzoiY2Rm-qx5lCKp7Vz_EzCGyI9V9btTGohh28OAcnCJer4W9o0eUaNBVJMlNcDTDYEkK89Oym1B1X_Nx9pYXIjjSq6Gb6r40amspaHj2grrc2QoNcOSRJBT8i1OIJHvVfWrU3ow6OuNGOKOdQhF44rhHkQU2eeoL5w9sUuQUi_tze2iP7fd211a4-sBLnSjjAy5e53xwh6815EEL4fT0sKmI2a92xkHU6y2ZCn-KxlrI1nDy3FeujATb5ODA1vRV7pzVQhKCXXKxZFrJG2c8-zzyTLZQv8llA6EGHo0b4J4v1tRGc1V2wHFGKXF1DnhDobfyU1PuPuhvnoaKr8n-K97EkOUdRv33bWYey-45mXUVIOiGpZyi8WG5YN_rVKt_Q-s1vrBdH_qjUS7LqU6dcxH_a4UdJ1EffwDq2LOi",
+  "combos": [
+    "`Flesh Oprah` removes itself to buy `O.P.R.A.H.` free.",
+    "`PhreakNIC` makes `O.P.R.A.H.` and `Oprah Wonka` cost 2 less.",
+    "`O.P.R.A.H.` swaps Hackers in hand for center deck cards; `fred rogers` and `Elonka` thin the rest."
+  ],
+  "count": 72,
+  "description": "You get a card, you get a card: thin your deck, then O.P.R.A.H. trades your hand for center deck cards.",
+  "name": "The O.P.R.A.H. Hour",
+  "play_style": "Thin starters early with fred rogers, Elonka and evildagmar. Buy Flesh Oprah to get O.P.R.A.H. for free; PhreakNIC lowers Legendary prices. Late game, O.P.R.A.H. turns a hand of Hackers into fresh market cards.",
+  "tags": [
+    "combo",
+    "oprah",
+    "thinning"
+  ]
+}

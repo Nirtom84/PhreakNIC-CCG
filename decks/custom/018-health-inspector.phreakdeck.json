@@ -1,0 +1,46 @@
+{
+  "cards": [
+    "3 × AI Slop [AI Slop]",
+    "2 × Botnet Takeover [Botnet Takeover]",
+    "4 × Doom on a Trading Card [Doom on a Trading Card]",
+    "4 × Elevator Noises [Elevator Noises]",
+    "2 × Even More Logo [Even More Logo]",
+    "2 × Hotel Roof Chair Toss [Hotel Roof Chair Toss]",
+    "2 × I've got the Logs [I've got the Logs]",
+    "2 × Jenny [Jenny]",
+    "2 × Kevin's Desk [Kevin's Desk]",
+    "2 × CRT LAN Party [LAN Party]",
+    "2 × Non-Infringing Game Show [Non-Infringing Game Show]",
+    "2 × Nuvious [Nuvious]",
+    "2 × You've Got Mail [Reverse Shell]",
+    "3 × Rookie Numbers [Rookie Numbers]",
+    "2 × Share a Link [Share a Link]",
+    "2 × Should have Preregistered [Should have Preregistered]",
+    "2 × AI Fingers [Sticky Fingers]",
+    "3 × Still Not Spock [Still Not Spock]",
+    "3 × Tennessee Department of Health [Tennessee Department of Health]",
+    "1 × Tennessee Department of Mog [Tennessee Department of Health@mog]",
+    "2 × The Reason [The Reason]",
+    "4 × Two Hump Camel [Two Hump Camel]",
+    "2 × Under New Management [Under New Management]",
+    "2 × _NASKEY [_NASKEY]",
+    "2 × evildagmar [evildagmar]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "3 × m8trix [m8trix310]"
+  ],
+  "code": "PNDK1.eJyNUctOwzAQ_JWVL1yKxOtQ5UShQAslQk04cEJLs02s2N7IdlIQ4t_Z2nwAp1gzm9mZ2W-1Q98EVXyrxRoqw4MqLmfqhqOjCDX2xBN5VVzM1JLZAjtAqD022rVwK7-q4mqm7gxNGNlDyTpQyNhEDp7ZE2y45aSw4kgGtsx7uO1Qe6g5hMSsTyaCliPELs1n9JGc-0qvJ5q0OwmwpNAnYLMo4QV9zHTJ7nTt9l5MHX09oCWoOj5kcpw0j1lxS5ImHEkyJiPMvSYoR_shTApfdSiuETba5WUiNZoGOhSTL548tTpE-TSZjXrXf8G9bE4KGTJGyohQDbzrk2otYSgEIgkxiHNLLoI0sSI0sfvHyLXlVhXnMiYdbQkDu7SsPjCsRjvIOSyZ1P2ra0iOQQd4RoctHYXS7Hu5qJ7u3tJbKjUNthbzeTuSjaGbD3-x7Dx6_Xl5fibWfmbKibgqVLYCaxcG2snF1c8vwFS5xQ",
+  "combos": [
+    "`Tennessee Department of Health` strips ICE so `Elevator Noises` gets through.",
+    "`AI Slop` makes everyone discard a permanent and draws you a card.",
+    "`Kevin's Desk` steals a permanent every turn."
+  ],
+  "count": 64,
+  "description": "The health department is here: strip ICE and permanents, then burn.",
+  "name": "Health Inspector",
+  "play_style": "Your damage is cheap, so the opponents' defense is the problem. Tennessee Department of Health removes ICE counters; AI Slop and Still Not Spock knock out permanents; Kevin's Desk takes their best one.",
+  "tags": [
+    "disruption",
+    "anti-ice",
+    "aggro"
+  ]
+}

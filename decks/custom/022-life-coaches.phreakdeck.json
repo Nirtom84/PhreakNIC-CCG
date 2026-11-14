@@ -1,0 +1,45 @@
+{
+  "cards": [
+    "2 × Bedtime Story [Bedtime Story]",
+    "2 × benthemeek [Ben The Meek]",
+    "3 × BONY [Bony]",
+    "4 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "4 × Corporate Retreat [Corperate Retreat]",
+    "4 × Egg in Your Soup [Egg in Your Soup]",
+    "2 × Employee Review [Employee Review]",
+    "2 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "2 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "3 × Fiverr Friendship [Fivrr Friendship]",
+    "2 × Lightning Talks [Lightning Talks]",
+    "4 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "4 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "2 × OSINT for Dummies [OSINT for Dummies]",
+    "2 × Payphone Karaoke [Payphone Karaoke]",
+    "2 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "2 × Pooping in the Dark [Pooping in the Dark]",
+    "2 × Registration [Registration]",
+    "2 × Speakers Needed [Speakers Needed]",
+    "3 × The Big Dipper [The Big Dipper]",
+    "1 × The Big Mogger [The Big Dipper@mog]",
+    "2 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "2 × What is Truth? [What is Truth]",
+    "2 × Where's Apache!? [Wheres Apache]",
+    "2 × hardwarez [hardwarez]",
+    "4 × Nirtom [nirtom]"
+  ],
+  "code": "PNDK1.eJxdkUFv2zAMhf8K4XMvW7cdctqSrFuw1A5iA8GOik1bhGNRoOQGXtH_PlraZb0Y8vdI6unxtWiNdKHYvBZb7CJNCHVkWYrNxwclDhqL8Iw4ZsBOlceHYnczQuzg4BxsBc3YmxCLzSdVWDyKiQhnjKpk-n0YgBz85lmg5tlnOPkbL7hWvhDe0w3K4gJHbkdP7UhugMZcb5i0p6ppzvBjHYohwk-KIXN6EYEnIXRdsOSTwyMNNro84DbmwmceApyMa82I72yXHI9GZIGdxnFl_cBujjzH1FjO0xUFKodwsmtfedjBeV59aW9VH8oGehbYz9NEmC87mcVb1o5fRgyP-Qm521ELF7wGSin1gsFmldmvjjWpqLHvjeTYzzhQiBqqRp5A7XUKSoASscMusXVRWxpgT14XkDL4H32deCg2HxSTD2BcB1E045CcX8h1fA9Q1Ump-p5afPzyOY2-WBOBAjQyR_uPoLqGb960Nr_MamR3I_gn_TmSyJOm86ZnM2mJLqRH2PHaEIq3v8lpzbo",
+  "combos": [
+    "`Corporate Retreat` deals 2 while you have more life; `Fiverr Friendship` keeps you ahead.",
+    "`BONY` gains 2 and buys `F.O.T.T.R. Greatest Hits` free.",
+    "`benthemeek` chooses +3 hacking, 3 life or 3 damage."
+  ],
+  "count": 68,
+  "description": "Out-heal everyone, then let Corporate Retreat do the hitting.",
+  "name": "Life Coaches",
+  "play_style": "Pile on life with Fiverr Friendship, The Big Dipper and breakfasts. Once ahead, Corporate Retreat deals 2 instead of healing. benthemeek can swing either way.",
+  "tags": [
+    "lifegain",
+    "control"
+  ]
+}

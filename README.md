@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.25**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.26**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -17,7 +17,7 @@ _Screenshots are from the current version and are refreshed with every release._
 - **After a game:** a match summary with every player's stats, and a result card you can save as an image or share (X, Bluesky, Reddit, Facebook, Discord, or your phone's share sheet in a browser).
 - **Auto toggle:** cards like Botnet and Tableskirts have an **Auto** switch so their once-per-turn ability fires by itself.
 - **Stats:** the **Stats** button shows your lifetime record (kept on your device only), with a card you can save or share.
-- **Custom decks (experimental):** build your own 60–200 card Center Deck under **Decks (experimental)**, share it as a code or file, and play it offline or online (several submitted decks roll a D20). Two starter decks are included.
+- **Custom decks (experimental):** build your own 60–200 card Center Deck under **Decks (experimental)**, share it as a code or file, and play it offline or online (several submitted decks roll a D20). Two starter decks are included, plus [100 ready-made decks](decks/custom/README.md) with play-style notes. Bots have their own trained brain for custom decks.
 - **Watching the bots:** their plays show as a row of cards, and stay as a recap at the start of your turn until your first click. **Bot pace** sets how fast they play (Instant up to 5 seconds per card).
 - **Options:** bot pace, music and sound volume, and a "Visual effects" switch that turns off all animation.
 
@@ -135,6 +135,8 @@ godot4.7.1 --headless --path . -s tests/v23_checks.gd    # Dynamic soundtrack: p
 godot4.7.1 --headless --path . -s tests/v25_checks.gd    # custom decks: deck rules, deck codes, engine, saves, bots
 godot4.7.1 --headless --path . -s tests/v25_ui_checks.gd # deck builder, custom games, experimental stats, phone layout
 godot4.7.1 --headless --path . -s tests/v25_online_checks.gd # online deck submission and the D20 roll
+godot4.7.1 --headless --path . -s tests/custom_decks_checks.gd # the 100 ready-made custom decks: legal, importable, combos name cards in the deck
+godot4.7.1 --headless --path . -s tests/custom_bot_checks.gd  # custom-deck bot brain: full games, census, weights fallback, training pipeline
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```
 

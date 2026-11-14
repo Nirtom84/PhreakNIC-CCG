@@ -1,0 +1,34 @@
+{
+  "cards": [
+    "4 × Bedtime Story [Bedtime Story]",
+    "4 × Botnet [Botnet]",
+    "4 × Elevator Noises [Elevator Noises]",
+    "4 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "4 × Filler [Filler]",
+    "4 × fred rogers [Fred Rogers]",
+    "4 × Speakers Needed [Speakers Needed]",
+    "4 × Tableskirts [Tableskirts]",
+    "4 × Treasure Hunters [Treasure Hunters]",
+    "4 × Two Hump Camel [Two Hump Camel]",
+    "4 × Unattended Phone [Unattended Phone]",
+    "4 × What is Truth? [What is Truth]",
+    "4 × c14ud3 [c14ud3]",
+    "4 × heartsh8ped [heartsh8ped]",
+    "4 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJw1TrtOAzEQ_JWV6zSIFOjKQ6AUKIrIRakXezlb57Ot9TooRPl3jA3dPHZm9qY0sslquKmRjLiV4CiRr2rYbtQYJZA0-OLpgtWAfXSZctfWJFd4i3pJTi8uzDDhh6fmvTrviTtkMvAeZ-IeOybCpRLYExkyTWvBvDiWfjMxYS5MsCtB_oPTV6x8TfCMK_kmnQKKUKg1cLAx9O2zRQGXYeIitin6YVvMY4OWsI7Yp_S3_I0-WTxH_1npfaNC7VaDGouZSWCH-vdVdf8BDa1gGw",
+  "combos": [
+    "Four `Botnet` at 2 each snowball quickly.",
+    "`Treasure Hunters` pays a cost and digs up the first card at that cost.",
+    "`Filler` replaces itself; `Tableskirts` is free hacking until you get another permanent."
+  ],
+  "count": 60,
+  "description": "Nothing costs more than 3: every turn is a two-buy turn.",
+  "name": "Budget Hackers",
+  "play_style": "Everything is cheap, so buy two or three cards a turn. Botnets and Tableskirts snowball and Treasure Hunters picks an exact cost from the deck. Games are fast.",
+  "tags": [
+    "budget",
+    "lean",
+    "economy"
+  ]
+}

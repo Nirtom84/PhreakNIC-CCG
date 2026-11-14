@@ -1,0 +1,47 @@
+{
+  "cards": [
+    "3 × Brimstone [Brimstone]",
+    "2 × Clarion Inn Chandeliers [Clarion Inn Chandeliers]",
+    "2 × Clarion Inn Staff [Clarion Inn Staff]",
+    "2 × DeMartian [DeMartian]",
+    "2 × Disassembled Sink [Disassembled Sink]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "4 × Elonka [Elonka]",
+    "4 × Employee Review [Employee Review]",
+    "3 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "4 × fred rogers [Fred Rogers]",
+    "2 × John Titor [John Titor]",
+    "2 × JousterL [JousterL]",
+    "4 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × Payphone Dave [Payphone Dave]",
+    "2 × Should have Preregistered [Should have Preregistered]",
+    "2 × Still Not Spock [Still Not Spock]",
+    "2 × Tyler Crumpton [Tyler Crumpton]",
+    "2 × Venaul [Venaul]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "3 × evildagmar [evildagmar]",
+    "1 × hardwarez [hardwarez]",
+    "2 × itsamenathan [itsamenathan]",
+    "4 × mog [mog]",
+    "2 × notlarry [notlarry]",
+    "2 × pouipoui [pouipoui]",
+    "2 × tipsybacchus [tipsybacchus]",
+    "2 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJxtUctu3DAM_BVC5700ycnHOq-mSRvsGg3QG9diVsLKpEFJCZwg_16u3EuAHGyIQ3I0M3p3I6rPrnt33zVOuQiT6843rk-oURh-MEMfkD2lSGqDZ597u4LPzw29pAfUEpHXKmbMmaZ9Ig-7yMcV1cpH2EbvE2lDrpLwEV13YcdpTrIQwZZeIr027Pr3MGzhRgkL5QK3seQm71qNdiuHJsnm7iQwDLHIynonNRfS-1b8NDqGh1g4jkfoze9e7Ad9LVJLW_8l5R5Vly-6RvCIyxwsGLjEF2rILkhNHoLV8KikdIin-8iv3RJTAuOE3Szj6nxYzDH0WqfZMm7QH2KsqR3_Epdg-xuTyR5uZJ_iOmTak8fDhNp8B5P2ikpvrvu2cZYGTsZSwv_UJzk0Pywlnfw0cJYaT18rSpzzssdxDHV9zDdMc8AnSadX_LBVY3SdG0LLjC3vj387-7Rg",
+  "combos": [
+    "`fred rogers` and `Elonka` remove Hackers for a tighter deck.",
+    "`F.O.T.T.R. Greatest Hits` removes a card from hand each turn for 2 damage.",
+    "`Clarion Inn Chandeliers` returns a removed card to your hand."
+  ],
+  "count": 68,
+  "description": "Remove your starters, then cash in removed cards for damage.",
+  "name": "Thin Mints",
+  "play_style": "Spend the first turns thinning Hackers with fred rogers, Elonka, evildagmar and mog. F.O.T.T.R. Greatest Hits turns each removal into 2 damage. Clarion Inn Chandeliers brings back a removed card when you need it.",
+  "tags": [
+    "thinning",
+    "combo",
+    "control"
+  ]
+}

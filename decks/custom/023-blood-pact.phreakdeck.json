@@ -1,0 +1,44 @@
+{
+  "cards": [
+    "2 × Botnet Takeover [Botnet Takeover]",
+    "3 × Clarion Inn Air Conditioning [Clarion Inn Air Conditioning]",
+    "2 × Doom on a Trading Card [Doom on a Trading Card]",
+    "4 × Elevator Noises [Elevator Noises]",
+    "2 × Even More Logo [Even More Logo]",
+    "2 × Hotel Roof Chair Toss [Hotel Roof Chair Toss]",
+    "2 × I've got the Logs [I've got the Logs]",
+    "3 × Jenny [Jenny]",
+    "4 × CRT LAN Party [LAN Party]",
+    "2 × Non-Infringing Game Show [Non-Infringing Game Show]",
+    "3 × Powered-On Taser Maintenance [Powered On Taser Maintenance]",
+    "2 × You've Got Mail [Reverse Shell]",
+    "2 × Rookie Numbers [Rookie Numbers]",
+    "2 × Share a Link [Share a Link]",
+    "2 × Should have Preregistered [Should have Preregistered]",
+    "2 × Super r0nk [Super r0nk]",
+    "4 × Two Hump Camel [Two Hump Camel]",
+    "2 × Under New Management [Under New Management]",
+    "2 × _NASKEY [_NASKEY]",
+    "2 × evildagmar [evildagmar]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "3 × hfuller [hfuller]",
+    "2 × m8trix [m8trix310]",
+    "4 × proudF00F [proudF00F]",
+    "4 × r0nk [r0nk]"
+  ],
+  "code": "PNDK1.eJwtkUFvwjAMhf-KlcsuTGKDA-IGDAYbdGiww06TR0wbkdooTcsQ4r_PDdyi52d_z87F7DDYygwvZiyRKcIWDyQNBTN87piJx-CEYcEMIxdgImxdVMVxboa9jnkRKUENCNuAVlWY6LzUO_XUYJQAmbiKFNFXrSGGlQSCpeSSbHOJ5OFTZA-TApWxlapKlcVDQ5BLhFgk_019I-ZzYi9HGawxxHManQk_LngfNEMb4xVLgk0hp9S0lhMFsvDBul9FAVboOBIj7yjN-iRduWo7yPvUookOjiCry1-tJGlToCZHWDo-3AWpvYUCNeg6KCF3VWxBt2p9VFLo3s3bk8C8Lo96oZJ8yvzFVh0ZnTQPY04lcUzen2y0eZ9-pzc1zlvMS7x9SUG6clUMjndKsa-9b79LtygHMbi_3lM3VY5BajvrdmeJdcvRv3YMK98MzdiLWD3gLprrPyeopTE",
+  "combos": [
+    "`proudF00F` makes each player lose 1 per Hacker in hand.",
+    "`Powered-On Taser Maintenance` costs opponents 1 life per Center Row buy.",
+    "`r0nk` + `Clarion Inn Air Conditioning`: everyone bleeds; be the one with damage."
+  ],
+  "count": 64,
+  "description": "Everyone bleeds: symmetric life loss favors the player who planned for it.",
+  "name": "Blood Pact",
+  "play_style": "r0nk and Clarion Inn Air Conditioning cost everyone life, Powered-On Taser Maintenance taxes Center Row buys, and proudF00F punishes Hackers in hand. Close fast with cheap damage.",
+  "tags": [
+    "drain",
+    "aggro",
+    "risky"
+  ]
+}

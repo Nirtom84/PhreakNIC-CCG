@@ -1,0 +1,45 @@
+{
+  "cards": [
+    "2 × Altk3y [Altk3y]",
+    "2 × Clarion Inn Staff [Clarion Inn Staff]",
+    "3 × Corporate Retreat [Corperate Retreat]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "2 × Elonka [Elonka]",
+    "2 × fred rogers [Fred Rogers]",
+    "2 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "3 × Makeshift Lectern [Makeshift Lectern]",
+    "2 × Nirtom Unleashed [Nirtom Unleashed]",
+    "2 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "4 × Registration [Registration]",
+    "4 × Reps4Thor [Reps4Thor]",
+    "3 × Speakers Needed [Speakers Needed]",
+    "2 × Super r0nk [Super r0nk]",
+    "2 × The Big Dipper [The Big Dipper]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "3 × What is Truth? [What is Truth]",
+    "2 × c14ud3 [c14ud3]",
+    "2 × heartsh8ped [heartsh8ped]",
+    "2 × itsamenathan [itsamenathan]",
+    "2 × mog [mog]",
+    "4 × Nirtom [nirtom]",
+    "2 × notlarry [notlarry]",
+    "3 × r0nk [r0nk]",
+    "1 × Randy [randy]"
+  ],
+  "code": "PNDK1.eJxNUcFOwzAM_RUrZw6M7YB6gw7EBCuoK-LstV4TtXUqx0FC0_6dLBsSlyR-fnl-LzmaFqULpjiah1GH5Y8p7m5MOaI4z7Bhhp3i4XBBvcwkqAQ1qRCqKZY3Zi2RB6hd140kmfc0eh4wH5-FOqh9TxJy_UrfjmHrlF07QJlG731aoIzqo2bKFgcK1h0U3qhVEs5TKifqJ_jkkTBY6jK1itOeBN6Z4MMmQ0O1KaGOI-VuTb0LmvymJKZYnYE5rBrrJVe7OV1IvqAi6s6CacoupoAgtzxkhcYSPLoe1m6er9maNCZEIXiJrH-pviwquACNRLVZqF2sYrfMTUsoGuz9fDXtNOBEjGqRMzD5Pu-cI2Zv7DX9gFw-42IniQpyl6DFKRGShClMgz00hP_f5fQLjZeVmA",
+  "combos": [
+    "`Nirtom` + `Reps4Thor` in one turn: Reps4Thor deals 3.",
+    "`Nirtom Unleashed` may share a turn with `Reps4Thor`: +5 hacking, 2 damage, then 3 more.",
+    "`What is Truth?` has every name, so it counts as Nirtom for `Reps4Thor`.",
+    "`Super r0nk` adds hacking for each other Hero, and `Registration` returns a Hero to hand."
+  ],
+  "count": 60,
+  "description": "Nirtom and Reps4Thor at full strength: every turn you pair them, Reps4Thor hits for 3.",
+  "name": "Tag Team Unleashed",
+  "play_style": "Buy every Nirtom-named card and every Reps4Thor you see; they are the deck. Makeshift Lectern makes the pair cheap and Registration digs them back out of the discard. Nirtom Unleashed is a finisher, played alone or with Reps4Thor only.",
+  "tags": [
+    "combo",
+    "tag-team",
+    "aggro"
+  ]
+}

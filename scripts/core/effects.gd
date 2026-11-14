@@ -443,7 +443,9 @@ func _effect_errorgone(p, c):
 ## Etch-a-Sketch Skillz
 func _effect_etch_a_sketch_skillz(p, c):
 	var choices: Array = []
-	for q in e.opponents(p): choices += q.discard.filter(func(x): return e.db().get_card(x.id).kind == "Action")
+	# Copying Etch only repeats this identical choice, without moving the source
+	# or changing state. Collapse that no-op path (including an all-Etch discard).
+	for q in e.opponents(p): choices += q.discard.filter(func(x): return e.db().get_card(x.id).kind == "Action" and CustomDeck.rules_id(x.effect_id()) != "Etch-a-Sketch Skillz")
 	for x in await e.choose(p, "Copy action", choices):
 		await copied(p, x, c)
 

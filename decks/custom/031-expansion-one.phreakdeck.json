@@ -1,0 +1,51 @@
+{
+  "cards": [
+    "2 × Candy Factory [Candy Factory]",
+    "2 × Mog’s Clarion Inn Chandeliers [Clarion Inn Chandeliers@mog]",
+    "2 × Filler [Filler]",
+    "4 × JousterL [JousterL]",
+    "2 × Mog’s Desk [Kevin's Desk@mog]",
+    "2 × Lowes Shopping Cart [Lowes Shopping Cart]",
+    "4 × Makeshift Lectern [Makeshift Lectern]",
+    "3 × Mog's Lemon Custard Ice Cream [Mog's Ice Cream]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast@mog]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × Mogvious [Nuvious@mog]",
+    "2 × Oprah Wonka [Oprah Wonka]",
+    "2 × Payphone Karaoke [Payphone Karaoke@mog]",
+    "2 × PhreakNIC [PhreakNIC]",
+    "2 × Mog Pooping in the Dark [Pooping in the Dark@mog]",
+    "4 × Rookie Numbers [Rookie Numbers]",
+    "1 × Speakers Needed [Speakers Needed]",
+    "2 × Still not Mog [Still Not Spock@mog]",
+    "2 × Tennessee Department of Health [Tennessee Department of Health]",
+    "2 × The Book [The Book]",
+    "2 × Tips and tricks for Windows and Mog [Tips and tricks for Windows OS and Office365@mog]",
+    "2 × Treasure Moggers [Treasure Hunters@mog]",
+    "2 × Mog Crumpton [Tyler Crumpton@mog]",
+    "2 × Venaul [Venaul]",
+    "2 × Mognaul [Venaul@mog]",
+    "2 × Walmart Parking Lot [Walmart Parking Lot]",
+    "2 × [Restaurant Name] Restaurant [[Restaurant Name] Restaurant]",
+    "2 × [Mog’s Restaurant Name] Restaurant [[Restaurant Name] Restaurant@mog]",
+    "2 × pTFS [pTFS]",
+    "2 × pTFMOG [pTFS@mog]",
+    "2 × Randy [randy]"
+  ],
+  "code": "PNDK1.eJyFUj1v20AM_SvELV28tGk7aCqi1IgbRTYiox6CDoxEWQdJ5OHulFQI8t9LSYWcoUCXA_lIvsePezUl-iqY5NWkyNUIWyyj-NEknzYm7dBbYdgxQ9pomDpLPnzr5TzHt7bryM_mDxlCJJ-Z5PPG3NGz5Q8Bbii0a3ImLxSgaMQ5y2dI0ccZv8eWQmPrCBmVSsEzxb2clWBXEqSesDfJ1YwFOCCXWgHXCrc1hr8k_wyt2rnEDL0fJ9XqSfSBdIgyLMX58Gy1_TV77zw2cBJucfYPOLpGmOAOPUpLa-KhmZTyXbp4IvNkliE2BDfoL8M_iLSWIB_6J13gPGHhtFYdyIkqqkzyUbGoGwXtFgon5aX8SMwUAikrOV1cTxxBargl7GKzpKjktaosjnUB9F4QvS3bALV4OFmu5CXAvpgj-7q2JV19_XIR0WHC4AluB47vz3wc9cp6h6F3UXiFfxLj0L0z18gJu1671IP4dtpIJsuiHx8oRBw8avc59vQLLsB_E1Z2d9wWq7Gifvq9ar1tDGulScz33w45TP93z2Te_gAqP_Xe",
+  "combos": [
+    "`Makeshift Lectern` discounts Heroes like `JousterL`.",
+    "`pTFS` buys `Venaul` and `JousterL` free.",
+    "`Rookie Numbers` + `Mog's Lemon Custard Ice Cream`: draw 3."
+  ],
+  "count": 70,
+  "description": "Only Expansion 1 and its Mog printings: the 2026 cards on their own.",
+  "name": "Expansion One",
+  "play_style": "A newer-card environment: Makeshift Lectern heroes, pTFS, locations with ICE, and the Rookie Numbers Mog package.",
+  "tags": [
+    "expansion",
+    "midrange",
+    "mog"
+  ]
+}

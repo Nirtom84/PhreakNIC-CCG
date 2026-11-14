@@ -1,0 +1,45 @@
+{
+  "cards": [
+    "4 × Bedtime Story [Bedtime Story]",
+    "2 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "2 × Egg in Your Soup [Egg in Your Soup]",
+    "2 × Employee Review [Employee Review]",
+    "2 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "2 × F.O.T.T.R. Greatest Hits Volume 2 [FOTTR Greatest Hits Vol 2]",
+    "4 × Lightning Talks [Lightning Talks]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "4 × Never Gonna Give You Up [Never Gonna Give You Up]",
+    "4 × Never Gonna Let You Down [Never Gonna Let You Down]",
+    "2 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "2 × OSINT for Dummies [OSINT for Dummies]",
+    "2 × Payphone Karaoke [Payphone Karaoke]",
+    "2 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "2 × Pooping in the Dark [Pooping in the Dark]",
+    "2 × Registration [Registration]",
+    "2 × Rick Astley [Rick Astley]",
+    "4 × Rickroll [Rickroll]",
+    "2 × Speakers Needed [Speakers Needed]",
+    "2 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "2 × Venaul [Venaul]",
+    "4 × What is Truth? [What is Truth]",
+    "4 × Where's Apache!? [Wheres Apache]",
+    "2 × hardwarez [hardwarez]",
+    "2 × tipsybacchus [tipsybacchus]"
+  ],
+  "code": "PNDK1.eJxdUk1v2zAM_SuEzzm12w65tc2WBUvjIPYa7MjItCVYFgWJTuAV_e-T5a3YdpPeB_n0oNdCYWhisX4tHqkRMxBUwmEq1h9WxZPFYNjBzjl4DIR9i1GK9d2q-Nx1YBz84DFAxaNfwMFbnojgRFdDtz-YTLBn1XujeuM6qPFiKXNfyro-wTYNFooCX41EeGELd5ndm06LWxy2jznQM3cRjugU9vRfogNdKcCWnUPYmivN2eC7z7a_uT1JpjZ8cws5DpfElo7gqOeRh90TnMbfGctqd6ih5QCbcRgMxYwecfKak-MbBuR-kS5uZxSc6RKNzD20gaJeWGY_Pya1Jppgg6HP-Ik6EyWgpKIXIPUED1EsTe_3wNbmsJVPKyhEOBA11GRBbXwEdA1ISNKYw56Na_gWoawyU7atUXT_6WM2vJDD0ebjWaOAiVCHUXTecNaUMsODR6UpIzp9kBsG-pkdkrZNF1RKj3MXb6vC4ZCE_5T8nvntF7oKxl8",
+  "combos": [
+    "`Never Gonna Give You Up` + `Never Gonna Let You Down`: opponents discard a permanent AND a card.",
+    "`What is Truth?` stands in for either song.",
+    "`Rick Astley` moves a `Rickroll` from your discard into an opponent's.",
+    "`F.O.T.T.R. Greatest Hits Volume 2` with plenty of `Rick Astley` around taxes 2 life per Rick-less turn."
+  ],
+  "count": 64,
+  "description": "Rick Astley's greatest hits: paired songs strip hands and permanents.",
+  "name": "Never Gonna Rickroll",
+  "play_style": "Hold Never Gonna Give You Up until you have Never Gonna Let You Down (or What is Truth?) to play together. Rick Astley pushes Rickrolls into opponents' discards. Greatest Hits Volume 2 punishes anyone not playing Rick cards.",
+  "tags": [
+    "combo",
+    "rickroll",
+    "disruption"
+  ]
+}

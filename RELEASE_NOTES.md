@@ -1,5 +1,19 @@
 # Release Notes
 
+## v0.26 — 100 custom decks and smarter custom-deck bots
+**100 ready-made custom decks**
+- The repo now includes [100 custom decks](decks/custom/README.md), from lean 60-card decks to 200-card "environments". Each file has the deck code, the card list, a description, how to play it and the key combos.
+- They cover aggro, economy, control, Botnet chains, O.P.R.A.H., the Rickroll package, every FOTTR member, payphones, Base Set only, Expansion only, Mog only, singleton and chaos decks. Every card in the game appears in at least one.
+- To play one, copy its code into **Decks (experimental) → Import**, or import the file.
+
+**Bots that know custom decks**
+- Bots now have a separate brain for custom-deck games. They track which cards are still left in the public deck list, value cards that work with what they already own or can still get, grab pieces an opponent's combo needs, and adjust to short or long decks.
+- Its card values were trained on 1,000,000 bot games across the 100 decks. In a benchmark the trained bot won 62.7% of 2-player games and 39.5% of 4-player games against the untrained one.
+- Difficulty still means something: Script Kiddie < Phreak < Elite < DEFCON in custom games too. Normal (non-custom) games play exactly as before.
+
+**Fix**
+- **Etch-a-Sketch Skillz** could get stuck copying another Etch-a-Sketch Skillz forever when a custom deck put several in play, crashing the game. It now skips other Etch cards as copy targets (copying one only offered the same choice again).
+
 ## v0.25 — Custom decks (experimental)
 **Build your own Center Deck**
 - New **Decks (experimental)** screen on the main menu. A custom deck replaces the shared Center Deck that everyone buys from. Each player still starts with 8 Hacker and 2 Attack.

@@ -1,0 +1,53 @@
+{
+  "cards": [
+    "3 × 5ud0 [5ud0]",
+    "2 × Bedtime Story [Bedtime Story]",
+    "3 × bitwize [Bitwize]",
+    "4 × BONY [Bony]",
+    "4 × CTF Bangers [CTF Bangers]",
+    "3 × F.O.T.T.R. Capture the Flag [Capture the Flag]",
+    "3 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "3 × Egg in Your Soup [Egg in Your Soup]",
+    "2 × Employee Review [Employee Review]",
+    "3 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "4 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "2 × F.O.T.T.R. Greatest Hits Volume 2 [FOTTR Greatest Hits Vol 2]",
+    "3 × Fore04 [Fore04]",
+    "3 × G4nd4lf [G4nd4lf]",
+    "3 × Lightning Talks [Lightning Talks]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "4 × Never Gonna Give You Up [Never Gonna Give You Up]",
+    "4 × Never Gonna Let You Down [Never Gonna Let You Down]",
+    "2 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "3 × OSINT for Dummies [OSINT for Dummies]",
+    "3 × Payphone Karaoke [Payphone Karaoke]",
+    "2 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "2 × Pooping in the Dark [Pooping in the Dark]",
+    "3 × Registration [Registration]",
+    "2 × Rick Astley [Rick Astley]",
+    "3 × Rickroll [Rickroll]",
+    "3 × Speakers Needed [Speakers Needed]",
+    "2 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "2 × What is Truth? [What is Truth]",
+    "2 × Where's Apache!? [Wheres Apache]",
+    "3 × crook3dfingers [crook3dfingers]",
+    "3 × cyberMonk3y [cybermonkey]",
+    "3 × Errorgone [errorgone]",
+    "3 × proudF00F [proudF00F]"
+  ],
+  "code": "PNDK1.eJxtUsGO2jAQ_ZVRzntAC9sDtwUaikoBhbSoRxNPEiuJxxo7ILraf-_E3sMe9uZ5z37z3ozfskqx9tnyLXsZ9Sxbzp-yFepgBoRzIH5ky2dBTLibf5hYsgIunrJ1mcNK2QbZp1q5MDJCaBHyXjXx9rpXbMjCzlpYMaquVj5E5nvTgLHwl0aGM40ugYPr6YEIBd4M3mNzwcID9lR1zlSdsQ2U6tonM_mxLAvYinBAH-CHCcnLFzj8oR6eo2JOjLNFFNgurF70dTzvTdMGmxr0nY_YL2o8nJStVIefA4jKAW_IsCVrFWzNDaco8NvF_p-5PYZIbehuEzkOV2GPFuHUTpKH3RqKcYokssfz7lBCTQybcRgMJh8n9XAtyYufihV1KX16bU0FF7x6E6ax1Yy-jUInIjeFkSFPK9ko7iJeYGN8YBVkL1GmkLHCqw89pm1PNVPfR_LspIWsGA6IGnXESuM8KKshsFz10ezFWE13D8dzZI51bSqcf3uJipdWBTAeSh5D-4GgGIVXp6o25a6YqJvr2nz8KOlTPWROA9luMiY1MhM3MoVYOaZR57NZLtX7U2bVIHgKU4h7KJQ2lL3_B90J7B8",
+  "combos": [
+    "`Never Gonna Give You Up` + `Never Gonna Let You Down` double-hit.",
+    "`BONY` buys `F.O.T.T.R. Greatest Hits` free.",
+    "`Rick Astley` passes a `Rickroll` to an opponent."
+  ],
+  "count": 96,
+  "description": "FOTTR and Rick Astley on the radio: songs, rickrolls and Greatest Hits.",
+  "name": "Rick Roll Radio",
+  "play_style": "Pair the Never Gonna songs, keep Greatest Hits Volume 2 in play, and use BONY to grab Greatest Hits free.",
+  "tags": [
+    "rickroll",
+    "fottr",
+    "disruption"
+  ]
+}

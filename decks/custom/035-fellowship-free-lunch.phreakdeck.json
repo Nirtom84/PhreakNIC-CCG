@@ -1,0 +1,48 @@
+{
+  "cards": [
+    "1 × 5ud0 [5ud0]",
+    "2 × Bedtime Story [Bedtime Story]",
+    "1 × bitwize [Bitwize]",
+    "4 × BONY [Bony]",
+    "3 × CTF Bangers [CTF Bangers]",
+    "3 × F.O.T.T.R. Capture the Flag [Capture the Flag]",
+    "2 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "2 × Egg in Your Soup [Egg in Your Soup]",
+    "2 × Employee Review [Employee Review]",
+    "2 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "3 × F.O.T.T.R. Greatest Hits [FOTTR Greatest Hits]",
+    "4 × Fore04 [Fore04]",
+    "4 × G4nd4lf [G4nd4lf]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "2 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "2 × OSINT for Dummies [OSINT for Dummies]",
+    "2 × Payphone Karaoke [Payphone Karaoke]",
+    "2 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "2 × Pooping in the Dark [Pooping in the Dark]",
+    "2 × Registration [Registration]",
+    "2 × Speakers Needed [Speakers Needed]",
+    "2 × The Fellowship of the Token Ring [The Fellowship of the Token Ring]",
+    "2 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "2 × What is Truth? [What is Truth]",
+    "2 × Where's Apache!? [Wheres Apache]",
+    "1 × crook3dfingers [crook3dfingers]",
+    "4 × cyberMonk3y [cybermonkey]",
+    "4 × Errorgone [errorgone]",
+    "4 × proudF00F [proudF00F]"
+  ],
+  "code": "PNDK1.eJxdksFu2zAMhl-F0DmHbEl7yG1p5y5YmwS2gWBHxaZtwbYoUPICr-i7j5YyoNhN_CiSP3_pXVWaa6927-phqtdq92Wl9lgHMyIUgXhWu69CTLiZP5iyZAVuV-qpzGCvbYss5RuJtQsTI4QOIRt0m-Cg2ZCFg7WwZ9R9o32IPb-3LRgLv2hiKGhyCY5uoBkRcvxt8PaPhRleqeqdqXpjWyj1dcCYy05lmcOLNA7oA_wwIWnJiHG9jTJftrbeDk08v1Hr4axtpXv8T85xGq_IcLII527JHA9PkE_3OaficCyhIYbnaRwN-kjPenYdScVPzZr6dDVVW1PBBa_ehGWXhtF3KUvklhVk88WnZ8195Dm2xgfWQcyKoHDSRayFI2KNdWTl4iwOA918ZxxQE3uUMtlCLl3TJeM8aFtDYLHLR9EXY2spglMRM6emMRVuHh9iwaXTAYyHkqfQ3QmKYPjmdNWlpSom6jd1Y-7PLf-gmsWvkWyP6TsgM3ErbsTIMU11tl5nEn2slNWjcPVJfMbyyq-TrTr18RcoAM_6",
+  "combos": [
+    "`The Fellowship of the Token Ring`: FOTTR Heroes like `cyberMonk3y` are free.",
+    "`BONY` buys `F.O.T.T.R. Greatest Hits` free.",
+    "`Fore04` goes on top of your deck when bought."
+  ],
+  "count": 70,
+  "description": "The Fellowship of the Token Ring makes FOTTR Heroes free: build the whole crew.",
+  "name": "Fellowship Free Lunch",
+  "play_style": "Rush The Fellowship of the Token Ring; afterwards each FOTTR Hero is a free buy that goes to your hand. BONY makes Greatest Hits free.",
+  "tags": [
+    "fottr",
+    "heroes",
+    "economy"
+  ]
+}

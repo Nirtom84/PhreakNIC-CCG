@@ -1,0 +1,44 @@
+{
+  "cards": [
+    "2 × Altk3y [Altk3y]",
+    "3 × Bedtime Story [Bedtime Story]",
+    "2 × Clarion Inn Staff [Clarion Inn Staff]",
+    "4 × DeMartian [DeMartian]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "2 × fred rogers [Fred Rogers]",
+    "2 × John Titor [John Titor]",
+    "2 × JousterL [JousterL]",
+    "4 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "3 × Lightning Talks [Lightning Talks]",
+    "3 × Makeshift Lectern [Makeshift Lectern]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × Payphone Dave [Payphone Dave]",
+    "4 × Registration [Registration]",
+    "3 × Speakers Needed [Speakers Needed]",
+    "2 × Still Not Spock [Still Not Spock]",
+    "2 × Super r0nk [Super r0nk]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "2 × itsamenathan [itsamenathan]",
+    "4 × m8trix [m8trix310]",
+    "2 × mog [mog]",
+    "2 × notlarry [notlarry]",
+    "2 × Randy [randy]",
+    "2 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJxtkU9vwjAMxb-KlTMHNnaYettA-1vQRJEm7WYa00ZNncpx0Rjiuy8EdtslyntOfvaTj6ZGsdEUR_PgtZsdTHE7MY9k1fUElQZJzmxi5h7FBYZX5uTibpffLWiJog7ZFHdJycgdrJ21niTXn4QsrENDErN-Cy3DxiXqVY5RScos3mnvGJZO2dUdzNNU25AOmI8aRs0NSte0qcwNbNB3MQ-2xI5i63YKJdUJxtldBS1R5PAPJ7X6wMPQBiZY4J6ys6bGRRXUlDG3qgZKYImwIrJkM7RS5z0kNFRDqLv8sRoHEpApX-RGCOMoBC8j61_qL2JtSWiS0rGF57D1jnPFacSeGLXFi9Hfq7jv2c00D9GHJrsc1J_TZCHI9nL7QT-0-Bn8eRmn9CyxTGGuK0mr2mM85zn9AoVVndY",
+  "combos": [
+    "`DeMartian` + `m8trix`: m8trix deals +2 and DeMartian makes +2.",
+    "`Registration` and `Speakers Needed` find the missing half.",
+    "`Super r0nk` adds hacking for every other Hero played."
+  ],
+  "count": 62,
+  "description": "DeMartian and m8trix supercharge each other; the rest of the deck helps you find the pair.",
+  "name": "Martian Invasion",
+  "play_style": "Hold DeMartian until m8trix arrives: m8trix then deals 4 and DeMartian makes 4 hacking. Registration and Speakers Needed fetch Heroes. Makeshift Lectern and Super r0nk turn hero turns into big turns.",
+  "tags": [
+    "combo",
+    "martian",
+    "midrange"
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "cards": [
+    "2 × 5ud0 [5ud0]",
+    "2 × benthemeek [Ben The Meek]",
+    "2 × benthephreak [Ben the Phreak]",
+    "2 × Brimstone, Fabulous [Brimstone, Fabulous]",
+    "2 × Drunk Riddler [Drunk Riddler]",
+    "1 × Flesh Oprah [Flesh Oprah]",
+    "3 × Fore04 [Fore04]",
+    "4 × G4nd4lf [G4nd4lf]",
+    "2 × Jenny [Jenny]",
+    "2 × John Titor [John Titor]",
+    "3 × JousterL [JousterL]",
+    "1 × MogsterL [JousterL@mog]",
+    "4 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "3 × Makeshift Lectern [Makeshift Lectern]",
+    "2 × Nirtom Unleashed [Nirtom Unleashed]",
+    "2 × NotLarry Cardboard Cutout [NotLarry Cardboard Cutout]",
+    "2 × Nuvious [Nuvious]",
+    "2 × O.P.R.A.H. [O.P.R.A.H.]",
+    "3 × Registration [Registration]",
+    "2 × Reps4Thor [Reps4Thor]",
+    "2 × Treasure Hunters [Treasure Hunters]",
+    "4 × Venaul [Venaul]",
+    "2 × Zenthere, Mind Goblin [Zenthere, Mind Goblin]",
+    "2 × _NASKEY [_NASKEY]",
+    "2 × _NSAKEY, Juiced [_NSAKey, Juiced]",
+    "2 × c14ud3 [c14ud3]",
+    "2 × evildagmar [evildagmar]",
+    "2 × Nirtom [nirtom]",
+    "3 × pTFS [pTFS]",
+    "1 × pTFMOG [pTFS@mog]"
+  ],
+  "code": "PNDK1.eJxtUMtuwjAQ_BXL5yiCkl5yKtACAgIo0ErtpTLxQqw4a-QHEkL8e82S9tSLtTvenZ2ZK6-ElY7nV_4cZI_nTwkfAbJdDawAaP4AH4FNbUF0kFWt8wYhYROxD9oER_irDdiwUkmpwRIy0eBqtj5ZUfO8H3tjoZfxfJDwaYYy0weeZwmfA-KFFuamjveVN7Zrg_Ngl7Tx27y05khsCzgrZIXyqKqGjaOXvYkPGwdvgifmQjRRgTp4toQqLiMxrZT1pmXvqEG4GiTdWhm_FNZe_iG6_4az-vW5TjdpmQ7TWUptCUflvBVemQd9CSeX7erOwy7m5oIFNgsYFTwoPgBF0CTxCzDma2OYhULJpmavFdLQ92q4Xbx9dvV2uIBLwuZBVZ3iqp8FOaAyJqGlOLbicRPJIJWn3WRLqu5FF90tTogWeE4gG0Vftx-rDKMo",
+  "combos": [
+    "`pTFS` lets you buy `JousterL`, `Venaul` and `Nuvious` free.",
+    "Heroes parked on `pTFS` come to hand next turn: buy `Kevin Mitnick Cardboard Cutout` and use it at once.",
+    "`Nuvious` discards an opposing permanent when bought."
+  ],
+  "count": 68,
+  "description": "Ride the pTFS bus: bought Heroes return to your hand every turn.",
+  "name": "pTFS Bus",
+  "play_style": "Land pTFS: your pTFS Heroes are free and bought Heroes wait on it until your next turn. JousterL and G4nd4lf stack your next draw.",
+  "tags": [
+    "combo",
+    "ptfs",
+    "heroes"
+  ]
+}

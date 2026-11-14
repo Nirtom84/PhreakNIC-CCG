@@ -1,0 +1,49 @@
+{
+  "cards": [
+    "2 × AI Ben's AI Camry [AI Bens AI Camry]",
+    "2 × Mog’s AI Camry [AI Bens AI Camry@mog]",
+    "2 × Bedtime Story [Bedtime Story]",
+    "2 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "3 × Clarion Inn Morning Coffee [Clarion Inn Morning Coffee]",
+    "3 × Doom on a Trading Card [Doom on a Trading Card]",
+    "2 × Egg in Your Soup [Egg in Your Soup]",
+    "3 × Elevator Noises [Elevator Noises]",
+    "2 × Elonka [Elonka]",
+    "2 × Employee Review [Employee Review]",
+    "2 × Empty Lockpicking Table [Empty Lockpicking Table]",
+    "3 × Etch-a-Sketch Skillz [Etch-a-Sketch Skillz]",
+    "3 × I've got the Logs [I've got the Logs]",
+    "2 × Lightning Talks [Lightning Talks]",
+    "2 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "2 × Nashville 2600 [Nashville 2600]",
+    "2 × Number One PhreakNIC Rule [Number One PhreakNIC Rule]",
+    "2 × OSINT for Dummies [OSINT for Dummies]",
+    "2 × Payphone Karaoke [Payphone Karaoke]",
+    "2 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "2 × Pooping in the Dark [Pooping in the Dark]",
+    "2 × Registration [Registration]",
+    "2 × Speakers Needed [Speakers Needed]",
+    "4 × Talks Fun Police [Talks Fun Police]",
+    "4 × The Reason [The Reason]",
+    "2 × Tips and tricks for Windows and Office365 [Tips and tricks for Windows OS and Office365]",
+    "2 × What is Truth? [What is Truth]",
+    "2 × Where's Apache!? [Wheres Apache]",
+    "2 × pouipoui [pouipoui]",
+    "1 × Randy [randy]"
+  ],
+  "code": "PNDK1.eJxlUsFu2zAM_RXCl11SoGu3HnJak3SAsdYJ4gDBjoxNW4Js0ZDkFFnRfx8lpRiwHgxZ75GP70l6Kxp0rS-Wb8VjCSuyHmRd4-guxfJu8Qn8MXKfiBW1QY8EdeBr6XpAp9lCaS2sHKHp0IdPzAs7q20Pa-46omJ5vyg2zCMIjXBw2CZSPCXqqe9BW_jNs4Oa5ynJPQ10RhkLFWtPPhcObA1mepwGvhDBns6aXj-wcIFnbsykGxNHHPA0UOZCo27wpjYkP1AbPQx_kmb55UzQc4CgSHr7POlZ9yrYLDEYnyRehIQd2gYN_Ze9Qq_OIklw93B7m6F5PJGDrSXYqVhclWvYz1c727qsDtBJvM08jpryhB1eJsXS8QsdssmludvqBo508jrEyJ0jrzLLPEWbcn4xwAadSfieeu2DwyBXkoB6EhVyHiqiltqEpWzwc7aw40E3Mu-bgCpOQB_74lZPHtC2EJwcqk-ej9q2_OphWydm23XSfP_wPYkeFQbQXq55DuqKkPiFxwkblTNNPOv4pY0TDXlcX98XhcVRCop_juTlYaDi_S_pNeLV",
+  "combos": [
+    "`Nashville 2600` stops permanents; the deck's damage is actions like `Doom on a Trading Card`.",
+    "`AI Ben's AI Camry` turns spare hacking into opponent discards.",
+    "`Etch-a-Sketch Skillz` copies the best action in an opponent's discard."
+  ],
+  "count": 68,
+  "description": "Nobody gets to keep nice things: board wipes, hand attacks, and Nashville 2600.",
+  "name": "Fun Police State",
+  "play_style": "Win by attrition. Talks Fun Police and Clarion Inn Morning Coffee clear permanents; Nashville 2600 locks them out entirely. The Reason and AI Ben's AI Camry empty hands. Your own damage comes from actions.",
+  "tags": [
+    "disruption",
+    "control",
+    "permanents"
+  ]
+}

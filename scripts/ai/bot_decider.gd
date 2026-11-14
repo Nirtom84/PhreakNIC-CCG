@@ -7,6 +7,8 @@ func _init(game = null, level: int = 0):
 	engine = game
 	difficulty = mini(level, 2)
 	defcon = level == 3
+	if engine != null and engine.state != null and engine.state.card_pool == "custom" and not engine.has_meta("custom_planner"):
+		engine.set_meta("custom_planner", CustomDeckPlanner.new(engine))
 func value(card, player = null) -> float:
 	var d = engine.db().get_card(card.id)
 	var text = str(d.text).to_lower()

@@ -1,0 +1,43 @@
+{
+  "cards": [
+    "2 × Candy Factory [Candy Factory]",
+    "2 × Clarion Inn Carpeted Pool [Carpeted Pool]",
+    "3 × Clarion Inn Breakfast [Clarion Inn Breakfast]",
+    "2 × Clarion Inn Storage Closet [Clarion Inn Closet]",
+    "3 × Corporate Retreat [Corperate Retreat]",
+    "4 × Corporate SWAG Table [Corporate SWAG Table]",
+    "4 × Egg in Your Soup [Egg in Your Soup]",
+    "2 × Fiverr Friendship [Fivrr Friendship]",
+    "2 × Hardware Hacking Village [Hardware Hacking Village]",
+    "4 × Hotel Roof Chair Toss [Hotel Roof Chair Toss]",
+    "2 × Lightning Talks [Lightning Talks]",
+    "3 × Mog's Pancake Breakfast [Mogs Pancake Breakfast]",
+    "2 × Phreaknic Website Refresh [Phreaknic Website Refresh]",
+    "2 × Pooping in the Dark [Pooping in the Dark]",
+    "2 × Speakers Needed [Speakers Needed]",
+    "2 × The Big Dipper [The Big Dipper]",
+    "2 × The Clarion Inn [The Clarion Inn]",
+    "2 × Phreaknic Network [The Phreaknic Network]",
+    "4 × The Sandwich Factory [The Sandwich Factory]",
+    "2 × Walmart Parking Lot [Walmart Parking Lot]",
+    "2 × What is Truth? [What is Truth]",
+    "2 × Where's Apache!? [Wheres Apache]",
+    "2 × [Restaurant Name] Restaurant [[Restaurant Name] Restaurant]",
+    "3 × Randy [randy]"
+  ],
+  "code": "PNDK1.eJxdkk9vwjAMxb-KlTOnbafe-DPGJIYQrYamaQfTmiZqSConHUKI7z43RbDt2J-fX-3nnFWJXAWVndUUXXWCOZbR80llDyMh3FKkCtbe24FYZOMdvDoHEyZs9hiiyh7_VqbWB4pDgxcLxkiwoSgNV7FQn2i-Hb9AgTtLKnsaqee6BuPgw3cMue_aBOfmmxnmbMhVQZs2GS9k7CMywQLLxrga3o21WNNQ9JEsbLzfw1SjYSh8CMlraWodXa8v0DYhqd98HWCNrsSG_m211v2nMyVsaRdMWmPPFHRqlFja3komjppghtwknrfSRBxgRVRRlVghgompYWZaCeSGfsV2Y_efrige_dW0r-RyoqMp9f1KstIW7QE5ygacglj6IfqtxggmQMFd1FdCMjuMWyz1ENTnhkLEjtFFWOGBvuAOkoD7RyFRXEbKSV1lqj8LCL0NQ0FdfgAKrL-C",
+  "combos": [
+    "`Egg in Your Soup` adds 2 ICE to `The Sandwich Factory`.",
+    "`Hotel Roof Chair Toss` deals extra for each location.",
+    "Life from `Mog's Pancake Breakfast` keeps `Corporate Retreat` on its damage side."
+  ],
+  "count": 60,
+  "description": "Lunch at the con: The Sandwich Factory keeps getting re-ICEd while you snack your way to a life lead.",
+  "name": "Soup and Sandwiches",
+  "play_style": "Land The Sandwich Factory and feed it with Egg in Your Soup and spare hacking. With a life lead, Corporate Retreat becomes a 2-damage hit. Hotel Roof Chair Toss turns the locations into damage.",
+  "tags": [
+    "control",
+    "ice",
+    "lifegain"
+  ]
+}

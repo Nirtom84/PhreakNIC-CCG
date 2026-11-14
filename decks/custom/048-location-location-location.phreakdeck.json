@@ -1,0 +1,49 @@
+{
+  "cards": [
+    "3 × Brimstone [Brimstone]",
+    "3 × Candy Factory [Candy Factory]",
+    "3 × Clarion Inn Carpeted Pool [Carpeted Pool]",
+    "3 × Clarion Inn Storage Closet [Clarion Inn Closet]",
+    "3 × Corporate SWAG Table [Corporate SWAG Table]",
+    "3 × DeMartian [DeMartian]",
+    "3 × Elonka [Elonka]",
+    "3 × fred rogers [Fred Rogers]",
+    "3 × Hardware Hacking Village [Hardware Hacking Village]",
+    "4 × Hotel Roof Chair Toss [Hotel Roof Chair Toss]",
+    "3 × John Titor [John Titor]",
+    "3 × Kevin Mitnick Cardboard Cutout [Kevin Mitnick Cardboard Cutout]",
+    "3 × Still Not Spock [Still Not Spock]",
+    "3 × Talks Fun Police [Talks Fun Police]",
+    "4 × The Clarion Inn [The Clarion Inn]",
+    "3 × Phreaknic Network [The Phreaknic Network]",
+    "3 × The Sandwich Factory [The Sandwich Factory]",
+    "3 × Treasure Hunters [Treasure Hunters]",
+    "3 × Venaul [Venaul]",
+    "3 × Walmart Parking Lot [Walmart Parking Lot]",
+    "3 × [Restaurant Name] Restaurant [[Restaurant Name] Restaurant]",
+    "1 × [Mog’s Restaurant Name] Restaurant [[Restaurant Name] Restaurant@mog]",
+    "3 × hardwarez [hardwarez]",
+    "3 × heartsh8ped [heartsh8ped]",
+    "3 × mog [mog]",
+    "3 × notlarry [notlarry]",
+    "3 × Randy [randy]",
+    "1 × Mogdy [randy@mog]",
+    "3 × tipsybacchus [tipsybacchus]",
+    "3 × zalphaWolf [zalphaWolf]"
+  ],
+  "code": "PNDK1.eJyFUstOIzEQ_JWWz7kg9rDKCQhkwyuKyIgcVnvoeJrYGsc9snuIAuLf6dhZ2BUHLmN3qVxdVZpXYzG12YxfzUXy2ywcyYxPR2aCsd3DFK1w2h-R1JNQCwvmUJGAyXOE6xhhEjiTVJhTzwmFYLk6_wUNrkPVvKR7TOIxlukqcOywXKdJZR94QymXeaaedpgIZmg7Hzfw6EPATVWZsVBQNj_BxKFP0HDWZz9G5oZdhMar40K8pWcf4d5L9LYDtd-uWT8wGYSHanUpKgxzFlj2bLuCNRi6DNMhatDgbV3aOIJ_4pZ1B2zhEmGnC2BOsuPUfbCXWuDOW_dfh42y83AINkT5m_aRIg610RWGrVYEC0wl9x1Xn78fKAsOCaPAHLf0Bz6BbwlnW96Y8cnIuGOtL-WJI92U3c-e2jIXlp6RRYMeDafDb_B5-5AS3-f9Gq11Qw3xgqF3uOLwpOObqqgJMzZ3bFEOpX25mLd39GrRlw",
+  "combos": [
+    "`[Restaurant Name] Restaurant` copies `The Clarion Inn`.",
+    "`Hotel Roof Chair Toss` deals 1 extra per Location.",
+    "`Randy` makes locations 1 cheaper."
+  ],
+  "count": 88,
+  "description": "Every location: build a hotel empire.",
+  "name": "Location Location Location",
+  "play_style": "Randy discounts locations, Hotel Roof Chair Toss turns them into damage, and [Restaurant Name] Restaurant copies the best one.",
+  "tags": [
+    "locations",
+    "ice",
+    "control"
+  ]
+}
