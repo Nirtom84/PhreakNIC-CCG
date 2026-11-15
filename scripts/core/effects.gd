@@ -412,7 +412,10 @@ func _effect_drunk_riddler(p, c):
 func _effect_egg_in_your_soup(p, c):
 	add_life(p, 1)
 	e.draw(p, 1)
-	for x in e.controlled(p, "The Sandwich Factory"): x.counters += 2
+	# "Add 2 ICE Counters to it": one Sandwich Factory, the player's pick when there are several.
+	var factories = e.controlled(p, "The Sandwich Factory")
+	if factories.size() > 1: factories = await e.choose(p, "Add 2 ICE counters to a Sandwich Factory", factories)
+	for x in factories: x.counters += 2
 
 ## Elevator Noises
 func _effect_elevator_noises(p, c):
@@ -579,10 +582,7 @@ func _effect_lan_party(p, c):
 	var revealed: Array = []
 	var lowest = 999
 	for q in e.opponents(p):
-		if q.deck.is_empty():
-			q.deck.append_array(q.discard)
-			q.discard.clear()
-			e.shuffle(q.deck)
+		if q.deck.is_empty(): e.reshuffle(q)
 		if not q.deck.is_empty():
 			var x = q.deck.back()
 			e.reveal(q, [x])
@@ -840,9 +840,7 @@ func _effect_should_have_preregistered(p, c):
 
 ## Speakers Needed
 func _effect_speakers_needed(p, c):
-	p.deck.append_array(p.discard)
-	p.discard.clear()
-	e.shuffle(p.deck)
+	e.reshuffle(p)
 	while not p.deck.is_empty():
 		var x = p.deck.back()
 		e.reveal(p, [x])
@@ -1088,8 +1086,12 @@ func bought_self(p, c, destination: Dictionary = {}):
 				e.move(c, p.deck, "deck")
 				destination.chosen = true
 		"G4nd4lf", "JousterL":
-			var choices = p.discard.filter(func(x): return x != c)
-			for x in await e.choose(p, "Put discard on deck", choices, 0, 1): e.move(x, p.deck, "deck")
+			# JousterL may pick itself ("a card"); G4nd4lf says "another card".
+			var choices = p.discard.filter(func(x): return x != c or CustomDeck.rules_id(c.id) == "JousterL")
+			for x in await e.choose(p, "Put discard on deck", choices, 0, 1):
+				e.move(x, p.deck, "deck")
+				# On the deck, JousterL has its one destination (ruling 10): pTFS mustn't move it again.
+				if x == c: destination.chosen = true
 		"hfuller":
 			for q in e.state.players:
 				if q.alive: add_life(p, q.hand.filter(func(x): return e.db().named(x.id, "Attack")).size())

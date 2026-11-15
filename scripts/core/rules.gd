@@ -128,14 +128,16 @@ func played_name(p, name: String, contains: bool = false) -> bool:
 	return p.played.any(func(c): return db().name_contains(c.id, name) if contains else db().named(c.id, name))
 func draw(p, count: int):
 	for i in count:
-		if p.deck.is_empty():
-			var shuffled = p.discard.duplicate()
-			p.deck.append_array(p.discard)
-			p.discard.clear()
-			shuffle(p.deck)
-			for card in shuffled: card_moved.emit(card, "discard", "deck")
+		if p.deck.is_empty(): reshuffle(p)
 		if p.deck.is_empty(): break
 		move(p.deck.back(), p.hand, "hand")
+## Shuffle the discard pile into the deck, with card_moved for each card (the table's shuffle sound).
+func reshuffle(p):
+	var shuffled = p.discard.duplicate()
+	p.deck.append_array(p.discard)
+	p.discard.clear()
+	shuffle(p.deck)
+	for card in shuffled: card_moved.emit(card, "discard", "deck")
 func refill(slot: int):
 	if state.center_row[slot] == null and not state.center_deck.is_empty():
 		var card = state.center_deck.pop_back()
