@@ -301,12 +301,12 @@ func run():
 	p = e.active()
 	var factory = card("The Sandwich Factory")
 	await e.play_card(p, factory)
-	var restaurant = card("[Restaurant Name] Restaurant")
+	var factory_copy = card("[Restaurant Name] Restaurant")
 	e.dec(p).requested_id = "The Sandwich Factory"
-	await e.play_card(p, restaurant)   # comes into play as a copy of the Sandwich Factory
-	e.dec(p).requested_id = restaurant.id
+	await e.play_card(p, factory_copy)   # comes into play as a copy of the Sandwich Factory
+	e.dec(p).requested_id = factory_copy.id
 	await e.play_card(p, card("Egg in Your Soup"))
-	check(restaurant.effect_id() == "The Sandwich Factory" and restaurant.counters == 4 and factory.counters == 2, "Egg in Your Soup adds 2 ICE counters to the one Sandwich Factory picked")
+	check(factory_copy.effect_id() == "The Sandwich Factory" and factory_copy.counters == 4 and factory.counters == 2, "Egg in Your Soup adds 2 ICE counters to the one Sandwich Factory picked")
 	# Every discard-into-deck shuffle reports each card, as draw() does (the table's shuffle sound).
 	for id in ["Lightning Talks", "LAN Party", "Speakers Needed"]:
 		await fixture()
