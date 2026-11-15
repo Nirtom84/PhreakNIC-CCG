@@ -4,6 +4,8 @@ signal room_changed(data)
 signal status_changed(text)
 signal finished(winner)
 signal removed(text)
+# Refused reconnects in a row (about a minute of backoff) before checking whether the server still answers.
+const REFUSALS = 8
 var client: NetClient
 var credential: Dictionary = {}
 var room: Dictionary = {}
@@ -45,17 +47,36 @@ func _closed(endpoint):
 		retry = 0
 		set_status(OnlineAPI.error_text(0, {"error": endpoint.close_reason, "room": room.get("version", "?")}))
 		return
-	if endpoint is WebSocketTransport and endpoint.close_code in [4000, 4001]:
+	# Kicked (4001) or the host's Remove seat (1000 "removed"): either way the seat's token is gone.
+	var kicked = endpoint is WebSocketTransport and (endpoint.close_code == 4001 or (endpoint.close_code == 1000 and endpoint.close_reason == "removed"))
+	if endpoint is WebSocketTransport and (endpoint.close_code == 4000 or kicked):
 		stopped = true
 		retry = 0
-		var text = "The host removed you from the room." if endpoint.close_code == 4001 else "This seat was opened somewhere else."
+		var text = "The host removed you from the room." if kicked else "This seat was opened somewhere else."
 		OnlineAPI.remember({})
 		set_status(text)
-		if endpoint.close_code == 4001: removed.emit(text)
+		if kicked: removed.emit(text)
 		return
 	set_status("Reconnecting…")
-	retry = minf(15, pow(2, attempts))
 	attempts += 1
+	# A refused upgrade (revoked token, deleted room) closes before opening, just like a network failure. A server
+	# that still answers HTTP after REFUSALS of them no longer has this seat: stop instead of retrying forever.
+	if endpoint is WebSocketTransport and not endpoint.opened and attempts >= REFUSALS:
+		var answered = await _server_answers()
+		if stopped or endpoint != transport: return
+		if answered:
+			_room_closed("This room has closed or your seat was removed.")
+			return
+	retry = minf(15, pow(2, attempts - 1))
+# An answer below 500 means the server is up, so it refused the socket; none (or a 5xx) means down or unreachable.
+func _server_answers() -> bool:
+	var http = HTTPRequest.new()
+	http.timeout = 20
+	add_child(http)
+	var result = [HTTPRequest.RESULT_CANT_CONNECT, 0]
+	if http.request(str(credential.server) + "/health") == OK: result = await http.request_completed
+	http.queue_free()
+	return result[0] == HTTPRequest.RESULT_SUCCESS and result[1] < 500
 func _message(data: Dictionary):
 	match data.get("t"):
 		"room_closed": _room_closed()
@@ -83,16 +104,18 @@ func _message(data: Dictionary):
 			OnlineAPI.remember({})
 			if data.get("reason") == "restore_failed": set_status("The server was updated, so this game couldn't be resumed. Start a new one from Play online.")
 			finished.emit(int(data.get("winner", -1)))
-func _room_closed():
+			# Resumed after the game ended: no view ever came, so no table is open to show the result on.
+			if client.engine.state == null and not data.has("reason"): _room_closed("This game has already ended.")
+func _room_closed(text: String = "The host closed the room."):
 	if stopped: return
 	stopped = true
 	retry = 0
 	client.can_act = false
 	credential = {}
 	OnlineAPI.remember({})
-	set_status("The host closed the room.")
+	set_status(text)
 	if transport != null: transport.close()
-	removed.emit("The host closed the room.")
+	removed.emit(text)
 func lobby(action: String, fields: Dictionary = {}):
 	var message = fields.duplicate()
 	message.t = "lobby"

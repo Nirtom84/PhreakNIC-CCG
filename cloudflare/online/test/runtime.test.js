@@ -41,6 +41,21 @@ test('new seat socket replaces old socket without refreshing activity',async()=>
  globalThis.Response=UpgradeResponse;globalThis.WebSocketPair=class {constructor(){this[0]=sock();this[1]=Object.assign(sock(),{accept(){},addEventListener(){}});}};
  try{const r=makeRoom(),old=sock();r.clients.set(old,{seat:1});r.save=async active=>assert(!active);const res=await r.fetch(new Request('https://server/ws/room/AB23?token='+'b'.repeat(32),{headers:{Upgrade:'websocket'}}));assert.equal(res.status,101);assert.deepEqual(old.closed,{code:4000,reason:'replaced'});assert.equal(r.clients.size,1);assert.equal(r.r.lastActivity,123);}finally{globalThis.Response=originalResponse;globalThis.WebSocketPair=originalPair;Date.now=originalNow;}
 });
+test('a player who reconnects after the game ended is sent the result',async()=>{
+ const originalResponse=globalThis.Response,originalPair=globalThis.WebSocketPair;let received;
+ globalThis.Response=class extends originalResponse {constructor(body,init){if(init?.status===101){super(null);Object.defineProperty(this,'status',{value:101});}else super(body,init);}};
+ globalThis.WebSocketPair=class {constructor(){this[0]=sock();this[1]=Object.assign(sock(),{accept(){},addEventListener(){},send:v=>received.push(JSON.parse(v))});}};
+ try{
+  for(const [over,result]of [[{t:'over',winner:0,turns:9},{t:'over',winner:0}],[{t:'over',winner:-1,reason:'restore_failed'},{t:'over',winner:-1,reason:'restore_failed'}]]){
+   const r=makeRoom(),host=sock(),sent=[];host.send=v=>sent.push(JSON.parse(v));r.r.started=true;r.clients.set(host,{seat:0});r.stat=async()=>{};r.stop=async()=>{};
+   await r.linkMessage(over);assert.deepEqual(sent,[result]);
+   // The guest was offline when the game ended: reconnecting tells them, and doesn't boot the game server again.
+   received=[];r.ensure=()=>assert.fail('boot');r.linkSend=()=>assert.fail('link');
+   const res=await r.fetch(new Request('https://server/ws/room/AB23?token='+'b'.repeat(32),{headers:{Upgrade:'websocket'}}));
+   assert.equal(res.status,101);assert.deepEqual(received,[result]);
+  }
+ }finally{globalThis.Response=originalResponse;globalThis.WebSocketPair=originalPair;}
+});
 
 const {default:site}=await import('../../site/src/index.js');
 test('site caches full WASM by version and conditional hits avoid R2',async()=>{
