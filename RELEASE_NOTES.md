@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.27 — Fix: phone menu in landscape browsers
+**Fix**
+- On phones and tablets the main menu is now centred instead of pinned to the left edge, so a landscape phone browser (where the address bar makes the screen wide and short) no longer leaves half the screen empty. It re-centres when you rotate or the address bar hides.
+- The "Digitized by… / Music by bitwize" credit no longer covers the Starting life row.
+- The desktop layout is unchanged.
+
 ## v0.26 — 100 custom decks and smarter custom-deck bots
 **100 ready-made custom decks**
 - The repo now includes [100 custom decks](decks/custom/README.md), from lean 60-card decks to 200-card "environments". Each file has the deck code, the card list, a description, how to play it and the key combos.

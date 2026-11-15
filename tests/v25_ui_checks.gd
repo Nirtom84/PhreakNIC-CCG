@@ -32,6 +32,7 @@ func visible_buttons_fit(node):
    parent = parent.get_parent()
   if visible_rect.has_area(): verify(viewport.encloses(visible_rect), "Visible button fits: " + button.text + " " + str(visible_rect))
 func run():
+ await compact_menu_layout_checks()
  BUILDER = load("res://scripts/ui/deck_builder.gd")
  root.size = Vector2i(1920, 1080)
  var style = load("res://scripts/ui/style.gd")
@@ -251,3 +252,34 @@ func run():
   verify(not FileAccess.get_file_as_string(path).contains("JavaScriptBridge" + ".eval"), "No eval: " + path)
  print("v25 UI checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+
+func compact_menu_layout_checks():
+ var style = load("res://scripts/ui/style.gd")
+ var previous = style.compact_override
+ style.compact_override = true
+ var menu = load("res://scenes/menu.tscn").instantiate()
+ root.add_child(menu)
+ # Resize the same live menu to cover rotation and browser chrome changes.
+ for dimensions in [Vector2i(2770, 1080), Vector2i(2400, 1080), Vector2i(1920, 1080), Vector2i(1920, 1440), Vector2i(1920, 2400), Vector2i(2400, 1080), Vector2i(2770, 1080)]:
+  root.size = dimensions
+  await frames(10)
+  var column = menu.find_child("CompactMenuColumn", true, false)
+  var scroll = menu.find_child("CompactMenuScroll", true, false)
+  var credits = menu.find_child("CompactMenuCredits", true, false)
+  var version = menu.find_child("CompactMenuVersion", true, false)
+  var rect = column.get_global_rect()
+  var viewport = root.get_visible_rect()
+  verify(absf(rect.position.x - (viewport.size.x - rect.end.x)) <= 3, "Compact menu centered at " + str(dimensions))
+  verify(rect.size.x <= 1200 and rect.size.x <= viewport.size.x - 64, "Compact menu bounded at " + str(dimensions))
+  verify(not credits.get_global_rect().intersects(scroll.get_global_rect()), "Compact menu clears credits at " + str(dimensions))
+  verify(viewport.encloses(credits.get_global_rect()), "Compact credits visible at " + str(dimensions))
+  verify(viewport.encloses(version.get_global_rect()), "Compact version visible at " + str(dimensions))
+  verify(not version.get_global_rect().intersects(scroll.get_global_rect()) and not version.get_global_rect().intersects(credits.get_global_rect()), "Compact version clears content and credits")
+  if dimensions.y <= 1080: verify(scroll.get_v_scroll_bar().max_value > scroll.size.y, "Compact menu remains scrollable")
+  scroll.scroll_vertical = 100000
+  await frames()
+  visible_buttons_fit(menu)
+  scroll.scroll_vertical = 0
+ for path in menu.hero_picker.loading_icons: ResourceLoader.load_threaded_get(path)
+ menu.free()
+ style.compact_override = previous

@@ -47,8 +47,7 @@ func _ready():
  var menu = VBoxContainer.new()
  menu.custom_minimum_size.x = 900
  menu.add_theme_constant_override("separation", 5)
- # The compact menu fits the supported viewports; avoid native touch-scroll
- # interception around the handle and Hero button.
+ # Bound and center the compact column while retaining vertical touch scrolling.
  if UIStyle.compact():
   art.hide()
   row.position = Vector2(32, 32)
@@ -56,12 +55,25 @@ func _ready():
   row.offset_left = 32
   row.offset_top = 32
   row.offset_right = -32
-  row.offset_bottom = -64
+  row.offset_bottom = -96
   var scroll = ScrollContainer.new()
   scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   row.add_child(scroll)
+  scroll.name = "CompactMenuScroll"
+  scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
   scroll.add_child(menu)
+  menu.name = "CompactMenuColumn"
   menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  # The scrollbar takes space on the right; compensate so the column itself is centered.
+  var fit_column = func():
+   var bar = scroll.get_v_scroll_bar()
+   var bar_width = bar.get_combined_minimum_size().x if bar.visible else 0.0
+   var width = minf(1200, maxf(0, size.x - 64 - bar_width))
+   row.offset_left = (size.x - width) * 0.5
+   row.offset_right = row.offset_left + width + bar_width - size.x
+  resized.connect(fit_column)
+  scroll.get_v_scroll_bar().visibility_changed.connect(fit_column)
+  fit_column.call_deferred()
   TouchInput.register_scroll(scroll)
  else: row.add_child(menu)
  var title = UIStyle.label(menu, "PhreakNIC", 66)
@@ -87,6 +99,17 @@ func _ready():
  digitized.position += Vector2(16, -40)
  digitized.add_theme_font_size_override("font_size", 13 if UIStyle.compact() else 16)
  digitized.modulate.a = 0.75
+ if UIStyle.compact():
+  version.name = "CompactMenuVersion"
+  digitized.name = "CompactMenuCredits"
+  # Reserve the actual two-line height, including compact theme font sizing.
+  var fit_footer = func():
+   var height = digitized.get_combined_minimum_size().y
+   digitized.offset_top = -16 - height
+   digitized.offset_bottom = -16
+   row.offset_bottom = -32 - height
+  digitized.minimum_size_changed.connect(fit_footer)
+  fit_footer.call_deferred()
  var terminal = UIStyle.label(menu, "> CONNECT / SHUFFLE / HACK ▌", 22)
  terminal.add_theme_color_override("font_color", UIStyle.GREEN)
  if Sfx.visual_effects:
