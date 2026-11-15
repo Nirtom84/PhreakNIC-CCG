@@ -44,6 +44,7 @@ var back_answer = null
 var decision_back: Callable
 var acting: bool = false
 var driving: bool = false
+var close_requested = false
 var body: VBoxContainer
 var log_entries: Array = []
 var log_panel: PanelContainer
@@ -1663,6 +1664,9 @@ func menu():
  auto_end_elapsed = 0
  var blocker = Control.new()
  game_menu = blocker
+ # After the game the menu (and the Rules page it opens) must draw above the summary (z 50), or it takes the
+ # summary's clicks unseen.
+ if has_node("MatchSummary"): blocker.z_index = 60
  blocker.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
  blocker.add_to_group("touch_modal")
  add_child(blocker)
@@ -1714,7 +1718,8 @@ func menu():
  if online_session == null: Sfx.pace_option(box, bot_pace, set_bot_pace)
  UIStyle.button(box, "Rules", func():
   close_menu()
-  rules_overlay = RulesPage.open(self)).custom_minimum_size.y = 56
+  rules_overlay = RulesPage.open(self)
+  rules_overlay.z_index = blocker.z_index).custom_minimum_size.y = 56
  UIStyle.button(box, "Report a bug", report_bug)
  if online_session == null:
   save_button = UIStyle.button(box, "Save game", func():
@@ -1779,7 +1784,12 @@ func leave_game(quit_game: bool):
   else: get_tree().change_scene_to_file("res://scenes/menu.tscn")
   return
  if not tutorial_mode and not engine.state.finished and not save_game():
-  if pending: return
+  if pending:
+   # Only the window's close button gets here with a prompt open. A question now would stack on the prompt, so
+   # it comes back once the prompt is answered (_process).
+   close_requested = quit_game
+   if quit_game: show_notice("Close requested: answer this first")
+   return
   var answer = await decision("Leave without saving? Progress since the last save will be lost.", ["Leave", "Stay"], [], 1, 1, false)
   if answer != 0: return
  if quit_game: get_tree().quit()
@@ -1944,11 +1954,10 @@ func _notification(what):
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"): go_back(); get_viewport().set_input_as_handled()
 func go_back():
+ # Lifetime stats (opened from the summary) covers everything and closes itself on Back.
+ if has_node("LifetimeStats"): return
  if is_instance_valid(emote_ui) and is_instance_valid(emote_ui.popup):
   emote_ui.close()
-  return
- if is_instance_valid(tutorial_coach) and not tutorial_coach.stopped:
-  tutorial_coach.skip()
   return
  if is_instance_valid(hand_selection): clear_hand_selection(); return
  if is_instance_valid(ban_picker) and ban_picker.close_top(): return
@@ -1957,6 +1966,8 @@ func go_back():
  elif is_instance_valid(game_menu): close_menu()
  elif pending:
   if decision_back.is_valid(): decision_back.call()
+ # The tutorial coach goes only once nothing else is open.
+ elif is_instance_valid(tutorial_coach) and not tutorial_coach.stopped: tutorial_coach.skip()
  else: menu()
 
 func _input(event):
@@ -2002,6 +2013,9 @@ func _process(delta):
   if recap_elapsed >= 20: dismiss_recap()
  if engine != null and engine.state != null and not match_stats.finished: match_stats.duration += delta
  if engine == null or engine.state == null: return
+ if close_requested and not pending:
+  close_requested = false
+  leave_game(true)
  if not synchronous_redraw: auto_step()
  position_countdowns()
  auto_save()

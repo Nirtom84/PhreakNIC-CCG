@@ -463,6 +463,18 @@ func stats_checks():
  table.answered.emit(null)
  await process_frame
  await share_checks(table, engine.state.winner)
+ # Lifetime stats opened from the summary closes itself on Back, and nothing else may open with it.
+ find_text(summary, "Lifetime stats").pressed.emit()
+ table.go_back()
+ verify(table.has_node("LifetimeStats") and not is_instance_valid(table.game_menu), "Back with Lifetime stats open opens no menu")
+ table.get_node("LifetimeStats").free()
+ # Back and Escape on the summary open the in-game menu above it, like the dialogs opened from it. The menu used
+ # to open underneath, unseen, and take the summary's clicks. The Rules page it opens goes above the summary too.
+ table.go_back()
+ verify(is_instance_valid(table.game_menu) and table.game_menu.z_index > summary.z_index, "Back on the summary opens the menu above it")
+ var rules_button = find_text(table.game_menu, "Rules") if is_instance_valid(table.game_menu) else null
+ if rules_button != null: rules_button.pressed.emit()
+ verify(is_instance_valid(table.rules_overlay) and table.rules_overlay.z_index > summary.z_index, "Rules from that menu opens above the summary")
  table.free()
  await process_frame
 func find_text(node: Node, text: String):
@@ -547,6 +559,19 @@ func tutorial_checks():
    if step % 2 == 0: table.go_back()
    else: find_text(coach, "Skip tutorial").pressed.emit()
    verify(coach.stopped, "Escape or Skip works at tutorial step " + str(step))
+  # With a card or a prompt open, Back closes that first and the tutorial goes on.
+  coach.stopped = false
+  coach.show()
+  coach.set_process(true)
+  table.inspect_card(engine.state.center_row.filter(func(c): return c != null)[0])
+  table.go_back()
+  verify(not is_instance_valid(table.inspect_overlay) and not coach.stopped, "Tutorial: Back closes the open card first")
+  table.decision("End your turn?", ["End turn", "Keep playing"], [], 1, 1, false)
+  await process_frame
+  table.go_back()
+  await process_frame
+  verify(not table.pending and not coach.stopped, "Tutorial: Back answers the open prompt first")
+  if table.pending: table.answered.emit(1)
   coach.step = 1
   coach.stopped = false
   coach.enter_step()
