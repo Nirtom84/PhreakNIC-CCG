@@ -820,8 +820,8 @@ func _effect_rickroll(p, c):
 ## Rookie Numbers
 func _effect_rookie_numbers(p, c):
 	e.draw(p, 1)
-	for q in e.state.players:
-		if q.discard.any(func(x): return e.db().name_contains(x.id, "Mog")): await e.damage(p, q, 2, c)
+	var targets = e.state.players.filter(func(q): return q.alive and q.discard.any(func(x): return e.db().name_contains(x.id, "Mog")))
+	await e.simultaneous_loss(p, targets, targets.map(func(_q): return 2), c)
 
 ## Share a Link
 func _effect_share_a_link(p, c):
