@@ -19,10 +19,12 @@ class FakeRoom extends Node:
  var index = 0
  var started = false
  var sent = []
+ var pool = "2026"
+ var deck: Dictionary = {}
  func _ready():
   server = GameServer.new()
   add_child(server)
-  server.setup([{"name": "Host", "bot": false}, {"name": "Guest", "bot": false}, {"name": "Bot", "bot": true}], "2026", 20, 42)
+  server.setup([{"name": "Host", "bot": false}, {"name": "Guest", "bot": false}, {"name": "Bot", "bot": true}], pool, 20, 42, [], 0.0, deck)
  func connect_seat():
   var pair = LoopbackTransport.pair()
   socket = pair[1]
@@ -31,7 +33,7 @@ class FakeRoom extends Node:
   if started: authenticate.call_deferred()
   return pair[0]
  func send_room():
-  socket.send({"t": "room", "code": "ABCD", "seats": [{"name": "Host", "hero": "", "bot": false, "difficulty": 0, "connected": true}, {"name": "Guest", "hero": "", "bot": false, "difficulty": 1, "connected": true}], "host_seat": 0, "started": started, "public": true, "card_pool": "2026", "starting_life": 20})
+  socket.send({"t": "room", "code": "ABCD", "seats": [{"name": "Host", "hero": "", "bot": false, "difficulty": 0, "connected": true}, {"name": "Guest", "hero": "", "bot": false, "difficulty": 1, "connected": true}], "host_seat": 0, "started": started, "public": true, "card_pool": pool, "starting_life": 20})
  func receive(data):
   sent.append(data)
   if data.t == "lobby" and data.action == "start":
@@ -116,6 +118,44 @@ func fits(online, viewport):
  verify(rect.encloses(online.content.get_global_rect()), "Full online page fits " + str(viewport))
  for child in online.content.get_children():
   verify(rect.encloses(child.get_global_rect()), "Page section fits " + str(viewport))
+# The table opens on the game's card set (here sets whose cards the default set lacks) and follows new views.
+func card_set_table(api, pool: String):
+ var room = FakeRoom.new()
+ room.pool = pool
+ if pool == "custom": room.deck = JSON.parse_string(FileAccess.get_file_as_string("res://data/starter_decks.json"))[0]
+ root.add_child(room)
+ var online = load("res://scripts/ui/online.gd").new()
+ online.api = api
+ online.session = OnlineSession.new()
+ online.add_child(online.session)
+ online.session.transport_factory = room.connect_seat
+ root.add_child(online)
+ current_scene = online
+ await frames()
+ online.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 0, "token": "fake"})
+ await frames()
+ room.receive({"t": "lobby", "action": "start"})
+ await frames(12)
+ var table = current_scene
+ verify(table != online and table.online_session != null, "%s: start enters the online table" % pool)
+ if table == online or table.online_session == null:
+  online.queue_free()
+ else:
+  var db = root.get_node("CardDB")
+  verify(db.selected_pool == pool and table.card_names.size() == db.pool_ids(pool).size(), "%s: the online table knows every card of its set" % pool)
+  var redrawn = [false]
+  table.auto_view_received.connect(func(): redrawn[0] = true)
+  room.server.dirty = true
+  for i in 60:
+   if redrawn[0]: break
+   await process_frame
+  verify(redrawn[0], "%s: the online table follows new views" % pool)
+  table.queue_free()
+ await frames()
+ await room.drain()
+ room.queue_free()
+ await frames()
+ OnlineAPI.remember({})
 func run():
  if FileAccess.file_exists("user://savegame.json"): DirAccess.remove_absolute(ProjectSettings.globalize_path("user://savegame.json"))
  root.get_node("Sfx").visual_effects = false
@@ -302,6 +342,9 @@ func run():
  await room.drain()
  verify(room.server.pending.is_empty() and room.server.driving.is_empty() and room.server.locks.is_empty(), "Fake room drains in-flight decisions before deletion")
  room.queue_free()
+ await frames()
+ api.mismatch = false
+ for pool in ["2026mog", "custom"]: await card_set_table(api, pool)
  api.queue_free()
  await frames()
  print("Online UI checks: %d checks, %d failures" % [checks, failures])
