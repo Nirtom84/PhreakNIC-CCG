@@ -113,9 +113,15 @@ The game server is the headless Godot build (the `Server` export preset, `tools/
 For development, point the game at another server with the `PHREAKNIC_SERVER` environment variable (for example `http://127.0.0.1:8788`) or the `game/online_server` key in `user://settings.cfg`.
 
 ## Tests
+The suites use the game's `user://` folder, and some of them reset the lifetime stats, delete the saved game or overwrite your saved decks. On Linux that's the folder the game itself uses (`~/.local/share/godot/app_userdata/PhreakNIC CCG/`), so give the tests a temporary one, as CI does:
 ```bash
+export XDG_DATA_HOME=$(mktemp -d)   # keeps your own stats, saves and decks out of the tests' way
 godot4.7.1 --headless --path . -s tests/sim.gd           # 450 bot-vs-bot games (all three card sets, 2-4 players), the rules scenarios and the official-rulings checks (rules_v08)
+godot4.7.1 --headless --path . -s tests/rules_checks_runner.gd # the rules scenarios on their own (sim runs them too)
 godot4.7.1 --headless --path . -s tests/online_ui_checks.gd # offline fake REST/room and real online table dialogs
+godot4.7.1 --headless --path . -s tests/net_checks.gd    # authoritative game server: per-seat views, hidden cards, prompts, disconnect and reconnect
+godot4.7.1 --headless --path . -s tests/link_checks.gd   # headless server behind the room link: snapshots, restarts, version mismatch, exported server process
+godot4.7.1 --headless --path . -s tests/fuzz_checks.gd   # malformed online messages and prompt answers, emote limits
 godot4.7.1 --headless --path . -s tests/ui_smoke.gd      # table UI drives full turns
 godot4.7.1 --headless --path . -s tests/ui_state_sync.gd # UI always matches engine state
 godot4.7.1 --headless --path . -s tests/touch_checks.gd  # taps, long-press, drag scrolling, Back button
@@ -124,6 +130,10 @@ godot4.7.1 --headless --path . -s tests/save_checks.gd   # save/resume round tri
 godot4.7.1 --headless --path . -s tests/v06_checks.gd    # 2025 / 2026 card sets
 godot4.7.1 --headless --path . -s tests/v07_checks.gd    # browser version: hidden Quit/Exit, rotate prompt, save on leaving the page
 godot4.7.1 --headless --path . -s tests/v08_checks.gd    # card sheet, Play Basics, end-turn confirmation, 3-4 players, starting life, bug report
+godot4.7.1 --headless --path . -s tests/v10_checks.gd    # IN EFFECT warnings, Nashville 2600 payments, online handle and Hero identity
+godot4.7.1 --headless --path . -s tests/v11_checks.gd    # online hardening: secure shuffles, idle takeover, snapshot size, removed seats, oversized input
+godot4.7.1 --headless --path . -s tests/v12_checks.gd    # card bans (local and online), host closes the room
+godot4.7.1 --headless --path . -s tests/v13_checks.gd    # Mog Variant card set, Mognet, invite-link identity step, server diagnostics
 godot4.7.1 --headless --path . -s tests/v15_checks.gd    # card movement, phone layout, match stats and sharing, tutorial, countdown, emotes
 godot4.7.1 --headless --path . -s tests/v16_checks.gd    # bot pace, turn recap, host-set online bot pace
 godot4.7.1 --headless --path . -s tests/v17_checks.gd    # lifetime stats, stats screen and stats card
@@ -137,8 +147,13 @@ godot4.7.1 --headless --path . -s tests/v25_ui_checks.gd # deck builder, custom 
 godot4.7.1 --headless --path . -s tests/v25_online_checks.gd # online deck submission and the D20 roll
 godot4.7.1 --headless --path . -s tests/custom_decks_checks.gd # the 100 ready-made custom decks: legal, importable, combos name cards in the deck
 godot4.7.1 --headless --path . -s tests/custom_bot_checks.gd  # custom-deck bot brain: full games, census, weights fallback, training pipeline
+godot4.7.1 --headless --path . -s tests/bot_checks.gd    # bot decisions: DEFCON policy, reserving, resource order, theft targets, deck thinning
+godot4.7.1 --headless --path . -s tests/defcon_policy_checks_runner.gd # the DEFCON policy scenarios on their own (bot_checks and v21_checks run them too)
+godot4.7.1 --headless --path . -s tests/defcon_traces.gd # Script Kiddie, Phreak and Elite replay 27 recorded games exactly (tests/defcon_trace_hashes.json)
+node --test cloudflare/online/test/                      # online server Worker (Node 22)
 godot4.7.1 --path . -s tools/screenshot.gd --resolution 1920x1080 -- out.png 8   # rendered screenshot (LAYOUT=compact for the phone layout)
 ```
+The rest of `tests/` are helper classes these suites run (`rules_checks.gd`, `rules_v08.gd`, `defcon_policy_checks.gd`) and the bots' benchmark and self-play training scripts; see [scripts/ai/BOT_RESULTS.md](scripts/ai/BOT_RESULTS.md), [tools/DEFCON_TRAINING.md](tools/DEFCON_TRAINING.md) and [tools/CUSTOM_DECK_TRAINING.md](tools/CUSTOM_DECK_TRAINING.md).
 
 ## Visuals and fonts
 Neon HUD panels, terminal backgrounds and bundled fonts require no system fonts. The menu’s Visual effects switch disables animated backgrounds and decorative effects and is saved with sound settings. Card artwork is unchanged.
