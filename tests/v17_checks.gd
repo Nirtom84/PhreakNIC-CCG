@@ -23,10 +23,22 @@ func controls(node: Node):
  if node is Button: verify(node.custom_minimum_size.y >= 72, "Compact button: " + node.text)
  if node is Label: verify(node.get_theme_font_size("font_size") >= 22, "Compact label")
  for child in node.get_children(): controls(child)
+## One cell of a stats table, found by row title and column header; "" if the row isn't shown.
+func record_cell(screen: Node, row_title: String, column: String) -> String:
+ for grid in screen.find_children("*", "GridContainer", true, false):
+  var cells = grid.get_children().filter(func(c): return c is Label)
+  var row = cells.map(func(c): return c.text).find(row_title)
+  if row < 0: continue
+  var col = cells.slice(0, grid.columns).map(func(c): return c.text).find(column)
+  return cells[row + col].text if col >= 0 and row + col < cells.size() else ""
+ return ""
 func run():
  Store = load("res://scripts/ui/lifetime_stats.gd")
  Share = load("res://scripts/ui/result_share.gd")
  style = load("res://scripts/ui/style.gd")
+ var backups = {}
+ for path in [Store.PATH, Store.PATH + ".tmp", Store.PATH + ".bad"]:
+  backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  var s = Store.new()
  s.reset()
  verify(s.win_rate() == 0 and s.average_win_turns() == 0, "Empty divisions")
@@ -50,7 +62,7 @@ func run():
  verify(s.data.modes.local.games == 1 and s.data.difficulties["2"].wins == 1 and s.data.players["2"].wins == 1 and s.data.sets["2026"].wins == 1 and s.data.heroes[hero].wins == 1, "Splits")
  for k in ["turns", "damage_dealt", "damage_taken", "life_gained", "cards_played", "cards_bought", "hacking_spent"]: verify(s.data[k] == m.seats[0][k], "Total " + k)
  verify(s.data.play_time == 123 and s.data.bought[card] == 1 and s.data.played[card] == 1, "Time and cards")
- m.winner_seat = -1
+ m.winner_seat = 1
  s.record(m, 0, hero, "local", "loss")
  verify(s.data.losses == 1 and s.data.streak == 0 and s.data.best_streak == 1 and s.data.modes.local.streak == 0, "Loss resets streak")
  verify(s.data.biggest_hit == 13 and s.data.biggest_hit_date != "" and s.data.most_damage == 13 and s.data.fastest_win == 1 and s.data.fastest_hero == hero and s.data.fastest_date != "" and s.data.longest_game == 1, "Records and dates")
@@ -146,6 +158,15 @@ func run():
  var result_text = labels(result)
  for label in ["Victory", "LIFE LEFT", "TURNS", "DAMAGE DEALT", "CARDS BOUGHT", "BIGGEST HIT", "phreaknic-ccg.net"]: verify(label in result_text, "Match card unchanged: " + label)
  result.free()
+ # A player with no Hero: the table names none with a dash, and neither the card nor the text says "as —".
+ var no_hero = table.share_details(table.engine.state.players[0])
+ no_hero.hero = ""
+ no_hero.hero_name = table.stats_card_name("")
+ result = Share.build_card(no_hero)
+ verify(not "as —" in labels(result), "Result card without a Hero")
+ result.free()
+ verify(not "as —" in Share.copy_text(no_hero), "Result copy text without a Hero")
+ verify(Share.copy_text({"victory": true, "all_bots": true, "difficulty": "Elite", "opponents": ["A", "B"], "turns": 14, "hero_name": "—", "version": "0.15", "damage": 38}) == "I beat 2 bots on Elite in 14 turns in PhreakNIC CCG v0.15 — 38 damage dealt. https://phreaknic-ccg.net", "Exact copy text without a Hero")
  table.show_result(table.engine.state.players[0])
  await frames()
  verify(Store.new().data.games == 1, "Rebuilt finished summary deduplicated")
@@ -191,7 +212,60 @@ func run():
  var saved_stats = m.to_dict()
  for seat in saved_stats.seats: seat.erase("bought")
  verify(m.from_dict(saved_stats) != null, "Legacy match stats remain loadable")
+ # A stalemate (no winner) is a draw: a game, but neither a win nor a loss, and a win streak carries on.
+ s.reset()
+ m.winner_seat = 0
+ s.record(m, 0, "", "local", "before draw")
+ m.winner_seat = -1
+ verify(s.record(m, 0, "", "local", "draw"), "Record draw")
+ verify(s.data.games == 2 and s.data.wins == 1 and s.data.losses == 0 and s.data.modes.local.losses == 0, "A draw is not a loss")
+ verify(s.data.streak == 1 and s.data.best_streak == 1 and s.data.modes.local.streak == 1, "A draw keeps the win streak")
+ screen = load("res://scripts/ui/stats_screen.gd").open(root)
+ await frames()
+ verify(record_cell(screen, "Against bots", "Games") == "2" and record_cell(screen, "Against bots", "Losses") == "0", "Stats screen shows a draw as a game, not a loss")
+ screen.free()
+ # Those games were played without a Hero.
+ verify(Share.copy_text(s.share_details()) == "My PhreakNIC CCG record: 1 wins in 2 games (50%), best streak 1. https://phreaknic-ccg.net", "Stats copy text without a Hero")
+ # A game rejoined mid-match: its stats only saw the last turn, but the records use all the turns you played.
+ var rejoined = load("res://scripts/ui/match_stats.gd").new()
+ rejoined.setup(2, "2026", [-1, 0], true)
+ rejoined.turn(0)
+ var players = [PlayerState.new(0), PlayerState.new(1)]
+ players[0].turns = 6
+ players[1].turns = 5
+ rejoined.finish(0, players)
+ s.reset()
+ s.record(rejoined, 0, "", "online_bots", "rejoined")
+ verify(s.data.fastest_win == 6 and s.average_win_turns() == 6 and s.data.longest_game == 6, "A rejoined win counts all the turns you played")
+ # Online custom-deck games count in the Experimental decks tab, but not under a bot difficulty
+ # (human seats have difficulty -1 online).
+ var custom = load("res://scripts/ui/match_stats.gd").new()
+ custom.setup(2, "custom", [-1, -1])
+ custom.custom_deck = load("res://scripts/ui/deck_builder.gd").builtins()[0]
+ custom.finish(0, players)
+ s.reset()
+ verify(s.record(custom, 0, "", "online_humans", "online custom"), "Record online custom-deck game")
+ var experimental = s.experimental()
+ verify(experimental.games == 1 and experimental.decks[custom.custom_deck.name].games == 1 and experimental.difficulties.is_empty(), "Online custom-deck game is not filed under a bot difficulty")
+ custom.bot_difficulties = [-1, 2]
+ verify(s.record(custom, 0, "", "local", "offline custom") and s.experimental().difficulties.keys() == ["2"], "Offline custom-deck game goes by bot difficulty")
+ custom.winner_seat = -1
+ s.record(custom, 0, "", "local", "custom draw")
+ verify(s.experimental().games == 3 and s.experimental().wins == 2 and s.experimental().losses == 0, "Custom-deck draw is not a loss")
+ screen = load("res://scripts/ui/stats_screen.gd").open(root)
+ await frames()
+ buttons(screen, "Experimental decks")[0].pressed.emit()
+ await frames()
+ verify("offline and online games" in labels(screen.content), "Experimental decks tab covers online games too")
+ screen.free()
  s.reset()
  style.compact_override = null
+ for path in backups:
+  if backups[path] == null:
+   if FileAccess.file_exists(path): DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+  else:
+   var file = FileAccess.open(path, FileAccess.WRITE)
+   file.store_buffer(backups[path])
+   file.close()
  print("v17 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)

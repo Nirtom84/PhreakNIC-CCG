@@ -13,12 +13,17 @@ static func compose_url(platform: String, text: String) -> String:
   "Facebook": return "https://www.facebook.com/sharer/sharer.php?u=" + SITE.uri_encode()
  return ""
 static func copy_text(d: Dictionary) -> String:
+ var hero = hero_name(d)
  if d.get("kind") == "stats":
-  return "My PhreakNIC CCG record: %d wins in %d games (%s), best streak %d, favourite Hero %s. %s" % [d.wins, d.games, d.rate, d.best_streak, d.hero_name, SITE]
+  return "My PhreakNIC CCG record: %d wins in %d games (%s), best streak %d%s. %s" % [d.wins, d.games, d.rate, d.best_streak, ", favourite Hero " + hero if hero != "" else "", SITE]
  var opponents = d.opponents.size()
  var outcome = "beat" if d.victory else "played against"
  var level = " on " + d.difficulty if d.difficulty != "" else ""
- return "I %s %d %s%s in %d turns as %s in PhreakNIC CCG v%s — %d damage dealt. %s" % [outcome, opponents, "bots" if d.all_bots else "opponents", level, d.turns, d.hero_name, d.version, d.damage, SITE]
+ return "I %s %d %s%s in %d turns%s in PhreakNIC CCG v%s — %d damage dealt. %s" % [outcome, opponents, "bots" if d.all_bots else "opponents", level, d.turns, " as " + hero if hero != "" else "", d.version, d.damage, SITE]
+## The Hero's name, or "" for a player without one (the table shows that as a dash).
+static func hero_name(d: Dictionary) -> String:
+ var name = str(d.get("hero_name", ""))
+ return "" if name in ["", "-", "–", "—"] else name
 static func filename(date: Dictionary, kind = "match") -> String:
  if kind == "stats": return "phreaknic-ccg-stats-%04d%02d%02d-%02d%02d%02d.png" % [date.year, date.month, date.day, date.hour, date.minute, date.second]
  return "phreaknic-ccg-%04d%02d%02d-%02d%02d%02d.png" % [date.year, date.month, date.day, date.hour, date.minute, date.second]
@@ -73,7 +78,8 @@ static func build_card(d: Dictionary) -> SubViewport:
  canvas.add_child(hero)
  card_label(canvas, d.handle, Rect2(285, 186, 640, 52), 40)
  var versus = "vs " + ", ".join(d.opponents)
- if d.hero_name not in ["", "–", "-"] and d.hero_name.to_lower() != d.handle.to_lower(): versus = "as " + d.hero_name + "\n" + versus
+ var named = hero_name(d)
+ if named != "" and named.to_lower() != d.handle.to_lower(): versus = "as " + named + "\n" + versus
  card_label(canvas, versus, Rect2(285, 242, 640, 150), 24, UIStyle.MUTED)
  var tiles = [[d.life, "LIFE LEFT"], [d.turns, "TURNS"], [d.damage, "DAMAGE DEALT"], [d.bought, "CARDS BOUGHT"], [d.biggest, "BIGGEST HIT"]]
  for i in tiles.size():

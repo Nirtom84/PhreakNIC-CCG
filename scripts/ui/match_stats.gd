@@ -60,6 +60,8 @@ func finish(winner: int, players: Array):
  for p in players:
   seats[p.seat].starting_life = p.starting_life
   seats[p.seat].final_life = p.life
+  # The game state counts every turn, also those before a resume or rejoin that these stats missed.
+  seats[p.seat].turns = maxi(seats[p.seat].turns, p.turns)
   var cards = p.deck + p.hand + p.discard + p.play_area + p.reserve
   var pending = cards.duplicate()
   while not pending.is_empty():
