@@ -57,6 +57,12 @@ func card(id: String, zone: String = "hand", seat: int = 0):
 			return c
 	return null
 func check(condition: bool, message: String): test.verify(condition, message)
+## The active player plays Time Travel, removes it and ends the turn: their extra turn starts.
+func extra_turn(player):
+	var time = card("Time Travel", "hand", player.seat)
+	await e.play_card(player, time)
+	await e.activate(player, time)
+	await e.end_turn(player)
 func run():
 	for id in ["Disassembled Sink", "FOTTR Greatest Hits", "Payphone"]:
 		await fixture()
@@ -169,6 +175,22 @@ func run():
 	await e.start_turn(0)
 	await e.end_turn(p)
 	check(grass in e.state.removed, "Grass expires after next turn")
+	# A stolen Grass lasts until the end of its new controller's next turn, whoever has had more turns.
+	for extra in ["no", "the owner's", "the stealer's"]:
+		await fixture()
+		p = e.active()
+		q = e.state.players[1]
+		if extra == "the owner's": await extra_turn(p)
+		grass = card("Touch Grass")
+		await e.play_card(p, grass)
+		await e.end_turn(p)
+		if extra == "the stealer's": await extra_turn(q)
+		e.take_control(grass, q)
+		await e.end_turn(q)
+		var kept = grass in q.play_area
+		await e.end_turn(p)
+		await e.end_turn(q)
+		check(kept and grass in e.state.removed, "Stolen Grass stays through the steal turn and leaves after the stealer's next turn (%s extra turn)" % extra)
 	await fixture()
 	p = e.active()
 	q = e.state.players[1]
