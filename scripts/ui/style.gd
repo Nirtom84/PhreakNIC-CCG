@@ -308,9 +308,14 @@ static func music_controls(parent: Control):
  slider.step = 0.01
  slider.value = Sfx.music_volume
  row.add_child(slider)
- # Follow the drag live, but write the settings file once, on release.
- slider.value_changed.connect(func(value): Sfx.music_volume = value; Sfx.apply_music())
- slider.drag_ended.connect(func(_changed): Sfx.save())
+ # Follow the drag live, but write the settings file once, on release. Mouse wheel and arrow keys save each step.
+ var drag = {"active": false}
+ slider.drag_started.connect(func(): drag.active = true)
+ slider.value_changed.connect(func(value):
+  Sfx.music_volume = value
+  Sfx.apply_music()
+  if not drag.active: Sfx.save())
+ slider.drag_ended.connect(func(_changed): drag.active = false; Sfx.save())
 
 # Only a short, stationary press and release on the dim area is an outside click.
 # Screen gestures own their stream; TouchInput handles the paired emulated mouse.
