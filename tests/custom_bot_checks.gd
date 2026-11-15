@@ -2,6 +2,10 @@ extends SceneTree
 class ErrorCounter extends Logger:
  var count = 0
  func _log_error(_f: String, _file: String, _line: int, _code: String, _rationale: String, _notify: bool, _type: int, _traces: Array[ScriptBacktrace]) -> void: count += 1
+## A human who plays O.P.R.A.H. and removes one card from their hand.
+class OprahHuman extends Decider:
+ func choose_cards(_p, prompt: String, cards: Array, min_n: int, _max_n: int) -> Array:
+  return cards.slice(0, 1) if prompt.begins_with("Remove cards") else cards.slice(0, min_n)
 var errors = ErrorCounter.new()
 var checks = 0
 var failures = 0
@@ -44,6 +48,13 @@ func run():
      for id in census: verify(census[id] == expected.get(id,0), "census after buys/refills/returns")
     verify(game.state.finished or game.state.turn >= 200, "full game resolves naturally or as 200-turn draw %s/%d/%d" % [deck.name,level,seats])
     DefconSearch.dispose(game)
+ var world = await oprah_draw(decks[0], false)
+ var swapped = await oprah_draw(decks[0], true)
+ verify(world.in_hand and swapped.in_hand and world.drawn != swapped.drawn, "O.P.R.A.H. fixture draws a different hidden card in each world")
+ verify(world.hidden == swapped.hidden, "census learns nothing from O.P.R.A.H.'s hidden draw")
+ var counted = world.hidden.duplicate()
+ counted[world.drawn] -= 1
+ verify(world.revealed == counted, "census counts O.P.R.A.H.'s draw once it's discarded")
  var normal = GameEngine.new(); root.add_child(normal); normal.setup([2,2], 85100000)
  var bot = BotPlayer.new(normal)
  var before = CustomDeckPlanner.calls
@@ -82,3 +93,29 @@ func run():
  verify(errors.count == 0, "no script errors during full games")
  print("custom bot checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+
+## Plays O.P.R.A.H. for a human seat, optionally with a different card hidden on top of the Center Deck.
+func oprah_draw(base: Dictionary, swap_top: bool) -> Dictionary:
+ var deck = {"name": "O.P.R.A.H. fixture", "cards": base.cards.duplicate()}
+ deck.cards["O.P.R.A.H."] = 2
+ var game = GameEngine.new(); root.add_child(game)
+ game.setup([-1, 2], 85130000, [OprahHuman.new()], "2026", 0, [], deck)
+ var planner = game.get_meta("custom_planner")
+ await game.start_turn(0)
+ var human = game.state.players[0]
+ var oprah = (game.state.center_deck + game.state.center_row).filter(func(c): return c != null and c.id == "O.P.R.A.H.")[0]
+ game.gain_owner(oprah, human)
+ game.move(oprah, human.hand, "hand")
+ var pile = game.state.center_deck
+ if swap_top:
+  var other = pile.filter(func(c): return CustomDeck.base_id(c.id) != CustomDeck.base_id(pile.back().id))[0]
+  var i = pile.find(other)
+  pile[i] = pile.back()
+  pile[pile.size() - 1] = other
+ var drawn = pile.back()
+ await game.play_card(human, oprah)
+ var result = {"drawn": CustomDeck.base_id(drawn.id), "in_hand": drawn in human.hand, "hidden": planner.census().duplicate()}
+ game.discard(drawn)
+ result.revealed = planner.census().duplicate()
+ DefconSearch.dispose(game)
+ return result

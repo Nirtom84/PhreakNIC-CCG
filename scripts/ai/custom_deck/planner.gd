@@ -19,8 +19,11 @@ func invalidate(): scores.clear()
 func observe_move(card, origin, destination):
 	scores.clear()
 	if destination == "center_deck": seen.erase(card.uid)
-	elif origin == "center_deck" or origin == "center_row" or destination in ["center_row", "discard", "play_area", "reserve", "removed"]:
+	elif origin == "center_row" or destination in ["center_row", "discard", "play_area", "reserve", "removed"] or (origin == "center_deck" and not hidden(card)):
 		seen[card.uid] = CustomDeck.base_id(card.id)
+# O.P.R.A.H. draws from the Center Deck straight into a hand, where only its owner sees the card.
+func hidden(card) -> bool:
+	return engine.state.players.any(func(p): return card in p.hand or card in p.deck)
 static func load_weights(path = "res://data/custom_deck_weights.json"):
 	loaded = true
 	weights = {}

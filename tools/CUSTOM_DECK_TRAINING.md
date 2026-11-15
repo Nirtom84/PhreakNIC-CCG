@@ -16,8 +16,10 @@ census subtracts unique visible card identities from the published list and
 observes public movements, including returns on elimination. It never reads
 Center Deck order or opponent hands. Initializing mid-game cannot reconstruct
 previously unseen acquisitions now hidden; the census is exact when observation
-starts at setup. Mog originals share base weights; Botnet/Mognet share learned
-values but use their distinct printing text when deriving synergy.
+starts at setup, except that cards O.P.R.A.H. draws into a hand count as
+remaining until they are revealed. Mog originals share base weights;
+Botnet/Mognet share learned values but use their distinct printing text when
+deriving synergy.
 
 Godot 4.7.1, Python 3 and NumPy are required. Run from the repository root.
 Use temporary `XDG_DATA_HOME` and `XDG_CONFIG_HOME` for manual Godot commands.
