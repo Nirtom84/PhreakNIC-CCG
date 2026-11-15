@@ -42,6 +42,10 @@ var pending: bool = false
 # Answer the Back button / Escape gives the open dialog: its Cancel-like option, or null when Back should do nothing.
 var back_answer = null
 var decision_back: Callable
+# Dialogs can stack (an engine prompt during a bot turn over "Leave without saving?"), so "answered" goes to the
+# newest open dialog only, through dialog_answered.
+var open_dialogs: Array = []
+signal dialog_answered(dialog, value)
 var acting: bool = false
 var driving: bool = false
 var close_requested = false
@@ -76,6 +80,7 @@ var incoming_source: String = "another player"
 var table_rule_uids: Array = []
 var safe_extra = Vector2.ZERO
 func _ready():
+ answered.connect(func(value): if not open_dialogs.is_empty(): dialog_answered.emit(open_dialogs.back(), value))
  # Leaves the result-screen state behind after Play Again; the first redraw supplies the cue.
  Sfx.set_context("table")
  if tutorial_mode:
@@ -1028,7 +1033,17 @@ func drive_bot():
   await drive_reaction(engine.active())
  driving = false
  redraw()
+## Waits for this dialog's own answer: anything answered while a newer dialog is open belongs to that one.
+func answer_for(dialog):
+ open_dialogs.append(dialog)
+ var reply = await dialog_answered
+ while reply[0] != dialog: reply = await dialog_answered
+ open_dialogs.erase(dialog)
+ return reply[1]
 func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: int, multi: bool, searchable: bool = false):
+ # Back goes to the dialog underneath again once this one closes.
+ var outer_answer = back_answer
+ var outer_back = decision_back
  dismiss_recap()
  hide_zoom()
  hover_serial += 1
@@ -1216,12 +1231,12 @@ func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: i
   for section in section_nodes:
    section.visible = section.get_child(1).get_children().any(func(b): return b.visible))
  done.pressed.connect(func(): answered.emit(selected.duplicate()))
- var result = await answered
- decision_back = Callable()
- back_answer = null
+ var result = await answer_for(overlay)
+ decision_back = outer_back
+ back_answer = outer_answer
  remove_child(overlay)
  overlay.queue_free()
- pending = false
+ pending = not open_dialogs.is_empty()
  redraw()
  return result
 func decision_zone_name(zone: String) -> String:
@@ -2107,9 +2122,12 @@ func report_bug():
  load("res://scripts/ui/bug_report.gd").open(details)
 
 func prevention_choice(amount: int, sources: Array) -> Array:
+ var outer_answer = back_answer
+ var outer_back = decision_back
  dismiss_recap()
  pending = true
  back_answer = null
+ decision_back = Callable() # Back does nothing here, and must not answer a dialog underneath
  var values: Array = []
  var remaining = amount
  var total = 0
@@ -2155,10 +2173,12 @@ func prevention_choice(amount: int, sources: Array) -> Array:
  prevention_updated.connect(update)
  update.call()
  UIStyle.dialog(overlay, Vector2(950, 650))
- var result = await answered
+ var result = await answer_for(overlay)
+ decision_back = outer_back
+ back_answer = outer_answer
  prevention_updated.disconnect(update)
  overlay.queue_free()
- pending = false
+ pending = not open_dialogs.is_empty()
  redraw()
  return result if result != null else []
 signal prevention_updated

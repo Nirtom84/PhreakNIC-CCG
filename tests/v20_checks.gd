@@ -22,6 +22,14 @@ func named(node, title):
   var found = named(child, title)
   if found != null: return found
  return null
+# The button labelled label in the open dialog that shows text.
+func option(text, label):
+ for child in table.get_children():
+  if not (child is PanelContainer and child.is_in_group("touch_modal")) or child.is_queued_for_deletion(): continue
+  var shown = child.find_children("*", "Label", true, false).map(func(l): return l.text) + child.find_children("*", "RichTextLabel", true, false).map(func(l): return l.get_parsed_text())
+  var found = child.find_children("*", "Button", true, false).filter(func(b): return b.text == label)
+  if not found.is_empty() and shown.any(func(s): return text in s): return found[0]
+ return null
 func sections(node) -> Array:
  var found = []
  if node.has_meta("decision_section"): found.append(node)
@@ -149,6 +157,33 @@ func run():
  verify(table.pending and named(held_panel, "DecisionHint").visible, "Mandatory option outside gives feedback")
  table.answered.emit(0)
  await frames()
+ # Stacked dialogs: a prompt opened over another dialog, like TOCTOU's over "Leave without saving?" during a bot
+ # turn, is answered on its own. The dialog underneath keeps waiting and gets Back again.
+ var answers = {}
+ var ask = func(key, text, labels): answers[key] = await table.decision(text, labels, [], 1, 1, false)
+ ask.call("leave", "Leave without saving? Progress since the last save will be lost.", ["Leave", "Stay"])
+ await frames()
+ ask.call("toctou", "Use TOCTOU to avoid losing?", ["Yes", "No"])
+ await frames()
+ option("Use TOCTOU", "Yes").pressed.emit()
+ await frames()
+ verify(answers == {"toctou": 0} and table.pending and option("Leave without saving?", "Stay") != null, "Yes on a prompt over another dialog answers only that prompt")
+ if table.pending: escape() # with nothing left open, Back would open the game menu
+ await frames()
+ verify(answers == {"toctou": 0, "leave": 1} and not table.pending, "Back then answers the dialog underneath with Stay")
+ answers.clear()
+ ask.call("leave", "Leave without saving? Progress since the last save will be lost.", ["Leave", "Stay"])
+ await frames()
+ var prevent = func(): answers["prevent"] = await table.prevention_choice(2, [{"card": cards[0], "capacity": 2, "full": false}])
+ prevent.call()
+ await frames()
+ option("damage incoming", "Confirm").pressed.emit()
+ await frames()
+ var stay = option("Leave without saving?", "Stay")
+ verify(answers == {"prevent": [2]} and table.pending and stay != null, "Confirming damage prevention over another dialog answers only the prevention")
+ if stay != null: stay.pressed.emit()
+ await frames()
+ verify(answers == {"prevent": [2], "leave": 1} and not table.pending, "The dialog underneath then takes its own answer")
  var style = load("res://scripts/ui/style.gd")
  for compact in [false, true]:
   style.compact_override = compact
