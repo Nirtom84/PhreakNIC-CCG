@@ -66,6 +66,7 @@ class FakeRoom extends Node:
 class SeatSocket extends Node:
  # The Worker's room socket on localhost. Each connection takes the next step of `plan` (the last one repeats):
  # "refuse" answers HTTP 401 like an unknown or revoked token (Godot logs each refused handshake as an error),
+ # "limit" answers every request (sockets and the seat check) with 429 like the per-IP rate limit,
  # "remove" accepts and closes 1000 "removed" like the host's Remove seat, "drop" accepts and then loses the
  # connection, "keep" accepts and stays open.
  var tcp = TCPServer.new()
@@ -78,7 +79,7 @@ class SeatSocket extends Node:
    var stream = tcp.take_connection()
    var step = plan[mini(attempts, plan.size() - 1)]
    attempts += 1
-   if step == "refuse": refused.append({"stream": stream, "request": ""})
+   if step in ["refuse", "limit"]: refused.append({"stream": stream, "request": "", "step": step})
    else:
     var peer = WebSocketPeer.new()
     if peer.accept_stream(stream) == OK: peers.append({"peer": peer, "step": step, "opened": -1})
@@ -89,7 +90,9 @@ class SeatSocket extends Node:
     continue
    if item.stream.get_available_bytes() > 0: item.request += item.stream.get_utf8_string(item.stream.get_available_bytes())
    if item.request.contains("\r\n\r\n"):
-    item.stream.put_data("HTTP/1.1 401 Unauthorized\r\nContent-Type: application/json\r\nContent-Length: 17\r\nConnection: close\r\n\r\n{\"error\":\"token\"}".to_utf8_buffer())
+    var body = "{\"error\":\"token\"}" if item.step == "refuse" else "{\"error\":\"rate_limit\"}"
+    var status = "401 Unauthorized" if item.step == "refuse" else "429 Too Many Requests"
+    item.stream.put_data(("HTTP/1.1 %s\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s" % [status, body.length(), body]).to_utf8_buffer())
     item.stream.disconnect_from_host()
     refused.erase(item)
   for item in peers:
@@ -390,6 +393,22 @@ func run():
  verify(ended_ui.session == null and OnlineAPI.remembered().is_empty() and not ended_room[1].open, "Resuming a finished game forgets the seat and closes the socket")
  ended_ui.queue_free()
  await frames()
+ # A game that can't start (too many bans) ends with a reason before any view: return home with that reason.
+ var banned_room = LoopbackTransport.pair()
+ var banned_ui = load("res://scripts/ui/online.gd").new()
+ banned_ui.api = api
+ banned_ui.session = OnlineSession.new()
+ banned_ui.add_child(banned_ui.session)
+ banned_ui.session.transport_factory = func(): return banned_room[0]
+ root.add_child(banned_ui)
+ current_scene = banned_ui
+ await frames()
+ banned_ui.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 1, "token": "fake"})
+ banned_room[1].send({"t": "over", "winner": -1, "reason": "banned_minimum"})
+ await frames()
+ verify(not banned_ui.in_lobby and banned_ui.message.text.begins_with("At least 40 center-deck cards"), "A game that can't start returns to online home with the reason")
+ banned_ui.queue_free()
+ await frames()
  var mismatch_ui = load("res://scripts/ui/online.gd").new()
  mismatch_ui.api = api
  root.add_child(mismatch_ui)
@@ -440,7 +459,7 @@ func seat_socket_checks():
  verify(server.attempts == 1, "Remove seat doesn't reconnect (%d connections)" % server.attempts)
  session.queue_free()
  await frames(3)
- # A refused upgrade looks like a network error: 8 refused sockets, then one HTTP check that the server answers.
+ # A refused upgrade looks like a network error: 8 refused sockets, then one seat check that says the seat is gone.
  server.attempts = 0
  server.plan = ["refuse"]
  removed = []
@@ -449,6 +468,15 @@ func seat_socket_checks():
  verify(session.stopped and removed == ["This room has closed or your seat was removed."] and OnlineAPI.remembered().is_empty(), "A seat the server keeps refusing returns home and is forgotten")
  verify(server.attempts == 9, "A refused seat stops after 8 sockets and one HTTP check (%d connections)" % server.attempts)
  session.queue_free()
+ await frames(3)
+ # A rate limit (or a proxy) refuses the sockets while the server is up: the seat check doesn't say "gone", so keep it.
+ server.attempts = 0
+ server.plan = ["limit"]
+ var limited = seat_session(port)
+ await run_clock(limited, func(): return server.attempts > 12 or limited.stopped)
+ verify(server.attempts > 12 and not limited.stopped and not OnlineAPI.remembered().is_empty(), "A rate-limited seat is kept and keeps retrying (%d connections)" % server.attempts)
+ limited.disconnect_game()
+ limited.queue_free()
  await frames(3)
  server.attempts = 0
  server.plan = ["drop", "keep"]

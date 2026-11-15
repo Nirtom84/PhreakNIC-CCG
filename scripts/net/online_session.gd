@@ -4,7 +4,7 @@ signal room_changed(data)
 signal status_changed(text)
 signal finished(winner)
 signal removed(text)
-# Refused reconnects in a row (about a minute of backoff) before checking whether the server still answers.
+# Refused reconnects in a row (about a minute of backoff) before asking the server whether the seat still exists.
 const REFUSALS = 8
 var client: NetClient
 var credential: Dictionary = {}
@@ -59,24 +59,29 @@ func _closed(endpoint):
 		return
 	set_status("Reconnecting…")
 	attempts += 1
-	# A refused upgrade (revoked token, deleted room) closes before opening, just like a network failure. A server
-	# that still answers HTTP after REFUSALS of them no longer has this seat: stop instead of retrying forever.
+	# A refused upgrade (revoked token, deleted room) closes before opening, just like a network failure, a rate
+	# limit or a proxy that blocks WebSockets. After REFUSALS of them, ask the room itself (with the seat's token)
+	# and forget the seat only when it answers that the seat is gone; anything else keeps retrying.
 	if endpoint is WebSocketTransport and not endpoint.opened and attempts >= REFUSALS:
-		var answered = await _server_answers()
+		var gone = await _seat_gone()
 		if stopped or endpoint != transport: return
-		if answered:
+		if gone:
 			_room_closed("This room has closed or your seat was removed.")
 			return
 	retry = minf(15, pow(2, attempts - 1))
-# An answer below 500 means the server is up, so it refused the socket; none (or a 5xx) means down or unreachable.
-func _server_answers() -> bool:
+# The room answers a plain GET on the socket address with 401 {"error":"token"} once the seat or room is gone
+# (426 while the seat still exists). No answer, a rate limit or any other status means: keep the seat.
+func _seat_gone() -> bool:
 	var http = HTTPRequest.new()
 	http.timeout = 20
 	add_child(http)
-	var result = [HTTPRequest.RESULT_CANT_CONNECT, 0]
-	if http.request(str(credential.server) + "/health") == OK: result = await http.request_completed
+	var result = [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray()]
+	var url = str(credential.server) + "/ws/room/" + str(credential.code) + "?token=" + str(credential.token).uri_encode()
+	if http.request(url) == OK: result = await http.request_completed
 	http.queue_free()
-	return result[0] == HTTPRequest.RESULT_SUCCESS and result[1] < 500
+	if result[0] != HTTPRequest.RESULT_SUCCESS or result[1] != 401: return false
+	var body = JSON.parse_string(result[3].get_string_from_utf8())
+	return body is Dictionary and body.get("error") == "token"
 func _message(data: Dictionary):
 	match data.get("t"):
 		"room_closed": _room_closed()
@@ -104,8 +109,14 @@ func _message(data: Dictionary):
 			OnlineAPI.remember({})
 			if data.get("reason") == "restore_failed": set_status("The server was updated, so this game couldn't be resumed. Start a new one from Play online.")
 			finished.emit(int(data.get("winner", -1)))
-			# Resumed after the game ended: no view ever came, so no table is open to show the result on.
-			if client.engine.state == null and not data.has("reason"): _room_closed("This game has already ended.")
+			# No view ever came (resumed after the game ended, or the game couldn't start), so no table is open to
+			# show the result on: go back to the game list with the reason instead of leaving the room screen stuck.
+			if client.engine.state == null:
+				var reasons = {
+					"restore_failed": "The server was updated, so this game couldn't be resumed. Start a new one from Play online.",
+					"banned_minimum": "At least 40 center-deck cards must remain. Change the banned cards and create a new room.",
+				}
+				_room_closed(reasons.get(str(data.get("reason", "")), "This game has already ended."))
 func _room_closed(text: String = "The host closed the room."):
 	if stopped: return
 	stopped = true

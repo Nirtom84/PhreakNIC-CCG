@@ -20,6 +20,11 @@ test('maintenance blocks create and join before body parsing or room calls',asyn
 test('WebSocket authentication failures have identical HTTP shape',async()=>{
  for(const patch of [{r:null},{},{r:{...makeRoom().r,started:true}}]){const r=Object.assign(makeRoom(),patch);const res=await r.fetch(new Request('https://server/ws/room/AB23?token='+ 'c'.repeat(32),{headers:{Upgrade:'websocket'}}));assert.equal(res.status,401);assert.deepEqual(await res.json(),{error:'token'});}
 });
+test('seat check: a plain GET with the token tells a live seat (426) from a gone one (401)',async()=>{
+ const live=await makeRoom().fetch(new Request('https://server/ws/room/AB23?token='+'a'.repeat(32)));
+ assert.equal(live.status,426);assert.deepEqual(await live.json(),{error:'upgrade'});
+ for(const patch of [{r:null},{}]){const gone=await Object.assign(makeRoom(),patch).fetch(new Request('https://server/ws/room/AB23?token='+'c'.repeat(32)));assert.equal(gone.status,401);assert.deepEqual(await gone.json(),{error:'token'});}
+});
 test('kick revokes token, closes socket and preserves seat position',async()=>{
  const r=makeRoom(),host=sock(),guest=sock();r.clients.set(host,{seat:0});r.clients.set(guest,{seat:1});await r.message(host,JSON.stringify({t:'lobby',action:'kick',seat:1}));assert.deepEqual(guest.closed,{code:4001,reason:'kicked'});assert.equal(r.r.seats.length,2);assert.equal(r.r.seats[1].token,'');assert(!r.clients.has(guest));
 });

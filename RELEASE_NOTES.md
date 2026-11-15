@@ -1,5 +1,33 @@
 # Release Notes
 
+## v0.29 — Community bug fixes from bitwize
+Every fix in this release was found, reported and fixed by **bitwize** ([bitwize-music](https://github.com/bitwize-music) on GitHub): 18 pull requests, each with tests that showed the bug and proved the fix. Thank you, bitwize!
+
+**Rules and bots**
+- The Mog printings of Grass, CTF Bangers, Walmart Parking Lot, pTFS and Makeshift Lectern (Touch Mog, Mog's CTF Bangers, Mogmart Parking Lot, pTFMOG, Mog's Makeshift Lectern) now apply their effects, in Mog Variant and in custom decks. What is Truth? no longer becomes free through Walmart Parking Lot.
+- DEFCON with a human at the table: choosing who gets the Rickroll no longer fails, and DEFCON no longer ends its turn early after waiting for a human's answer.
+- Custom-deck bots no longer learn which cards O.P.R.A.H. draws into another player's hidden hand.
+
+**Online**
+- Mog Variant and custom-deck online games no longer stop following the game right after it starts.
+- A player who comes back after the game ended is told it's over, instead of seeing a frozen board.
+- After **Remove seat**, a kick while offline or a closed room, the game stops showing "Reconnecting…" forever. It asks the server whether the seat still exists and only gives it up when the server says it's gone, so a bad connection or busy venue Wi-Fi never costs you your seat.
+- Lobby: Start in a room created before a server update says so instead of starting a game no one can join; an old custom-deck roll no longer shows up in later games; a double-tapped Start no longer says the servers are full.
+- The game server no longer logs an error every time a connection drops.
+
+**Menus, stats and saves**
+- Android Back on the Stats screen no longer closes the app, and Escape on the browser version's main menu no longer stops the game.
+- The main menu remembers the player count, keeps your custom deck selected after you rename it, and saves music volume changed with the mouse wheel or the keyboard.
+- The deck editor asks before throwing away unsaved changes.
+- If you're knocked out of a 3–4 player offline game, Resume game no longer brings you back alive.
+- Lifetime stats: a draw no longer counts as a loss, a win after rejoining an online game no longer sets Fastest win from the turns since the rejoin, online custom-deck games are filed correctly, and players without a Hero no longer get "as —" in shared results.
+
+**Builds and tests**
+- The Android and Windows builds carry the right version number again (they were stuck at 0.25), and a test now catches a forgotten bump.
+- Downloads no longer include files the game never uses (about 0.5 MB): the rules sources, the 100 custom decks and the old baseline bots.
+- A release can no longer accidentally include a debug-signed Android app.
+- GitHub now runs the rules and bot checks on every pull request and fails a test that prints a script error or hangs; a flaky test got a fixed board; the README's test instructions no longer wipe your own stats, saves and decks.
+
 ## v0.28 — New phone menu, and scrolling fixed in phone browsers
 **New phone menu**
 - On phones the main menu now uses two columns across the landscape screen and fits on one screen, no scrolling needed. On the left: your handle, adversary and number of players. On the right: card set, starting life and banned cards, Start Game, Play online, and the help buttons.

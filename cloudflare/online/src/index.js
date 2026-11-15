@@ -154,11 +154,13 @@ export class Room extends DurableObject {
   async fetch(req) {
     try {
       if(!originAllowed(req.headers.get('Origin')))fail('origin',403);
-      if(req.headers.get('Upgrade')?.toLowerCase()!=='websocket')fail('upgrade',426);
       if(this.r&&hostCloseDue(this.r))await this.closeByHost();
       if(this.closing||!this.r||roomExpired(this.r))fail('token',401);
       const t=new URL(req.url).searchParams.get('token');if(!validToken(t))fail('token',401);
       const seat=socketSeat(this.r,t);if(seat<0)fail('token',401);
+      // Seat check: a plain GET with the token answers 426 while the seat exists and 401 once it's gone, so a
+      // client whose sockets keep failing (rate limit, a proxy) can tell a revoked seat from a network problem.
+      if(req.headers.get('Upgrade')?.toLowerCase()!=='websocket')fail('upgrade',426);
       const pair=new WebSocketPair(), ws=pair[1];ws.accept();for(const [old,c]of this.clients)if(c.seat===seat){this.clients.delete(old);old.close(4000,'replaced');}this.clients.set(ws,{seat});
       this.r.emptySince=null;if(seat===this.r.host_seat)delete this.r.hostGoneAt;await this.save();if(this.closing){this.clients.delete(ws);ws.close(1000,'expired');fail('token',401);}
       ws.addEventListener('message',e=>this.ctx.waitUntil(this.message(ws,e.data).catch(e=>this.send(ws,{t:'error',reason:e.status?e.message:'server',...e.extra}))));
