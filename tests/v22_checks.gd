@@ -34,6 +34,8 @@ func run():
  root.get_node("Sfx").auto_end_turn = false
  table = load("res://scenes/table.tscn").instantiate()
  table.auto_drive = false
+ # A fixed board: the card reserved below (the first Center Row card, Share a Link) asks nothing when bought.
+ table.seed_value = 22
  root.add_child(table)
  await frames()
  var engine = table.engine
