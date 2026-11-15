@@ -26,6 +26,15 @@ func find_text(node, text):
  for b in buttons(node, []):
   if b.text.begins_with(text): return b
  return null
+func prompt(text):
+ for child in table.get_children():
+  if child is PanelContainer and named(child, "DecisionDone") != null and not child.is_queued_for_deletion() and text in child.get_child(0).get_child(0).get_parsed_text(): return child
+ return null
+func until(condition: Callable, limit = 600) -> bool:
+ for i in limit:
+  if condition.call(): return true
+  await process_frame
+ return condition.call()
 func run():
  # A phone held sideways: wide and short.
  root.size = Vector2i(1900, 860)
@@ -86,6 +95,53 @@ func run():
   table.close_inspect()
   table.answered.emit([])
   await frames()
+ await reaction_viewers()
  style.compact_override = null
  print("v22 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+# TOCTOU's extra turn runs inside the bot's turn, where the table counts as driving a bot. It's still your turn:
+# Open board and the Deck / Discard button must open.
+func reaction_viewers():
+ table.queue_free()
+ var settings = root.get_node("Sfx")
+ var confirm = settings.confirm_end_turn
+ settings.confirm_end_turn = false
+ var saved_game = FileAccess.get_file_as_bytes(SaveGame.PATH) if FileAccess.file_exists(SaveGame.PATH) else null
+ table = load("res://scenes/table.tscn").instantiate()
+ table.auto_drive = false
+ table.bot_pace = 0
+ table.seed_value = 7
+ root.add_child(table)
+ await frames(6)
+ while table.engine.active().is_bot: await table.drive_reaction(table.engine.active())
+ # You're at 1 life with TOCTOU in your next hand and a permanent in your rig; the bot holds an Attack.
+ var p = table.engine.state.players[0]
+ p.life = 1
+ p.deck.assign([CardInstance.new(99600, "TOCTOU", 0)] + range(1, 5).map(func(i): return CardInstance.new(99600 + i, "Hacking", 0)))
+ p.play_area.append(CardInstance.new(99610, "Bribery", 0))
+ table.engine.state.players[1].hand.assign([CardInstance.new(99609, "Damage", 1)])
+ table.redraw()
+ await frames()
+ table.auto_drive = true
+ table.end_button.pressed.emit()
+ var asked = await until(func(): return prompt("Use TOCTOU") != null)
+ if asked: find_text(prompt("Use TOCTOU"), "Yes").pressed.emit()
+ var saved = await until(func(): return table.banner.text.begins_with("Your turn") and not table.end_button.disabled)
+ verify(asked and saved and table.driving and table.engine.reaction_depth == 1, "TOCTOU gives you a reaction turn inside the bot's turn")
+ for entry in [["Rig: 1", "Open board", "Your rig & reserved"], ["Deck ", "Deck / Discard", "Your discard"]]:
+  var viewer = find_text(table, entry[0])
+  if viewer != null: viewer.pressed.emit()
+  await frames()
+  verify(prompt(entry[2]) != null, "%s opens during a TOCTOU reaction turn" % entry[1])
+  if table.pending: table.go_back()
+  await frames()
+ table.end_button.pressed.emit()
+ await until(func(): return not table.driving and not table.engine.busy)
+ table.queue_free()
+ await frames()
+ settings.confirm_end_turn = confirm
+ if saved_game == null: SaveGame.remove()
+ else:
+  var file = FileAccess.open(SaveGame.PATH, FileAccess.WRITE)
+  file.store_buffer(saved_game)
+  file.close()
