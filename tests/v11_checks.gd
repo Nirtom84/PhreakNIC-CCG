@@ -174,5 +174,57 @@ func run():
   for script_name in DirAccess.get_files_at(dir):
    if script_name.ends_with(".gd") and FileAccess.get_file_as_string(dir + "/" + script_name).contains("JavaScriptBridge" + ".eval("): eval_users.append(script_name)
  verify(eval_users.is_empty(), "No script uses JavaScriptBridge.eval: %s" % [eval_users])
+ await stall_checks()
  print("V11 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+func seated_room() -> Array:
+ var server = make_room()
+ server.running = true
+ server.engine.state.turn = 1
+ var clients = []
+ for seat in 2:
+  var pair = LoopbackTransport.pair()
+  server.attach(pair[0])
+  var client = NetClient.new()
+  root.add_child(client)
+  client.connect_to(pair[1], seat, server.tokens[seat])
+  clients.append(client)
+ await frames()
+ return [server, clients]
+## One player must not be able to hold a game forever (security scan, v0.30).
+func stall_checks():
+ # Pointless actions reset the idle timer, but not the hard per-turn limit.
+ var made = await seated_room()
+ var server = made[0]
+ var clients = made[1]
+ var active = server.engine.active().seat
+ var turn = server.engine.state.turn
+ for i in 5:
+  time += 100
+  clients[active].send_action("play_basics")
+  await frames()
+ verify(server.engine.state.turn == turn, "Actions keep the turn alive before the hard limit")
+ time += 101
+ for i in 300:
+  if server.engine.state.turn > turn: break
+  await process_frame
+ verify(server.engine.state.turn > turn, "A turn kept alive with pointless actions ends at the hard limit")
+ server.running = false
+ # A human reaction turn (TOCTOU) that never ends is finished by a bot after 180 idle seconds.
+ made = await seated_room()
+ server = made[0]
+ var results = []
+ var reacting = server.engine.state.players[0]
+ if server.engine.state.active_seat == 0: server.engine.state.active_seat = 1
+ collect_reaction(server.engine, results)
+ await frames()
+ verify(server.engine.reaction_depth > 0 and server.engine.active() == reacting, "Human reaction turn is waiting")
+ time += 179
+ await frames()
+ verify(results.is_empty(), "No takeover of a reaction turn before 180 seconds")
+ time += 2
+ for i in 300:
+  if not results.is_empty(): break
+  await process_frame
+ verify(not results.is_empty() and server.engine.reaction_depth == 0, "An idle reaction turn is finished by a bot")
+ server.running = false

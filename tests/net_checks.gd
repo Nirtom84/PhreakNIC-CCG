@@ -320,7 +320,17 @@ func bot_names():
  a.queue_free()
  b.queue_free()
  restored.queue_free()
+func malformed_messages():
+ var client = NetClient.new()
+ root.add_child(client)
+ for message in [{"t": "welcome", "seat": "bad", "seats": []}, {"t": "log", "text": []}, {"t": "view", "state": []}, {"t": "prompt", "id": 1}, {"t": "event", "kind": "waiting", "seat": []}, {"t": "error", "reason": {}}]:
+  client._receive(message)
+ verify(client.seat == -1 and client.log_history.is_empty() and client.engine.state == null and client.prompts.is_empty(), "Malformed messages leave client unchanged")
+ verify(NetView.apply({"objects": [], "state": {}}) == null, "Incomplete view ignored")
+ verify(NetView.apply({"objects": [{"type": "card", "data": {"attached": [{"ref": 999}]}}], "state": {}}) == null, "Invalid view references ignored")
+ client.free()
 func run():
+ malformed_messages()
  await bot_names()
  transport_checks()
  await games()

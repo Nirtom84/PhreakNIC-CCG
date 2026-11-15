@@ -37,6 +37,21 @@ trap 'rm -f -- "$assetsignore_path"; rm -rf -- "$DOCKER_CONFIG"' EXIT
 
 cd cloudflare/site
 "$WRANGLER" r2 bucket create "$BUCKET" 2>/dev/null || true   # no-op if it already exists
+# Verify both immutable assets before uploading either one. A failed lookup is
+# accepted only for an explicit missing-object response; auth/network errors stop.
+for asset in index.pck index.wasm; do
+ remote_file="$DOCKER_CONFIG/$asset"
+ lookup_log="$DOCKER_CONFIG/lookup.log"
+ if "$WRANGLER" r2 object get "$BUCKET/web/$VERSION/$asset" --file "$remote_file" --remote >"$lookup_log" 2>&1; then
+  if ! cmp -s "$remote_file" "../../build/web/$asset"; then
+   echo "Version $VERSION already has different $asset bytes. Bump the project version before deploying." >&2
+   exit 1
+  fi
+ elif ! grep -Eq 'NoSuchKey|The specified key does not exist' "$lookup_log"; then
+  echo "Cannot verify remote version $VERSION; refusing to upload. Check R2 access and retry." >&2
+  exit 1
+ fi
+done
 "$WRANGLER" r2 object put "$BUCKET/$KEY" --file ../../build/web/index.wasm --content-type application/wasm --remote
 "$WRANGLER" r2 object put "$BUCKET/$PCK_KEY" --file ../../build/web/index.pck --content-type application/octet-stream --remote
 "$WRANGLER" deploy --var "WASM_KEY:$KEY" --var "PCK_KEY:$PCK_KEY"

@@ -198,7 +198,11 @@ func _ready():
   bot_pace = Sfx.saved_pace(resume_data.table)
   engine.deciders = choices
   for p in engine.state.players.slice(1): engine.deciders.append(BotDecider.new(engine, p.difficulty))
-  log_entries = resume_data.table.get("log_entries", [resume_data.table.log]).slice(-400)
+  # Saves store plain log text (v0.30+), escaped and re-linked here. Older saves stored display markup: strip its
+  # tags first so a resumed log doesn't show them, and never render stored markup as-is.
+  var old_markup = RegEx.create_from_string("\\[/?[a-z_]+(=[^\\]]*)?( [^\\]]*)?\\]")
+  var plain_log = bool(resume_data.table.get("plain_log", false))
+  log_entries = resume_data.table.get("log_entries", [resume_data.table.log]).slice(-400).map(func(entry): return link_cards(str(entry) if plain_log else old_markup.sub(str(entry), "", true)))
   for entry in log_entries: log_view.append_text(entry)
   if not log_entries.is_empty(): log_ticker.text = log_view.get_parsed_text().strip_edges().split("\n")[-1]
   for p in engine.state.players:
@@ -1345,6 +1349,15 @@ func append_log(message: String):
     if name_part == card.name or name_part.begins_with(card.name + " for "):
      spotlight(card.id, "%s %s %s" % [seat_name(seat), {"plays": "played", "buys": "bought", "reserves": "reserved"}[action], card.name])
      break
+func plain_log_entries() -> Array:
+ var result = []
+ var parser = RichTextLabel.new()
+ parser.bbcode_enabled = true
+ for entry in log_entries:
+  parser.text = entry
+  result.append(parser.get_parsed_text())
+ parser.free()
+ return result
 func escaped(text: String) -> String:
  return UIStyle.escape_bbcode(text)
 func link_cards(message: String) -> String:
@@ -1742,7 +1755,7 @@ func save_game() -> bool:
  if not can_save(): return false
  saving = true
  auto_end_elapsed = 0
- var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[human_seat], "bot_pace": bot_pace, "log": "".join(log_entries), "log_entries": log_entries, "lifetime_key": lifetime_key, "match_stats": match_stats.to_dict()})
+ var ok = SaveGame.write(engine, {"seat_names": seat_names, "seat_heroes": seat_heroes, "player_count": player_count, "starting_life": starting_life, "difficulties": engine.state.players.map(func(p): return p.difficulty), "handle": seat_names[0], "hero_id": seat_heroes[human_seat], "bot_pace": bot_pace, "log": log_view.get_parsed_text(), "log_entries": plain_log_entries(), "plain_log": true, "lifetime_key": lifetime_key, "match_stats": match_stats.to_dict()})
  saving = false
  return ok
 func auto_save():

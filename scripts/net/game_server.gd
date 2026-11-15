@@ -30,6 +30,14 @@ var idle_turn = -1
 var idle_seat = -1
 var idle_streak: Dictionary = {}
 var idle_bot: Dictionary = {}
+# Hard limits no action can reset (a no-op Play Basics resets the idle timer): a whole turn, and a TOCTOU reaction turn.
+const TURN_LIMIT = 600.0
+const REACTION_LIMIT = 300.0
+var turn_used = 0.0
+var last_tick = 0.0
+var reaction_key: Array = []
+var reaction_at = 0.0
+var reaction_began = 0.0
 var permanent_idle: Dictionary = {}
 var announced_dead: Dictionary = {}
 # Diagnostics: one line per notable server event, printed to stdout and forwarded over the room link.
@@ -247,6 +255,7 @@ func _receive(transport, message: Dictionary):
 			diag("seat %d invalid answer to %s: got %s" % [seat, prompt_shape(request.data), value_shape(message.get("value"))], "answer:%d" % seat)
 			_error(transport, "invalid answer"); return
 		idle_at = now()
+		reaction_at = now()
 		idle_warned = false
 		_complete(id, message.value)
 	elif message.get("t") == "action":
@@ -276,6 +285,7 @@ func _action(transport, seat: int, message: Dictionary):
 	if not legal: _error(transport, "illegal action"); return
 	diag("seat %d action %s" % [seat, kind], "action:%d" % seat)
 	idle_at = now()
+	reaction_at = now()
 	idle_warned = false
 	var depth = engine.reaction_depth
 	locks[depth] = true
@@ -353,10 +363,15 @@ func _begin_idle_turn(p):
 	idle_turn = engine.state.turn
 	idle_seat = p.seat
 	idle_at = now()
+	turn_used = 0.0
 	idle_warned = false
 func _idle_tick():
+	var step = maxf(0.0, now() - last_tick)
+	last_tick = now()
 	if engine.reaction_depth > 0:
+		# The interrupted turn's player isn't charged while someone else reacts.
 		idle_at = now()
+		_reaction_idle_tick()
 		return
 	var p = engine.active()
 	if idle_turn != engine.state.turn or idle_seat != p.seat: _begin_idle_turn(p)
@@ -364,16 +379,37 @@ func _idle_tick():
 	if engine.busy or not pending.is_empty() or not locks.is_empty():
 		idle_at = now()
 		return
+	# Only time the player could act counts toward the hard limit (not prompts to others or rules resolving).
+	turn_used += step
 	var elapsed = now() - idle_at
-	if elapsed >= 120 and not idle_warned:
+	var overdue = turn_used >= TURN_LIMIT
+	if elapsed >= 120 and not idle_warned and not overdue:
 		idle_warned = true
 		diag("seat %d idle warning after %.0fs" % [p.seat, elapsed])
 		_send(p.seat, {"t": "event", "kind": "idle_warning", "seconds_left": 60})
-	if elapsed >= 180:
+	if elapsed >= 180 or overdue:
 		idle_streak[p.seat] = idle_streak.get(p.seat, 0) + 1
 		idle_bot[p.seat] = true
 		if idle_streak[p.seat] >= 3: permanent_idle[p.seat] = true
 		diag("seat %d idle for %.0fs; bot finishes the turn (streak %d%s)" % [p.seat, elapsed, idle_streak[p.seat], ", seat now bot-controlled" if permanent_idle.has(p.seat) else ""])
+		engine.say(seats[p.seat].name + " was idle; a bot finished their turn")
+## A human's reaction turn (TOCTOU) gets the same idle rules as a normal turn, plus its own hard limit; a bot
+## finishes it otherwise, so one player can't hold everyone's game forever.
+func _reaction_idle_tick():
+	var p = engine.active()
+	var key = [engine.reaction_depth, p.seat, engine.state.turn]
+	if key != reaction_key:
+		reaction_key = key
+		reaction_at = now()
+		reaction_began = now()
+	if engine.state.finished or seats[p.seat].bot or not connections.has(p.seat) or _takeover(p.seat): return
+	# The interrupted action keeps its lock one level down; only this level's lock or this seat's prompt pauses the clock.
+	if engine.busy or locks.has(engine.reaction_depth) or pending.values().any(func(r): return r.seat == p.seat):
+		reaction_at = now()
+		return
+	if now() - reaction_at >= 180 or now() - reaction_began >= REACTION_LIMIT:
+		idle_bot[p.seat] = true
+		diag("seat %d idle in a reaction turn; bot finishes it" % p.seat)
 		engine.say(seats[p.seat].name + " was idle; a bot finished their turn")
 func _drive_reaction(p):
 	var driver = BotPlayer.new(engine)

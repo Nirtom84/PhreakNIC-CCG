@@ -42,6 +42,7 @@ func send_emote(id: int):
 func answer(id: String, value): transport.send({"t": "answer", "id": id, "value": value})
 func _receive(raw: Dictionary):
 	var message = NetTransport.normalize(raw)
+	if not message is Dictionary or not valid_message(message): return
 	message_received.emit(message)
 	match message.get("t"):
 		"welcome":
@@ -53,7 +54,9 @@ func _receive(raw: Dictionary):
 			seat = message.seat
 			seats = message.seats
 		"view":
-			engine.state = NetView.apply(message.state)
+			var state = NetView.apply(message.state)
+			if state == null: return
+			engine.state = state
 			engine.deciders.clear()
 			for p in engine.state.players: engine.deciders.append(BotDecider.new(engine, 1))
 			can_act = message.state.ready
@@ -75,6 +78,37 @@ func _receive(raw: Dictionary):
 			event.emit(message)
 		"game_over": game_over.emit()
 		"error": error.emit(message.reason)
+static func valid_card(data) -> bool:
+	if not data is Dictionary or not data.get("id") is String: return false
+	for key in ["uid", "owner", "controller", "counters"]:
+		if not data.get(key) is int: return false
+	return true
+func valid_message(data: Dictionary) -> bool:
+	if data.get("type") == "emote": return data.size() == 3 and data.get("seat") is int and data.seat >= 0 and data.seat < 4 and data.get("id") is int and data.id >= 0 and data.id < 8
+	if not data.get("t") is String: return false
+	match data.t:
+		"welcome":
+			return data.get("seat") is int and data.get("seats") is Array and data.get("log", []) is Array and data.get("log", []).all(func(v): return v is String)
+		"view": return data.get("state") is Dictionary and data.state.get("ready") is bool and data.get("timers", []) is Array and data.get("timers", []).all(func(v): return v is Dictionary)
+		"prompt_done": return data.get("id") is String
+		"log": return data.get("text") is String
+		"error": return data.get("reason") is String
+		"event": return data.get("kind") is String and (data.kind not in ["waiting", "waiting_done"] or data.get("seat") is int)
+		"prompt":
+			if not data.get("id") is String or not data.get("kind") is String or not data.get("text") is String: return false
+			if scripted and (engine.state == null or seat < 0 or seat >= engine.state.players.size()): return false
+			match data.kind:
+				"choose_option", "choose_options":
+					return data.get("options") is Array and data.options.all(func(v): return v is String) and (data.kind == "choose_option" or data.get("count") is int)
+				"choose_cards": return data.get("cards") is Array and data.cards.all(valid_card) and data.get("min") is int and data.get("max") is int
+				"choose_player": return data.get("players") is Array and data.players.all(func(v): return v is int and v >= 0 and engine.state != null and v < engine.state.players.size())
+				"choose_number": return data.get("allowed") is Array and data.allowed.all(func(v): return v is int)
+				"allocate_prevention":
+					return data.get("amount") is int and data.get("sources") is Array and data.sources.all(func(v): return v is Dictionary and (v.get("card") == null or valid_card(v.card)) and v.get("capacity") is int and v.get("full") is bool and v.get("name", "") is String)
+				"name_a_card": return data.get("card_pool") is String
+				"confirm": return true
+			return false
+	return true
 static func prompt_card(data):
 	if data == null: return null
 	var card = CardInstance.new(data.uid, data.id, data.owner)

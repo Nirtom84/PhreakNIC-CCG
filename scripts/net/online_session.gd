@@ -74,6 +74,7 @@ func _closed(endpoint):
 func _seat_gone() -> bool:
 	var http = HTTPRequest.new()
 	http.timeout = 20
+	http.body_size_limit = 1024 * 1024
 	add_child(http)
 	var result = [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray()]
 	var url = str(credential.server) + "/ws/room/" + str(credential.code) + "?token=" + str(credential.token).uri_encode()

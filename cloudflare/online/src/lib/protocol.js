@@ -1,13 +1,16 @@
 export const ALPHABET = '23456789ABCDEFGHJKMNPQRSTUVWXYZ';
 export function code(random = crypto) {
   let result = '';
-  while (result.length < 4) {
+  while (result.length < CODE_LENGTH) {
     const bytes = random.getRandomValues(new Uint8Array(8));
-    for (const b of bytes) if (b < Math.floor(256 / ALPHABET.length) * ALPHABET.length && result.length < 4) result += ALPHABET[b % ALPHABET.length];
+    for (const b of bytes) if (b < Math.floor(256 / ALPHABET.length) * ALPHABET.length && result.length < CODE_LENGTH) result += ALPHABET[b % ALPHABET.length];
   }
   return result;
 }
-export const validCode = value => typeof value === 'string' && value.length === 4 && [...value].every(c => ALPHABET.includes(c));
+// Six characters (31^6, about 887 million codes) so private rooms can't be found by guessing; four-character
+// codes from before v0.30 are still accepted while those rooms live out their 8 hours.
+export const CODE_LENGTH = 6;
+export const validCode = value => typeof value === 'string' && (value.length === CODE_LENGTH || value.length === 4) && [...value].every(c => ALPHABET.includes(c));
 export const token = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
 export const validToken = value => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
 export function originAllowed(origin) {

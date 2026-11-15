@@ -1,5 +1,21 @@
 # Release Notes
 
+## v0.30 — Security hardening for online play
+After a full security review of the game and the online server, this release closes several ways online play could be abused. No player data or secrets were exposed; these were ways to disrupt or cheat in online games. Details stay private for now.
+
+**Online**
+- Joining a room is safer: a seat's key can only ever go to the player who joined it.
+- Room codes are now 6 characters, so private rooms can't be found by guessing. Old 4-character codes keep working until those rooms expire.
+- A player can no longer hold a game hostage. Every turn has a 10-minute limit that pointless actions can't reset, and an idle reaction turn (TOCTOU) is finished by a bot, just like a normal idle turn.
+- Starting games, creating rooms and joining are limited per player, sized for remote play, so one person can't use up the server for everyone.
+
+**Game**
+- Settings and saved-game files are read more strictly, so a tampered file can't make the game do anything unexpected.
+- The game checks what the server sends before using it.
+
+**Behind the scenes**
+- Website deploys refuse to overwrite a released version with different files, and the repository ignores key and credential files.
+
 ## v0.29 — Community bug fixes from bitwize
 Every fix in this release was found, reported and fixed by **bitwize** ([bitwize-music](https://github.com/bitwize-music) on GitHub): 18 pull requests, each with tests that showed the bug and proved the fix. Thank you, bitwize!
 

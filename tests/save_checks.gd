@@ -278,6 +278,25 @@ func ui():
  await process_frame
  verify(serialized(resumed.engine.state) == before, "Resume does not set up or start a turn")
  verify(resumed.log_view.get_parsed_text() == log_text and resumed.seat_names == names and resumed.seat_heroes == heroes, "Resume restores log, names and avatars")
+ var malicious = "[img]res://icon.svg[/img][url=x]y[/url]"
+ var hostile = load("res://scenes/table.tscn").instantiate()
+ hostile.auto_drive = false
+ hostile.resume_data = saved.duplicate(true)
+ hostile.resume_data.table.log_entries = [malicious]
+ root.add_child(hostile)
+ await process_frame
+ verify(hostile.log_view.get_parsed_text() == malicious, "Saved BBCode is shown literally")
+ hostile.queue_free()
+ # A save from before v0.30 stored display markup: its tags are stripped, never rendered.
+ var legacy = load("res://scenes/table.tscn").instantiate()
+ legacy.auto_drive = false
+ legacy.resume_data = saved.duplicate(true)
+ legacy.resume_data.table.erase("plain_log")
+ legacy.resume_data.table.log_entries = ["[color=#ffb000]Seat 1[/color] plays " + malicious]
+ root.add_child(legacy)
+ await process_frame
+ verify(legacy.log_view.get_parsed_text() == "Seat 1 plays res://icon.svgy", "Older saves' markup is stripped, not rendered")
+ legacy.queue_free()
  resumed.engine.finish(resumed.engine.active())
  verify(not FileAccess.file_exists(SaveGame.PATH), "Game over removes save")
  resumed.queue_free()

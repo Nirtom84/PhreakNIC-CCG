@@ -27,6 +27,20 @@ func run():
  style = load("res://scripts/ui/style.gd")
  for path in ["user://settings.cfg", SaveGame.PATH]:
   backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
+ var settings_file = FileAccess.open("user://settings.cfg", FileAccess.WRITE)
+ settings_file.store_string('[sound]\nvolume=0.1\n[bad]\nvalue=Object(Node,"name":"unsafe")\n')
+ settings_file.close()
+ var orphan_count = Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT)
+ verify(OnlineAPI.settings().get_sections().is_empty(), "Object settings rejected as defaults")
+ verify(Performance.get_monitor(Performance.OBJECT_ORPHAN_NODE_COUNT) == orphan_count, "Settings parser never constructs Node")
+ settings_file = FileAccess.open("user://settings.cfg", FileAccess.WRITE)
+ settings_file.store_string('[player]\nhandle="Object(Node) \\"Resource(x)\\""\n')
+ settings_file.close()
+ verify(OnlineAPI.settings().get_value("player", "handle", "") == 'Object(Node) "Resource(x)"', "Quoted text that looks like a constructor still loads")
+ for hostile in ['[bad]\nvalue=Object (Node,"name":"unsafe")\n', '[bad]\n; a comment with a quote "\nvalue=Resource ("res://icon.svg")\n; "\n', '[bad]\nvalue=[ Callable\t( ) ]\n']:
+  verify(OnlineAPI.unsafe_settings(hostile), "Constructor hidden by spacing or a quoted comment is refused")
+ verify(not OnlineAPI.unsafe_settings('[player]\nhandle="Object (Node)"\n; Object(x)\n[game]\nonline_seat={ "code": "ABCDEF", "seat": 1 }\n'), "Plain values, quoted text and comments are fine")
+ DirAccess.remove_absolute("user://settings.cfg")
  root.get_node("Sfx").visual_effects = false
  for web in [false, true]:
   style.web_override = web

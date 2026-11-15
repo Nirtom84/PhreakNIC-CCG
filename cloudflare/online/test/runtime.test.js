@@ -29,14 +29,14 @@ test('kick revokes token, closes socket and preserves seat position',async()=>{
  const r=makeRoom(),host=sock(),guest=sock();r.clients.set(host,{seat:0});r.clients.set(guest,{seat:1});await r.message(host,JSON.stringify({t:'lobby',action:'kick',seat:1}));assert.deepEqual(guest.closed,{code:4001,reason:'kicked'});assert.equal(r.r.seats.length,2);assert.equal(r.r.seats[1].token,'');assert(!r.clients.has(guest));
 });
 test('busy start never locks room or boots container',async()=>{
- const r=makeRoom(),host=sock();r.clients.set(host,{seat:0});r.env={LOBBY:binding({claim:async()=> 'busy'})};r.ensure=()=>assert.fail('boot');await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),e=>e.message==='busy'&&e.status===503);assert(!r.r.started);assert(!r.starting);
+ const r=makeRoom(),host=sock();r.clients.set(host,{seat:0});r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=> 'busy'})};r.ensure=()=>assert.fail('boot');await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),e=>e.message==='busy'&&e.status===503);assert(!r.r.started);assert(!r.starting);
 });
 test('Start after a deploy is refused with the room version, before claiming a slot',async()=>{
  const originalResponse=globalThis.Response,originalPair=globalThis.WebSocketPair,listeners={},sent=[],pending=[];
  globalThis.Response=class extends originalResponse {constructor(body,init){if(init?.status===101){super(null);Object.defineProperty(this,'status',{value:101});}else super(body,init);}};
  globalThis.WebSocketPair=class {constructor(){this[0]=sock();this[1]=Object.assign(sock(),{accept(){},addEventListener:(type,fn)=>listeners[type]=fn,send:v=>sent.push(JSON.parse(v))});}};
  try{
-  const r=makeRoom();r.r.version='0.26';r.ctx={waitUntil:p=>pending.push(p)};r.env={GAME_VERSION:'0.27',LOBBY:binding({claim:async()=>assert.fail('claim')})};r.ensure=()=>assert.fail('boot');
+  const r=makeRoom();r.r.version='0.26';r.ctx={waitUntil:p=>pending.push(p)};r.env={GAME_VERSION:'0.27',LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>assert.fail('claim')})};r.ensure=()=>assert.fail('boot');
   assert.equal((await r.fetch(new Request('https://server/ws/room/AB23?token='+'a'.repeat(32),{headers:{Upgrade:'websocket'}}))).status,101);
   // The player is told which version the room is on (online_api.gd's room_version text).
   listeners.message({data:JSON.stringify({t:'lobby',action:'start'})});await Promise.all(pending);
@@ -44,7 +44,7 @@ test('Start after a deploy is refused with the room version, before claiming a s
  }finally{globalThis.Response=originalResponse;globalThis.WebSocketPair=originalPair;}
 });
 test('a second Start while the first is claiming its slot is ignored, not reported as busy',async()=>{
- const r=makeRoom(),host=sock();let release;r.clients.set(host,{seat:0});r.stat=async()=>{};r.ensure=async()=>{};r.env={LOBBY:binding({claim:()=>new Promise(resolve=>release=resolve)})};
+ const r=makeRoom(),host=sock();let release;r.clients.set(host,{seat:0});r.stat=async()=>{};r.ensure=async()=>{};r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:()=>new Promise(resolve=>release=resolve)})};
  const start=()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),first=start();
  await start();release(null);await first;assert(r.r.started);
  // Other lobby actions in that moment are still refused.
@@ -115,7 +115,7 @@ test('deploy helpers remove private Docker config on success and failure without
    for(const [path,data]of [['project.godot','config/version="0.11"\n'],['build/server/phreaknic-server.x86_64','fake'],['build/web/index.html','fake'],['build/web/index.wasm','fake']])await fs.writeFile(join(root,path),data);
    // The scripts run `npm ci` and then the pinned wrangler from cloudflare/node_modules; fake both.
    await fs.writeFile(join(root,'bin/npm'),'#!/bin/sh\nexit 0\n',{mode:0o700});
-   await fs.writeFile(join(root,'cloudflare/node_modules/.bin/wrangler'),'#!/bin/sh\n[ "$(stat -c %a "$DOCKER_CONFIG")" = 700 ] || exit 99\nprintf "%s\\n" "$DOCKER_CONFIG" > "$TASK_LOG"\nprintf "credential" > "$DOCKER_CONFIG/config.json"\nexit "$TASK_EXIT"\n',{mode:0o700});
+   await fs.writeFile(join(root,'cloudflare/node_modules/.bin/wrangler'),'#!/bin/sh\ncase "$*" in *"object get"*) echo "The specified key does not exist." >&2; exit 1;; esac\n[ "$(stat -c %a "$DOCKER_CONFIG")" = 700 ] || exit 99\nprintf "%s\\n" "$DOCKER_CONFIG" > "$TASK_LOG"\nprintf "credential" > "$DOCKER_CONFIG/config.json"\nexit "$TASK_EXIT"\n',{mode:0o700});
    const result=spawnSync('bash',[join(root,'tools',helper)],{env:{...process.env,PATH:join(root,'bin')+':'+process.env.PATH,CLOUDFLARE_API_TOKEN:'test-placeholder',TASK_LOG:join(root,'config-path'),TASK_EXIT:String(exit)},encoding:'utf8'});assert.equal(result.status,exit,result.stderr);
    const config=(await fs.readFile(join(root,'config-path'),'utf8')).trim();await assert.rejects(()=>fs.stat(config),e=>e.code==='ENOENT');
    if(helper==='deploy_site.sh')await assert.rejects(()=>fs.stat(join(root,'build/web/.assetsignore')),e=>e.code==='ENOENT');
@@ -214,7 +214,7 @@ test('container setup includes configured pace and older rooms default to half a
   const r=makeRoom(),sent=[];r.r.bot_pace=pace;
   const ws={readyState:1,send(){},addEventListener(kind,callback){if(kind==='message')this.ready=callback;},accept(){this.ready({data:JSON.stringify({t:'ready'})});}};
   r.ctx={waitUntil(){},container:{running:true,setInactivityTimeout(){},getTcpPort(){return {fetch:async request=>request.url.endsWith('/health')?{status:200}:{webSocket:ws}};}}};
-  r.env={LOBBY:binding({claim:async()=>null,bump:async()=>{}})};r.watch=()=>{};r.broadcast=()=>{};r.linkSend=m=>sent.push(m);
+  r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>null,bump:async()=>{}})};r.watch=()=>{};r.broadcast=()=>{};r.linkSend=m=>sent.push(m);
   await r.recover();assert.equal(sent.find(m=>m.t==='setup').bot_pace,pace??0.5);
  }
 });
@@ -230,7 +230,7 @@ test('custom submissions are private, human-owned, withdrawable and cleared with
  await send(host,'settings',{card_pool:'custom'});await send(guest,'submit_deck',{code});await send(guest,'leave');assert.equal(r.r.seats[1].deck,undefined);
 });
 test('custom start requires submissions, setup carries sole winner and invalid winners fall back',async()=>{
- const r=makeRoom(),host=sock(),sent=[];r.clients.set(host,{seat:0});r.r.card_pool='custom';r.r.seats.forEach((s,i)=>s.name='p'+i);r.linkSend=m=>sent.push(m);r.stat=async()=>{};r.ensure=async()=>r.sendSetup();r.env={LOBBY:binding({claim:async()=>null})};
+ const r=makeRoom(),host=sock(),sent=[];r.clients.set(host,{seat:0});r.r.card_pool='custom';r.r.seats.forEach((s,i)=>s.name='p'+i);r.linkSend=m=>sent.push(m);r.stat=async()=>{};r.ensure=async()=>r.sendSetup();r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>null})};
  await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),/Someone needs to submit a deck/);
  r.r.seats[1].deck={name:'Only',count:60,code:'PNDK1.private'};await r.message(host,JSON.stringify({t:'lobby',action:'start'}));assert.equal(sent[0].custom_deck_code,'PNDK1.private');assert.deepEqual(r.r.deck_order,[1]);assert(!sent[0].deck_roll.join(' ').includes('D20'));
  r.r.deck_order=[1,0];r.r.deck_groups=[[1],[0]];r.r.seats[0].deck={name:'Next',count:60,code:'PNDK1.next'};await r.linkMessage({t:'setup_error',attempt:0,reason:'invalid'});assert.equal(sent.at(-1).custom_deck_code,'PNDK1.next');assert.equal(r.r.seats[1].deck,undefined);
@@ -238,14 +238,14 @@ test('custom start requires submissions, setup carries sole winner and invalid w
 });
 test('multiple submissions roll on the Worker, broadcast ties and send highest deck only',async()=>{
  const r=makeRoom(),host=sock(),messages=[],setups=[],original=crypto.getRandomValues.bind(crypto);let rolls=[14,14,3,10];
- r.r.card_pool='custom';r.r.seats.forEach((s,i)=>{s.name='p'+i;s.deck={name:'Deck'+i,count:60,code:'PNDK1.private'+i};});r.clients.set(host,{seat:0});host.send=v=>messages.push(JSON.parse(v));r.broadcastRoom=Room.prototype.broadcastRoom;r.linkSend=m=>setups.push(m);r.stat=async()=>{};r.ensure=async()=>r.sendSetup();r.env={LOBBY:binding({claim:async()=>null})};
+ r.r.card_pool='custom';r.r.seats.forEach((s,i)=>{s.name='p'+i;s.deck={name:'Deck'+i,count:60,code:'PNDK1.private'+i};});r.clients.set(host,{seat:0});host.send=v=>messages.push(JSON.parse(v));r.broadcastRoom=Room.prototype.broadcastRoom;r.linkSend=m=>setups.push(m);r.stat=async()=>{};r.ensure=async()=>r.sendSetup();r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>null})};
  crypto.getRandomValues=a=>{a[0]=rolls.shift();return a;};
  try{await r.message(host,JSON.stringify({t:'lobby',action:'start'}));}finally{crypto.getRandomValues=original;}
  assert.equal(setups[0].custom_deck_code,'PNDK1.private1');assert.deepEqual(r.r.deck_order,[1,0]);assert(messages.at(-1).deck_roll.join(' ').includes('Tie at 15'));assert(!JSON.stringify(messages).includes('PNDK1.'));
 });
 test('the deck roll is kept only for a custom start that goes through',async()=>{
  const r=makeRoom(),host=sock(),original=crypto.getRandomValues.bind(crypto),rolls=[14,3,12,5];let claims=0;
- r.r.card_pool='custom';r.r.seats.forEach((s,i)=>{s.name='p'+i;s.deck={name:'Deck'+i,count:60,code:'PNDK1.private'+i};});r.clients.set(host,{seat:0});r.stat=async()=>{};r.ensure=async()=>{};r.env={LOBBY:binding({claim:async()=>claims++?null:'busy'})};
+ r.r.card_pool='custom';r.r.seats.forEach((s,i)=>{s.name='p'+i;s.deck={name:'Deck'+i,count:60,code:'PNDK1.private'+i};});r.clients.set(host,{seat:0});r.stat=async()=>{};r.ensure=async()=>{};r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>claims++?null:'busy'})};
  const start=()=>r.message(host,JSON.stringify({t:'lobby',action:'start'}));
  crypto.getRandomValues=a=>{a[0]=rolls.shift();return a;};
  try{
@@ -254,4 +254,29 @@ test('the deck roll is kept only for a custom start that goes through',async()=>
  }finally{crypto.getRandomValues=original;}
  // Back in the lobby (every deck turned out invalid), a standard-set start shows no roll.
  r.r.started=false;r.r.card_pool='2026';await start();assert.deepEqual(r.r.deck_roll,[]);
+});
+test('a join returns the token it issued, never the next occupant\'s (kick + rejoin during the awaits)',async()=>{
+ const r=makeRoom();r.env={};r.r.version='0.30';r.r.seats[1]={bot:false,token:''};let gate;r.stat=()=>new Promise(resolve=>gate=resolve);
+ const first=r.joinRoom({name:'First',hero:'',version:'0.30'});
+ await new Promise(resolve=>setImmediate(resolve));
+ // While the first join waits, the host kicks seat 1 and a second player takes it.
+ r.r.seats[1]={bot:false,token:''};const g=gate;r.stat=async()=>{};const second=await r.joinRoom({name:'Second',hero:'',version:'0.30'});g();
+ await assert.rejects(first,e=>e.message==='full'&&e.status===409);
+ assert.equal(second.token,r.r.seats[1].token);
+});
+test('starts are bounded per room and per IP before any slot is claimed',async()=>{
+ let claims=0;const r=makeRoom(),host=sock();r.clients.set(host,{seat:0,ip:'1.2.3.4'});r.stat=async()=>{};r.ensure=async()=>{};
+ r.r.starts=5;r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>{claims++;return null;}})};
+ await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),e=>/too many times/.test(e.message));
+ let asked;r.r.starts=0;r.env={LOBBY:binding({allow:async(ip,kind)=>{asked=[ip,kind];return false;},claim:async()=>{claims++;return null;}})};
+ await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),e=>e.message==='rate_limit'&&e.status===429);
+ assert.deepEqual(asked,['1.2.3.4','start']);assert.equal(claims,0);assert(!r.r.started);assert(!r.starting);
+ r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>{claims++;return null;}})};await r.message(host,JSON.stringify({t:'lobby',action:'start'}));
+ assert.equal(claims,1);assert.equal(r.r.starts,1);assert(r.r.started);
+});
+test('a start refused for capacity refunds the start allowance',async()=>{
+ const refunds=[];const r=makeRoom(),host=sock();r.clients.set(host,{seat:0,ip:'5.6.7.8'});r.ensure=()=>assert.fail('boot');
+ r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>'busy',refund:async(ip,kind)=>refunds.push([ip,kind])})};
+ await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),e=>e.message==='busy');
+ assert.deepEqual(refunds,[['5.6.7.8','start']]);assert.equal(r.r.starts||0,0);
 });

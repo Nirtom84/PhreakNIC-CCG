@@ -6,8 +6,33 @@ static func settings() -> ConfigFile:
 	var config = ConfigFile.new()
 	var file = FileAccess.open("user://settings.cfg", FileAccess.READ)
 	if file != null and file.get_length() <= 65536:
-		if config.load("user://settings.cfg") != OK: config.clear()
+		var text = file.get_as_text()
+		if unsafe_settings(text): return config
+		if config.parse(text) != OK: config.clear()
+	for entry in [["game", "online_server", TYPE_STRING], ["ui", "emotes", TYPE_BOOL], ["ui", "log_open", TYPE_BOOL], ["ui", "tutorial_seen", TYPE_BOOL], ["ui", "layout", TYPE_STRING]]:
+		if config.has_section_key(entry[0], entry[1]) and typeof(config.get_value(entry[0], entry[1])) != entry[2]:
+			config.erase_section_key(entry[0], entry[1])
 	return config
+## ConfigFile's parser can build objects and load resources ("Object(...)", "Resource (...)"); settings only ever
+## hold plain values (strings, numbers, bools, arrays, dictionaries), so refuse any constructor call. Quoted text
+## (a handle, a deck name) and comments don't count; a quote inside a comment can't hide anything.
+static func unsafe_settings(text: String) -> bool:
+	var outside = ""
+	var quoted = false
+	var comment = false
+	var i = 0
+	while i < text.length():
+		var ch = text[i]
+		if comment:
+			if ch == "\n": comment = false; outside += ch
+		elif quoted:
+			if ch == "\\": i += 1
+			elif ch == "\"": quoted = false
+		elif ch == "\"": quoted = true
+		elif ch == ";" or ch == "#": comment = true
+		else: outside += ch
+		i += 1
+	return RegEx.create_from_string("[A-Za-z_][A-Za-z0-9_]*\\s*\\(").search(outside) != null
 static func server() -> String:
 	var override = OS.get_environment("PHREAKNIC_SERVER")
 	return (override if not override.is_empty() else str(settings().get_value("game", "online_server", DEFAULT_SERVER))).trim_suffix("/")
@@ -25,7 +50,7 @@ static func remember(value: Dictionary):
 	config.set_value("game", "online_seat", value)
 	config.save("user://settings.cfg")
 static func valid_code(code: String) -> bool:
-	return code.length() == 4 and Array(code.split("")).all(func(c): return c in ALPHABET)
+	return code.length() in [4, 6] and Array(code.split("")).all(func(c): return c in ALPHABET)
 static func invite_code(url: String) -> String:
 	var value = ""
 	if "/join/" in url: value = url.split("/join/")[1].split("?")[0].split("#")[0]
@@ -50,11 +75,13 @@ func request(method: int, path: String, body: Dictionary = {}, address: String =
 	var http = HTTPRequest.new()
 	add_child(http)
 	http.timeout = 20
+	http.body_size_limit = 1024 * 1024
 	var err = http.request(address + path, ["Content-Type: application/json"], method, JSON.stringify(body) if method != HTTPClient.METHOD_GET else "")
 	if err != OK:
 		http.queue_free()
 		return {"status": 0, "data": {}}
 	var result = await http.request_completed
 	http.queue_free()
+	if result[0] != HTTPRequest.RESULT_SUCCESS: return {"status": 0, "data": {}}
 	var data = JSON.parse_string(result[3].get_string_from_utf8())
 	return {"status": int(result[1]) if result[0] == HTTPRequest.RESULT_SUCCESS else 0, "data": data if data is Dictionary else {}}

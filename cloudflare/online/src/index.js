@@ -52,6 +52,7 @@ export default {async fetch(req,env) {
   }
   return response;
 }};
+const MAX_ROOMS=500, MAX_ROOM_STARTS=5;
 export class Lobby extends DurableObject {
   constructor(ctx,env) {
     super(ctx,env); this.sql=ctx.storage.sql;
@@ -65,12 +66,15 @@ export class Lobby extends DurableObject {
   }
   clean() {if(Date.now()-(this.cleanedAt||0)<60000)return;this.cleanedAt=Date.now();this.sql.exec('DELETE FROM daily WHERE day < ?',new Date(Date.now()-400*DAY).toISOString().slice(0,10));this.sql.exec('DELETE FROM games WHERE created < ?',Date.now()-90*DAY);this.sql.exec('DELETE FROM rooms WHERE expires <= ?',Date.now());this.sql.exec('DELETE FROM limits WHERE window <= ?',Date.now()-HOUR);}
   // Only list rooms players on the server's current version can join; older rooms linger until they expire.
-  list(version) {this.clean();return [...this.sql.exec('SELECT summary FROM rooms WHERE summary IS NOT NULL ORDER BY code')].map(r=>JSON.parse(r.summary)).filter(r=>(!version||r.version===version)&&r.created+ROOM_LIFETIME>Date.now()).slice(0,50);}
+  list(version) {this.clean();return [...this.sql.exec('SELECT summary FROM rooms WHERE summary IS NOT NULL ORDER BY code LIMIT ?',MAX_ROOMS)].map(r=>JSON.parse(r.summary)).filter(r=>(!version||r.version===version)&&r.created+ROOM_LIFETIME>Date.now()).slice(0,50);}
   reserve() {
-    this.clean();for(let i=0;i<100;i++){const c=code();const rows=[...this.sql.exec('INSERT OR IGNORE INTO rooms(code,expires) VALUES(?,?) RETURNING code',c,Date.now()+DAY)];if(rows.length)return c;} fail('capacity',503);
+    // A global cap on open rooms (started or not) bounds storage, sockets and listing work.
+    this.clean();if([...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE expires > ?',Date.now())][0].n>=MAX_ROOMS)fail('capacity',503);
+    for(let i=0;i<100;i++){const c=code();const rows=[...this.sql.exec('INSERT OR IGNORE INTO rooms(code,expires) VALUES(?,?) RETURNING code',c,Date.now()+DAY)];if(rows.length)return c;} fail('capacity',503);
   }
   upsert(c,s,expires,clients=0) {try{this.touch(c,clients);}catch(e){console.error('stats touch failed');}this.sql.exec('INSERT INTO rooms(code,summary,expires) VALUES(?,?,?) ON CONFLICT(code) DO UPDATE SET summary=excluded.summary, expires=excluded.expires',c,s?JSON.stringify(s):null,expires);}
   release(c) {this.sql.exec('DELETE FROM live WHERE code=?',c);}
+  refund(ip,kind) {this.sql.exec('UPDATE limits SET count=MAX(count-1,0) WHERE ip=? AND kind=?',ip,kind);}
   claim(c,created) {
     const now=Date.now(),day=new Date(now).toISOString().slice(0,10);this.sql.exec('DELETE FROM live WHERE expires<=?',now);
     const counted=[...this.sql.exec('SELECT code FROM live WHERE code=?',c)].length>0,live=[...this.sql.exec('SELECT COUNT(*) AS n FROM live')][0].n,daily=[...this.sql.exec('SELECT count FROM starts WHERE day=?',day)][0]?.count||0;
@@ -97,14 +101,13 @@ export class Lobby extends DurableObject {
     const connected=[...this.sql.exec('SELECT COALESCE(SUM(clients),0) AS n FROM games WHERE touched>=?',now-15*60000)][0].n;
     return {now:{open_rooms:[...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE summary IS NOT NULL')][0].n,...live,players_connected:connected},days:[...byDay.values()],totals,durations:{median_minutes:n?(durations[Math.floor((n-1)/2)]+durations[Math.floor(n/2)])/2:null,mean_minutes:n?durations.reduce((a,b)=>a+b,0)/n:null,count:n},recent:[...this.sql.exec('SELECT * FROM games ORDER BY created DESC LIMIT 50')].map(r=>({...r})),generated:now};
   }
-  locked(ip,kind) {const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0];return !rateDecision(r,Date.now(),kind==='admin'?10:300,HOUR).allowed;}
+  locked(ip,kind) {const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0];return !rateDecision(r,Date.now(),kind==='admin'?10:50,HOUR).allowed;}
   allow(ip,kind) {
     this.clean();const now=Date.now();
-    // Only joins to unknown rooms (code guessing) count as failures, and they never block reconnects:
-    // everyone at the con shares one IP, so one bad actor must not lock out everyone's sockets.
+    // Only joins to unknown rooms (code guessing) count as failures, and they never block reconnects.
     if(kind==='join'&&this.locked(ip,'failure'))return false;
-    // Sized for a whole con sharing one public IP; the global game caps bound the cost.
-    const limit={admin:10,create:200,join:600,ws:600,list:1200,failure:300}[kind]||300,span=['ws','list'].includes(kind)?60000:HOUR;
+    // Sized for remote play (one player per IP), with headroom for a household or a small club sharing one.
+    const limit={admin:10,create:30,join:60,ws:120,list:240,failure:50,start:20}[kind]||60,span=['ws','list'].includes(kind)?60000:HOUR;
     const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0],d=rateDecision(r,now,limit,span);
     this.sql.exec('INSERT INTO limits VALUES(?,?,?,?) ON CONFLICT(ip,kind) DO UPDATE SET window=excluded.window,count=excluded.count',ip,kind,d.window,d.count);return d.allowed;
   }
@@ -144,7 +147,9 @@ export class Room extends DurableObject {
   async joinRoom(data) {
     if(!this.r||roomExpired(this.r))fail('not_found',404);if(this.env.ONLINE_ENABLED==='0'){await lobby(this.env).bump(['refused.maintenance']);fail('maintenance',503);}joinVersion(data.version,this.r.version,this.env.GAME_VERSION);if(this.r.started)fail('started',409);
     const seat=this.r.seats.findIndex(s=>!s.bot&&!s.token);if(seat<0)fail('full',409);
-    const {platform:p,...who}=data;this.r.seats[seat]={...this.r.seats[seat],...who,token:token()};await this.stat('join',p);await this.save(true);this.broadcastRoom();return {seat,token:this.r.seats[seat].token};
+    const {platform:p,...who}=data;const issued=token();this.r.seats[seat]={...this.r.seats[seat],...who,token:issued};
+    // Return the token issued here, never whatever holds the seat after the awaits (a kick and a new join may land meanwhile).
+    await this.stat('join',p);await this.save(true);if(this.r.seats[seat]?.token!==issued)fail('full',409);this.broadcastRoom();return {seat,token:issued};
   }
   connected(seat) {return [...this.clients.values()].some(c=>c.seat===seat);}
   send(ws,v) {try{ws.send(JSON.stringify(v));}catch{}}
@@ -161,7 +166,7 @@ export class Room extends DurableObject {
       // Seat check: a plain GET with the token answers 426 while the seat exists and 401 once it's gone, so a
       // client whose sockets keep failing (rate limit, a proxy) can tell a revoked seat from a network problem.
       if(req.headers.get('Upgrade')?.toLowerCase()!=='websocket')fail('upgrade',426);
-      const pair=new WebSocketPair(), ws=pair[1];ws.accept();for(const [old,c]of this.clients)if(c.seat===seat){this.clients.delete(old);old.close(4000,'replaced');}this.clients.set(ws,{seat});
+      const pair=new WebSocketPair(), ws=pair[1];ws.accept();for(const [old,c]of this.clients)if(c.seat===seat){this.clients.delete(old);old.close(4000,'replaced');}this.clients.set(ws,{seat,ip:req.headers.get('CF-Connecting-IP')||'unknown'});
       this.r.emptySince=null;if(seat===this.r.host_seat)delete this.r.hostGoneAt;await this.save();if(this.closing){this.clients.delete(ws);ws.close(1000,'expired');fail('token',401);}
       ws.addEventListener('message',e=>this.ctx.waitUntil(this.message(ws,e.data).catch(e=>this.send(ws,{t:'error',reason:e.status?e.message:'server',...e.extra}))));
       const close=()=>this.ctx.waitUntil(this.disconnected(ws));ws.addEventListener('close',close);ws.addEventListener('error',close);
@@ -217,12 +222,17 @@ export class Room extends DurableObject {
         if(this.env.GAME_VERSION&&this.r.version!==this.env.GAME_VERSION)fail('room_version',409,{room:this.r.version});
         if(this.r.seats.length<2||!this.r.seats.some(s=>!s.bot&&s.token)||this.r.seats.some(s=>!s.bot&&!s.token))fail('seats');
         const ranked=this.r.card_pool==='custom'?deckRanking(this.r.seats):null;if(ranked&&!ranked.order.length)fail('Someone needs to submit a deck');
+        // Every start boots a paid game server and counts against the daily cap: bound retries per room and per IP
+        // (a custom deck that fails on the server returns the room to the lobby).
+        if((this.r.starts||0)>=MAX_ROOM_STARTS)fail('This room has been started too many times. Create a new room.');
         this.starting=true;try{
-          const refusal=await lobby(this.env).claim(this.r.code,this.r.created);if(refusal)fail(refusal,503);
+          if(!await lobby(this.env).allow(c.ip||'unknown','start'))fail('rate_limit',429);
+          // A refused claim (servers full) doesn't use up the player's start allowance.
+          const refusal=await lobby(this.env).claim(this.r.code,this.r.created);if(refusal){await lobby(this.env).refund(c.ip||'unknown','start');fail(refusal,503);}
           if(!this.r||roomExpired(this.r)){await lobby(this.env).release(this.r?.code||'');fail('busy',503);}
           // Only a start that goes through keeps a deck roll, and only a custom-deck one has any.
           this.r.deck_roll=ranked?ranked.lines:[];if(ranked){this.r.deck_order=ranked.order;this.r.deck_groups=ranked.groups;this.r.deck_attempt=0;}
-          this.r.started=true;await this.stat('start');await this.save(true);this.broadcastRoom();await this.ensure();return;
+          this.r.started=true;this.r.starts=(this.r.starts||0)+1;await this.stat('start');await this.save(true);this.broadcastRoom();await this.ensure();return;
         }finally{this.starting=false;}
       }else if(m.action==='kick') {
         kickSeat(this.r,c.seat,m.seat);this.r.seats[m.seat]={name:'',hero:'',bot:false,difficulty:0,token:''};for(const [s,v]of this.clients)if(v.seat===m.seat){this.clients.delete(s);s.close(4001,'kicked');}

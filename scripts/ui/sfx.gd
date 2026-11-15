@@ -62,7 +62,8 @@ func _ready():
  if (v is float or v is int) and is_finite(float(v)) and v >= 0 and v <= 1: volume = float(v)
  v = config.get_value("game", "card_pool", "2026")
  if v is String and v in ["2025", "2026", "2026mog", "custom"]: card_pool = v
- custom_deck_name = str(config.get_value("game", "custom_deck_name", "Tag Team")).left(40)
+ v = config.get_value("game", "custom_deck_name", "Tag Team")
+ if v is String: custom_deck_name = v.left(40)
  CardDB.select_pool(card_pool)
  v = config.get_value("player", "handle", "")
  if v is String: handle = clean_handle(v)

@@ -3,3 +3,13 @@
 /build/
 .wrangler/
 node_modules/
+
+.env
+.env.*
+*.keystore
+*.jks
+*.p12
+*.pem
+*.key
+.godot/export_credentials.cfg
+.dev.vars

@@ -146,7 +146,7 @@ func browser():
  var join_row = HBoxContainer.new()
  join_box.add_child(join_row)
  code_input = LineEdit.new()
- code_input.max_length = 4
+ code_input.max_length = 6
  code_input.placeholder_text = "CODE"
  code_input.custom_minimum_size = Vector2(260, 64)
  code_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL

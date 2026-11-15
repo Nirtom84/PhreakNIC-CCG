@@ -4,9 +4,9 @@ import {webcrypto} from 'node:crypto';
 import {ALPHABET,code,validCode,token,validToken,creation,identity,settings,difficulty,originAllowed,route,wrap,summary,isOpen,checkVersion,platform,constantTimeEqual,adminEnabled,statsDays,creationKeys} from '../src/lib/protocol.js';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 const input=()=>({name:' Nirtom ',hero:'nirtom',public:true,seats:[{bot:true,difficulty:0},{bot:false,difficulty:0}],card_pool:'2026',starting_life:0,version:'0.09'});
-test('codes use four unambiguous symbols and reject biased random bytes',()=>{
+test('codes use six unambiguous symbols and reject biased random bytes',()=>{
  assert(!/[01OIL]/.test(ALPHABET));
- let n=0;assert.equal(code({getRandomValues:a=>{a.fill(n++?0:255);return a;}}),'2222');
+ let n=0;assert.equal(code({getRandomValues:a=>{a.fill(n++?0:255);return a;}}),'222222');
  for(let i=0;i<100;i++)assert(validCode(code()));
  for(const s of ['ABCDX','ABO2','abc2','A/B2',''])assert(!validCode(s));
 });
@@ -107,4 +107,7 @@ test('D20 highest wins; tied submitters reroll and lower scores remain fallback 
 });
 test('lower D20 ties wait for fallback instead of rolling with the highest group',async()=>{
  const {deckRanking}=await import('../src/lib/protocol.js');let rolls=[20,8,8];const seats=['winner','a','b'].map(name=>({name,deck:{}}));const r=deckRanking(seats,()=>rolls.shift());assert.deepEqual(r.groups,[[0],[1,2]]);assert.equal(r.lines.length,1);let rerolls=[4,11];const next=deckRanking(seats,()=>rerolls.shift(),r.groups[1]);assert.deepEqual(next.order,[2,1]);
+});
+test('six-character room codes are generated; four-character codes from older rooms still route',()=>{
+ assert.equal(code().length,6);assert(route('GET','/ws/room/ABCDEF'));assert(route('GET','/ws/room/AB23'));assert(!route('GET','/ws/room/ABCDE'));
 });
