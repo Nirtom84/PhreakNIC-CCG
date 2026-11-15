@@ -316,10 +316,12 @@ static func music_controls(parent: Control):
 # Screen gestures own their stream; TouchInput handles the paired emulated mouse.
 static func outside_close(panel: Control, content: Control, close: Callable):
  panel.mouse_filter = Control.MOUSE_FILTER_STOP
- var gesture = {"down": false, "origin": Vector2.ZERO, "at": 0, "moved": false}
+ var gesture = {"down": false, "origin": Vector2.ZERO, "at": 0, "moved": false, "index": -1}
  panel.gui_input.connect(func(event):
   if event is InputEventMouse and event.device == InputEvent.DEVICE_ID_EMULATION: return
-  if (event is InputEventScreenTouch or event is InputEventScreenDrag) and event.index != 0: return
+  # Browsers give each new touch a higher id; follow the finger that started the gesture.
+  if event is InputEventScreenTouch and event.pressed and not gesture.down: gesture.index = event.index
+  if (event is InputEventScreenTouch or event is InputEventScreenDrag) and event.index != gesture.index: return
   var down = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed) or (event is InputEventScreenTouch and event.pressed)
   var up = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed) or (event is InputEventScreenTouch and not event.pressed)
   if not (event is InputEventMouse or event is InputEventScreenTouch or event is InputEventScreenDrag): return

@@ -13,6 +13,9 @@ var cancelled: bool = false
 var serial: int = 0
 var screen_gesture: bool = false
 var suppress_mouse_release: bool = false
+# Browsers number touches with ever-increasing ids (Android Chrome: 0, 1, 2...),
+# so follow the finger that started the gesture instead of assuming index 0.
+var touch_index: int = -1
 func register_card(control: Control, inspect: Callable):
  control.set_meta("inspect", inspect)
  cards.append(control)
@@ -62,7 +65,9 @@ func _input(event):
    return
  var down = (event is InputEventScreenTouch and event.pressed) or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and event.pressed)
  var up = (event is InputEventScreenTouch and not event.pressed) or (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT and not event.pressed)
- if screen and event.index != 0: return
+ if screen:
+  if down and (not active or not screen_gesture): touch_index = event.index
+  elif event.index != touch_index: return
  if down:
   screen_gesture = screen
   suppress_mouse_release = false

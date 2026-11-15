@@ -1,5 +1,15 @@
 # Release Notes
 
+## v0.28 — New phone menu, and scrolling fixed in phone browsers
+**New phone menu**
+- On phones the main menu now uses two columns across the landscape screen and fits on one screen, no scrolling needed. On the left: your handle, adversary and number of players. On the right: card set, starting life and banned cards, Start Game, Play online, and the help buttons.
+- Settings (auto-end turn, confirm end turn, sound, visual effects, volume, music, layout, bot pace and the app downloads) moved into a **Settings** pop-up. Close it with Done, Back, or a tap outside.
+- Text and buttons on the phone menu are about 30% bigger.
+- The desktop layout is unchanged.
+
+**Fix**
+- Swiping to scroll didn't work in Android Chrome after the first touch. Chrome numbers every new touch higher (0, 1, 2…) and the game only listened to touch number 0. It now follows whichever finger started the swipe. Tapping outside a pop-up to close it had the same bug and is fixed too.
+
 ## v0.27 — Fix: phone menu in landscape browsers
 **Fix**
 - On phones and tablets the main menu is now centred instead of pinned to the left edge, so a landscape phone browser (where the address bar makes the screen wide and short) no longer leaves half the screen empty. It re-centres when you rotate or the address bar hides.

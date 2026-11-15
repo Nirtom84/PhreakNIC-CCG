@@ -2,6 +2,9 @@ extends Control
 static var invite_consumed = false
 const PLAYER_COUNTS = [2, 3, 4]
 const RELEASES_URL = "https://github.com/Nirtom84/PhreakNIC-CCG/releases"
+const COMPACT_WIDTH = 2400
+# Phone browsers draw the 1080-tall layout on a ~400 CSS px screen; use the spare room for bigger text.
+const COMPACT_SCALE = 1.3
 var rules_overlay: Control
 var difficulty: OptionButton
 var handle_input: LineEdit
@@ -12,6 +15,10 @@ var ban_picker
 var bans_button: Button
 var custom_tile: Button
 var custom_deck: Dictionary = {}
+# Phone layout: two columns that fill the landscape screen; settings live in a pop-up.
+var compact_right: VBoxContainer
+var settings_box: VBoxContainer
+var settings_overlay: Control
 const DECK_BUILDER = preload("res://scripts/ui/deck_builder.gd")
 func _ready():
  if "--server" in OS.get_cmdline_user_args():
@@ -47,13 +54,13 @@ func _ready():
  var menu = VBoxContainer.new()
  menu.custom_minimum_size.x = 900
  menu.add_theme_constant_override("separation", 5)
- # Bound and center the compact column while retaining vertical touch scrolling.
+ # Phone layout: two columns across the landscape screen, so everything fits without scrolling.
+ # The scroll container stays as a fallback for unusually short screens.
  if UIStyle.compact():
   art.hide()
-  row.position = Vector2(32, 32)
   row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
   row.offset_left = 32
-  row.offset_top = 32
+  row.offset_top = 24
   row.offset_right = -32
   row.offset_bottom = -96
   var scroll = ScrollContainer.new()
@@ -61,14 +68,31 @@ func _ready():
   row.add_child(scroll)
   scroll.name = "CompactMenuScroll"
   scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-  scroll.add_child(menu)
-  menu.name = "CompactMenuColumn"
+  var columns = HBoxContainer.new()
+  columns.name = "CompactMenuColumn"
+  columns.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  columns.add_theme_constant_override("separation", 56)
+  scroll.add_child(columns)
+  menu.name = "CompactMenuLeft"
+  menu.custom_minimum_size.x = 0
   menu.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-  # The scrollbar takes space on the right; compensate so the column itself is centered.
+  menu.add_theme_constant_override("separation", 10)
+  columns.add_child(menu)
+  compact_right = VBoxContainer.new()
+  compact_right.name = "CompactMenuRight"
+  compact_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  compact_right.add_theme_constant_override("separation", 10)
+  columns.add_child(compact_right)
+  settings_box = VBoxContainer.new()
+  settings_box.name = "CompactMenuSettings"
+  settings_box.add_theme_constant_override("separation", 14)
+  settings_box.hide()
+  add_child(settings_box)
+  # The scrollbar takes space on the right; compensate so the columns themselves are centered.
   var fit_column = func():
    var bar = scroll.get_v_scroll_bar()
    var bar_width = bar.get_combined_minimum_size().x if bar.visible else 0.0
-   var width = minf(1200, maxf(0, size.x - 64 - bar_width))
+   var width = minf(COMPACT_WIDTH, maxf(0, size.x - 64 - bar_width))
    row.offset_left = (size.x - width) * 0.5
    row.offset_right = row.offset_left + width + bar_width - size.x
   resized.connect(fit_column)
@@ -156,6 +180,10 @@ func _ready():
   tile.button_group = group
   tile.button_pressed = i == Sfx.difficulty
   tile.custom_minimum_size = Vector2(215, 110)
+  if UIStyle.compact():
+   tile.set_meta("keep_size", true)
+   tile.custom_minimum_size = Vector2(0, 124)
+   tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
   tile.add_theme_font_size_override("font_size", 22 if UIStyle.compact() else 18)
   tile.add_theme_color_override("font_color", accents[i])
   tile.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, accents[i], 0))
@@ -163,7 +191,8 @@ func _ready():
  var configuration = HBoxContainer.new()
  menu.add_child(configuration)
  var players_box = VBoxContainer.new()
- configuration.add_child(players_box)
+ if UIStyle.compact(): menu.add_child(players_box)
+ else: configuration.add_child(players_box)
  UIStyle.label(players_box, "// PLAYERS", 18)
  count = OptionButton.new()
  count.visible = false
@@ -179,8 +208,16 @@ func _ready():
   seat.button_pressed = n == 2
   seat.custom_minimum_size.x = 96
   seat.add_theme_font_size_override("font_size", 14)
+  if UIStyle.compact():
+   seat.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+   seat.add_theme_font_size_override("font_size", 22)
+ if UIStyle.compact():
+  players_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+  configuration.queue_free()
+  menu = compact_right
  var sets_box = VBoxContainer.new()
- configuration.add_child(sets_box)
+ if UIStyle.compact(): menu.add_child(sets_box)
+ else: configuration.add_child(sets_box)
  UIStyle.label(sets_box, "// CARD SET", 18)
  var sets = VBoxContainer.new()
  sets_box.add_child(sets)
@@ -193,12 +230,18 @@ func _ready():
   tile.button_pressed = Sfx.card_pool == pool
   tile.custom_minimum_size = Vector2(550, 34)
   tile.add_theme_font_size_override("font_size", 16)
+  if UIStyle.compact():
+   tile.custom_minimum_size = Vector2(0, 64)
+   tile.add_theme_font_size_override("font_size", 22)
   tile.add_theme_stylebox_override("normal", UIStyle.box(UIStyle.PANEL, UIStyle.CYAN, 0))
   tile.add_theme_stylebox_override("pressed", UIStyle.box(UIStyle.PANEL.lightened(0.06), UIStyle.CYAN, 10))
  custom_tile = UIStyle.button(sets, "", choose_custom_deck)
  custom_tile.toggle_mode = true
  custom_tile.custom_minimum_size = Vector2(550, 34)
  custom_tile.add_theme_font_size_override("font_size", 16)
+ if UIStyle.compact():
+  custom_tile.custom_minimum_size = Vector2(0, 64)
+  custom_tile.add_theme_font_size_override("font_size", 20)
  custom_tile.clip_text = true
  custom_tile.button_group = pool_group
  custom_tile.button_pressed = Sfx.card_pool == "custom"
@@ -241,7 +284,11 @@ func _ready():
  UIStyle.button(help_row, "Decks (experimental)", open_decks)
  UIStyle.button(help_row, "Stats", func(): load("res://scripts/ui/stats_screen.gd").open(self))
  UIStyle.button(help_row, "Report a bug", func(): load("res://scripts/ui/bug_report.gd").open())
- var switches = HBoxContainer.new()
+ if UIStyle.compact():
+  UIStyle.button(help_row, "Settings", open_settings).name = "CompactMenuSettingsButton"
+  menu = settings_box
+  UIStyle.label(menu, "// SETTINGS", 26)
+ var switches = HFlowContainer.new() if UIStyle.compact() else HBoxContainer.new()
  menu.add_child(switches)
  var auto_end = CheckButton.new()
  auto_end.text = "Auto-end turn"
@@ -281,7 +328,7 @@ func _ready():
   Sfx.save())
  UIStyle.music_controls(volume_row)
  UIStyle.layout_setting(volume_row)
- Sfx.pace_option(help_row, Sfx.bot_pace, func(value): Sfx.bot_pace = value; Sfx.save())
+ Sfx.pace_option(menu if UIStyle.compact() else help_row, Sfx.bot_pace, func(value): Sfx.bot_pace = value; Sfx.save())
  UIStyle.button(menu, "Quit", func(): get_tree().quit()).visible = not UIStyle.is_web()
  if UIStyle.is_web():
   # Web version only: download the installable app, or browse every release.
@@ -292,6 +339,8 @@ func _ready():
    var url = RELEASES_URL + "/latest/download/" + item[1]
    UIStyle.button(downloads, item[0], func(): open_link(url))
   UIStyle.button(downloads, "All releases", func(): open_link(RELEASES_URL))
+ if UIStyle.compact(): UIStyle.primary(UIStyle.button(settings_box, "Done", close_settings))
+ if UIStyle.compact(): enlarge(compact_right.get_parent(), COMPACT_SCALE)
  if OS.has_feature("web") and not invite_consumed:
   invite_consumed = true
   var code = OnlineAPI.invite_code(str(JavaScriptBridge.get_interface("location").href))
@@ -349,6 +398,7 @@ func refresh_bans():
 func go_back():
  for child in get_children():
   if child.get_script() == DECK_BUILDER: child.back(); return
+ if close_settings(): return
  if is_instance_valid(ban_picker) and ban_picker.close_top(): return
  if is_instance_valid(hero_picker) and hero_picker.close_top(): return
  if is_instance_valid(rules_overlay): rules_overlay.queue_free()
@@ -431,3 +481,33 @@ func choose_custom_deck():
  add_child(builder)
  refresh_bans()
  Sfx.save()
+## Phone layout: the settings pop-up. The settings controls are built once and moved in and out.
+func open_settings():
+ if is_instance_valid(rules_overlay) or is_instance_valid(settings_overlay) or settings_box == null: return
+ var overlay = UIStyle.panel()
+ overlay.name = "CompactMenuSettingsOverlay"
+ overlay.add_to_group("touch_modal")
+ add_child(overlay)
+ var content = VBoxContainer.new()
+ overlay.add_child(content)
+ settings_box.reparent(content)
+ settings_box.show()
+ UIStyle.dialog(overlay, Vector2(1400, 520))
+ UIStyle.outside_close(overlay, content, close_settings)
+ settings_overlay = overlay
+func close_settings() -> bool:
+ if not is_instance_valid(settings_overlay): return false
+ settings_box.hide()
+ settings_box.reparent(self)
+ settings_overlay.queue_free()
+ settings_overlay = null
+ return true
+## Phone layout: scale text and touch targets up (the adversary tiles keep their size so four fit in a row).
+func enlarge(node: Node, factor: float):
+ for child in node.get_children():
+  if child is Control and not child.has_meta("keep_size"):
+   if child is Label or child is Button or child is LineEdit:
+    var current = child.get_theme_font_size("font_size")
+    child.add_theme_font_size_override("font_size", roundi(current * factor))
+   if child is Button or child is LineEdit: child.custom_minimum_size.y = roundf(maxf(child.custom_minimum_size.y, child.get_combined_minimum_size().y) * minf(factor, 1.15))
+  if not child.has_meta("keep_size"): enlarge(child, factor)

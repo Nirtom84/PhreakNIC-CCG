@@ -9,8 +9,9 @@ func verify(ok: bool, message: String):
  if not ok:
   failures += 1
   push_error(message)
-func finger(point: Vector2, down: bool):
+func finger(point: Vector2, down: bool, index: int = 0):
  var event = InputEventScreenTouch.new()
+ event.index = index
  event.position = point
  event.pressed = down
  root.push_input(event, true)
@@ -21,8 +22,9 @@ func finger(point: Vector2, down: bool):
  mouse.button_index = MOUSE_BUTTON_LEFT
  mouse.pressed = down
  root.push_input(mouse, true)
-func drag(point: Vector2, relative: Vector2):
+func drag(point: Vector2, relative: Vector2, index: int = 0):
  var event = InputEventScreenDrag.new()
+ event.index = index
  event.position = point
  event.relative = relative
  root.push_input(event, true)
@@ -64,6 +66,16 @@ func check_picker(menu):
  await settle()
  verify(is_instance_valid(menu.rules_overlay) and root.get_node("Sfx").hero_id == old_hero, "Picker drag selects nothing")
  verify(abs(scroll.scroll_vertical - 200) <= 2, "Picker button drag scrolls exactly once")
+ # Android Chrome numbers each new touch higher (0, 1, 2...): a later finger must still scroll.
+ point = scroll.get_child(0).get_child(7).get_global_rect().get_center()
+ finger(point, true, 7)
+ drag(point + Vector2(0, 50), Vector2(0, 50), 7)
+ drag(point + Vector2(0, 100), Vector2(0, 50), 7)
+ drag(point + Vector2(0, 300), Vector2(0, 200), 3)
+ finger(point + Vector2(0, 100), false, 7)
+ await settle()
+ verify(abs(scroll.scroll_vertical - 100) <= 2, "Later touch ids scroll and a second finger is ignored")
+ verify(root.get_node("Sfx").hero_id == old_hero, "Later-touch drag selects nothing")
  menu.rules_overlay.queue_free()
  await settle()
 func run():
