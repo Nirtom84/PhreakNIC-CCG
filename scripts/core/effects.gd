@@ -873,7 +873,8 @@ func _effect_tableskirts(p, c):
 ## Talks Fun Police
 func _effect_talks_fun_police(p, c):
 	for q in e.state.players:
-		if q.alive: await e.discard_choices(q, q.play_area.filter(func(x): return e.db().get_card(x.id).cost <= 4))
+		# A copy (a Restaurant copying a Location) has the copied card's printed cost (rules ruling, issue #8).
+		if q.alive: await e.discard_choices(q, q.play_area.filter(func(x): return e.db().get_card(x.effect_id()).cost <= 4))
 
 ## Tennessee Department of Health
 func _effect_tennessee_department_of_health(p, c):

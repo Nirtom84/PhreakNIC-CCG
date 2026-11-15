@@ -157,6 +157,10 @@ These came out of a second pass over all 152 cards.
 - **Ruling 23. Altk3y** may take any player's permanent with "phone" in its name (Payphone, Unattended Phone).
 - **Ruling 24. First player** is chosen at random; turn order follows seat order.
 - **Ruling 25. Start-of-turn effects** (including the Rickroll buy) count as simultaneous, so the active player picks their order.
+- **Ruling 26. Last-counter text resolves after the damage** (Clarion Inn Carpeted Pool, The Clarion Inn). The whole damage resolves first: ICE prevents what it can and the overflow reaches life. Only then does "when you remove the last counter" text resolve, and only if its controller is still in the game. *[2026-11-15, issue #6]*
+- **Ruling 27. Rickroll's replacement** moves the Rickroll from your discard pile. If that Rickroll has left your discard pile before your next Center Row buy (removed from the game, given away with Rick Astley), nothing is replaced and the effect is used up. *[2026-11-15, issue #7]*
+- **Ruling 28. A copy has the copied card's printed cost.** A [Restaurant Name] Restaurant that came into play as a copy of a Location uses that Location's cost for "costs X or less" text (a copy of The Clarion Inn costs 6), just as it takes the name, type and ICE counters. *[2026-11-15, issue #8]*
+- **Ruling 29. Taking another player's card is acquiring.** Moving another player's permanent into your discard pile (Altk3y, Botnet Takeover) is gaining a card without buying it, so it counts as acquiring: it does nothing after you reserve (Ruling 8), and it counts as acquiring a card for Zenthere, Mind Goblin. *[2026-11-15, issue #9]*
 
 ## Rulings from the designers, 2026-11-10
 

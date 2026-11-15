@@ -8,6 +8,12 @@ Every fix in this release was found, reported and fixed by **bitwize** ([bitwize
 - DEFCON with a human at the table: choosing who gets the Rickroll no longer fails, and DEFCON no longer ends its turn early after waiting for a human's answer.
 - Custom-deck bots no longer learn which cards O.P.R.A.H. draws into another player's hidden hand.
 
+**New rulings** (questions bitwize raised; now Rulings 26–29 in [the rulebook](reference/rules.md))
+- **Damage before last-counter text:** when damage takes the last ICE counter off Clarion Inn Carpeted Pool or The Clarion Inn, the overflow reaches life first, and the card's last-counter text resolves only if its owner is still in the game. Before, a Carpeted Pool could knock out the attacker before the attacker's own damage landed.
+- **Rickroll:** if the Rickroll you played has left your discard pile (removed from the game, or given away with Rick Astley), your next buy replaces nothing. Before, it was pulled back from wherever it was.
+- **Copies:** a [Restaurant Name] Restaurant copying a Location has that Location's cost, so a copy of The Clarion Inn (cost 6) can't be discarded by Talks Fun Police.
+- **Taking a card is acquiring:** taking another player's permanent with Altk3y or Botnet Takeover counts as acquiring. The game already worked this way; it's now in the rulebook.
+
 **Online**
 - Mog Variant and custom-deck online games no longer stop following the game right after it starts.
 - A player who comes back after the game ended is told it's over, instead of seeing a frozen board.

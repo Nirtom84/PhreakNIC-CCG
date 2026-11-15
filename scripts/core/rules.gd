@@ -300,6 +300,9 @@ func buy_card(p, card, mandatory: bool = false) -> bool:
 	var slot = state.center_row.find(card)
 	# Rickroll replaces the purchased row slot without consuming a center-deck refill.
 	var roll = p.turn_flags.get("rickroll")
+	# Rules ruling (issue #7): the replacement moves the Rickroll from your discard pile. If it has left (removed,
+	# given away), this buy uses up "the next time" and nothing is replaced.
+	if from_row and roll != null and roll != card and roll not in p.discard: p.turn_flags.erase("rickroll"); roll = null
 	if from_row and roll != null and roll != card:
 		state.center_row[slot] = null
 		detach(roll)
@@ -402,6 +405,7 @@ func resolve_damage(p, q, amount: int, source = null, dealing: bool = false):
 		sources.append({"card": null, "name": "Phreaknic Network (rest of turn)", "capacity": amount, "full": true})
 	for c in guards + ice:
 		sources.append({"card": c, "capacity": amount if c in guards else c.counters, "full": c in guards})
+	var depleted: Array = []
 	if not sources.is_empty():
 		var total = 0
 		for entry in sources: total += entry.capacity
@@ -419,7 +423,6 @@ func resolve_damage(p, q, amount: int, source = null, dealing: bool = false):
 			var n = mini(remaining, sources[i].capacity - points[i])
 			points[i] += n
 			remaining -= n
-		var depleted: Array = []
 		for i in sources.size():
 			if points[i] == 0: continue
 			var c = sources[i].card
@@ -434,14 +437,16 @@ func resolve_damage(p, q, amount: int, source = null, dealing: bool = false):
 					depleted.append({"card": c, "commutes": CustomDeck.rules_id(c.effect_id()) not in ["Carpeted Pool", "The Clarion Inn"], "resolve": counter_removed.bind(c)})
 				else: ice_counter_removed.emit(c)
 		amount = remaining
-		await resolve_triggers(depleted, false)
 	if not q.alive or state.finished: return
+	# Rules ruling (issue #6): the whole damage resolves first, overflow included; only then does last-counter
+	# text (Carpeted Pool, The Clarion Inn) resolve, and only if its controller is still in the game.
 	if amount > 0:
 		q.life -= amount
 		damage_resolved.emit(p, q, amount, dealing)
 		if dealing: damage_dealt.emit(p, q, amount)
 		say("Seat %d takes %d damage (%d life)" % [q.seat, amount, q.life])
 		if q.life <= 0: await eliminate(q)
+	if not depleted.is_empty() and q.alive and not state.finished: await resolve_triggers(depleted, false)
 	state_changed.emit()
 func eliminate(p, forced: bool = false):
 	if not p.alive: return

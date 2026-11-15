@@ -351,6 +351,36 @@ func run():
 	p.hacking = 1
 	await e.activate(p, cart)
 	check(e.state.finished and e.state.winner == p, "25th Cart counter wins")
+	# Ruling 26 (issue #6): the overflow reaches life before Carpeted Pool's last-counter text resolves.
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	p.life = 1
+	q.life = 3
+	var last_pool = card("Carpeted Pool", "play_area", 1)
+	last_pool.counters = 1
+	await e.damage(p, q, 4, card("Damage"), true)
+	check(not q.alive and e.state.finished and e.state.winner == p and p.life == 1, "Overflow lands before the last-counter text (Ruling 26)")
+	# Ruling 27 (issue #7): a Rickroll that left the discard pile replaces nothing.
+	await fixture()
+	p = e.active()
+	var gone_roll = card("Rickroll")
+	await e.play_card(p, gone_roll)
+	check(gone_roll in p.discard, "Played Rickroll waits in the discard pile")
+	e.remove(gone_roll)
+	var plain_buy = e.state.center_row[0]
+	p.hacking = 100
+	await e.buy_card(p, plain_buy)
+	check(gone_roll in e.state.removed and gone_roll not in e.state.center_row and plain_buy in p.discard and not p.turn_flags.has("rickroll"), "Removed Rickroll replaces nothing and is used up (Ruling 27)")
+	# Ruling 28 (issue #8): a Restaurant copying The Clarion Inn costs 6 for Talks Fun Police.
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	var restaurant = card("[Restaurant Name] Restaurant", "play_area", 1)
+	restaurant.flags.copy_id = "The Clarion Inn"
+	var plain_restaurant = card("Clarion Inn Staff", "play_area", 0)
+	await e.play_card(p, card("Talks Fun Police"))
+	check(restaurant in q.play_area and plain_restaurant in p.discard, "A copy uses the copied card's cost for Talks Fun Police (Ruling 28)")
 	check(e.state.conservation_ok(), "Final focused fixture conservation")
 	e.free()
 	e = null
