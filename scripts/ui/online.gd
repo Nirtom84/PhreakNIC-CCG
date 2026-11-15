@@ -434,6 +434,8 @@ func launch_table():
  var table = load("res://scenes/table.tscn").instantiate()
  session.reparent(table)
  table.online_session = session
+ # The table selects its card set in _ready: the game's, from the first view.
+ table.card_pool = session.client.engine.state.card_pool
  get_tree().root.add_child(table)
  get_tree().current_scene = table
  queue_free()
