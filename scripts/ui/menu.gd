@@ -282,7 +282,7 @@ func _ready():
  UIStyle.button(help_row, "Tutorial", launch_tutorial)
  UIStyle.button(help_row, "Rules", rules)
  UIStyle.button(help_row, "Decks (experimental)", open_decks)
- UIStyle.button(help_row, "Stats", func(): load("res://scripts/ui/stats_screen.gd").open(self))
+ UIStyle.button(help_row, "Stats", func(): rules_overlay = load("res://scripts/ui/stats_screen.gd").open(self))
  UIStyle.button(help_row, "Report a bug", func(): load("res://scripts/ui/bug_report.gd").open())
  if UIStyle.compact():
   UIStyle.button(help_row, "Settings", open_settings).name = "CompactMenuSettingsButton"
@@ -402,7 +402,8 @@ func go_back():
  if is_instance_valid(ban_picker) and ban_picker.close_top(): return
  if is_instance_valid(hero_picker) and hero_picker.close_top(): return
  if is_instance_valid(rules_overlay): rules_overlay.queue_free()
- else: get_tree().quit()
+ # A web page can't close its browser tab: quit() would only stop the game.
+ elif not UIStyle.is_web(): get_tree().quit()
 
 func refresh_avatar():
  var hero = UIStyle.avatar_id(Sfx.handle, Sfx.hero_id)
