@@ -192,6 +192,8 @@ func remove(card):
 	if card in permanents(): leave_play(card, true)
 	else: move(card, state.removed, "removed")
 func take_control(card, p):
+	# Grass leaves at the end of "your next turn": count it on the new controller's turns.
+	if card.flags.has("expires") and card.controller != p.seat: card.flags.expires = p.turns + 1
 	move(card, p.play_area, "play_area")
 	card.controller = p.seat
 func choose(p, prompt: String, cards: Array, min_n: int = 1, max_n: int = 1) -> Array:
