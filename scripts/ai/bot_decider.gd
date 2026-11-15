@@ -227,7 +227,7 @@ func choose_player(_player, _prompt: String, players: Array) -> PlayerState:
 			if not killable.is_empty():
 				killable.sort_custom(func(a, b): return a.life + target_ice(a) < b.life + target_ice(b))
 				return killable[0]
-			sorted.sort_custom(func(a, b): return search.strength(engine, a, true) > search.strength(engine, b, true))
+			sorted.sort_custom(func(a, b): return search.strength(engine, a, true, self) > search.strength(engine, b, true, self))
 			return sorted[0]
 	sorted.sort_custom(func(a, b): return a.life < b.life)
 	return sorted[0]

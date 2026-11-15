@@ -82,13 +82,15 @@ func evaluate(game, seat: int) -> float:
 	var best = -INF
 	for q in game.opponents(p): best = maxf(best, strength(game, q))
 	return strength(game, p) - best
-func strength(game, p, public_only: bool = false) -> float:
+func strength(game, p, public_only: bool = false, ai = null) -> float:
+	# Live choices pass the bot's own decider: human seats' deciders have no value().
+	if ai == null: ai = game.dec(p)
 	var cards = p.discard if public_only else p.deck + p.hand + p.discard
 	var value = 0.0
-	for c in cards: value += game.dec(p).value(c, null if public_only else p)
+	for c in cards: value += ai.value(c, null if public_only else p)
 	var result = float(p.life) + 8.0 * value / maxf(1, cards.size()) + 0.3 * value
-	for c in p.play_area: result += game.dec(p).value(c, null if public_only else p) * 0.8 + c.counters * 0.4
-	for c in p.reserve: result += maxf(0, game.dec(p).value(c, null if public_only else p)) * 0.12
+	for c in p.play_area: result += ai.value(c, null if public_only else p) * 0.8 + c.counters * 0.4
+	for c in p.reserve: result += maxf(0, ai.value(c, null if public_only else p)) * 0.12
 	return result
 func install_policy(game):
 	var driver = BotPlayer.new(game)

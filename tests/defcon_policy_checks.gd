@@ -1,4 +1,17 @@
 extends RefCounted
+class ErrorCounter extends Logger:
+ var count = 0
+ func _log_error(_f: String, _file: String, _line: int, _code: String, _rationale: String, _notify: bool, _type: int, _traces: Array[ScriptBacktrace]) -> void: count += 1
+## A human seat that takes `delay_ms` of wall-clock time to answer.
+class SlowHuman extends Decider:
+ var delay_ms = 0
+ var prompts = 0
+ func _init(ms: int): delay_ms = ms
+ func choose_cards(_p, _prompt: String, cards: Array, min_n: int, _max_n: int) -> Array:
+  prompts += 1
+  var until = Time.get_ticks_msec() + delay_ms
+  while Time.get_ticks_msec() < until: await Engine.get_main_loop().process_frame
+  return cards.slice(0, min_n)
 func run(suite):
  DefconValues.load_weights()
  var saved = DefconValues.weights.duplicate(true)
@@ -75,6 +88,7 @@ func run(suite):
  await recycling_fixture(suite)
  await deterministic_fixture(suite)
  await target_fixture(suite)
+ await human_answer_fixture(suite)
 func legacy_traces(suite):
  var expected = JSON.parse_string(FileAccess.get_file_as_string("res://tests/defcon_trace_hashes.json"))
  for level in 3:
@@ -185,4 +199,42 @@ func target_fixture(suite):
  suite.verify(await game.dec(p).choose_player(p, "Hit player", targets) == chosen, "Multiplayer target ignores hidden hand/deck arrangements")
  suite.verify(await game.dec(p).choose_player(p, "Give Rickroll", targets) == targets[1], "Hostile gift targets public threat")
  suite.verify(await game.dec(p).choose_player(p, "Give card to opponent", targets) != targets[1], "Beneficial gift keeps Elite beneficiary choice")
+ # Human seats' deciders (HumanDecider, RemoteDecider) have no value(); a plain Decider stands in.
+ # Public cards in its discard pile are what DEFCON rates.
+ var human = targets[1]
+ for c in human.hand.duplicate(): game.discard(c)
+ game.deciders[human.seat] = Decider.new()
+ human.is_bot = false
+ var errors = ErrorCounter.new()
+ OS.add_logger(errors)
+ var human_target = await game.dec(p).choose_player(p, "Give Rickroll", targets)
+ OS.remove_logger(errors)
+ suite.verify(human_target == human and errors.count == 0, "Hostile gift rates a human seat's public cards without script errors")
  game.free()
+
+func human_answer_turn(suite, delay_ms: int) -> Dictionary:
+ var game = GameEngine.new()
+ suite.root.add_child(game)
+ game.setup([3, -1], 676767, [], "2025")
+ var human = SlowHuman.new(delay_ms)
+ game.deciders[1] = human
+ await game.start_turn(0)
+ var p = game.active()
+ # The Reason makes each other player discard a card, so DEFCON waits for the human's answer.
+ var reason = (game.state.center_deck + game.state.center_row).filter(func(c): return c != null and c.id == "The Reason")[0]
+ for c in p.hand.duplicate(): game.move(c, p.deck, "deck")
+ for c in p.deck.filter(func(x): return x.id == "Hacking").slice(0, 4): game.move(c, p.hand, "hand")
+ game.gain_owner(reason, p)
+ game.move(reason, p.hand, "hand")
+ var actions = []
+ game.card_played.connect(func(_q, c): actions.append("play " + c.id))
+ game.card_bought.connect(func(_q, c): actions.append("buy " + c.id))
+ await BotPlayer.new(game).take_turn(p)
+ game.free()
+ return {"actions": actions, "prompts": human.prompts}
+func human_answer_fixture(suite):
+ var instant = await human_answer_turn(suite, 0)
+ # Several times DEFCON's 80 ms turn allowance.
+ var slow = await human_answer_turn(suite, 300)
+ suite.verify(instant.prompts == 1 and slow.prompts == 1 and instant.actions.filter(func(a): return a.begins_with("play ")).size() == 5, "DEFCON turn fixture asks the human once and plays the whole hand")
+ suite.verify(slow.actions == instant.actions, "A slow human answer doesn't end DEFCON's turn early")
