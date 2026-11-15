@@ -29,12 +29,13 @@ func take_turn(p):
 		var wait_started = Time.get_ticks_usec()
 		if pace_provider.is_valid():
 			action_delay = float(pace_provider.call())
+		if closed(): break
 		if action_delay > 0.0:
 			await engine.get_tree().create_timer(action_delay).timeout
 		elif yield_frame:
 			await engine.get_tree().process_frame
 		waiting_us += Time.get_ticks_usec() - wait_started
-		if not is_instance_valid(engine) or not engine.is_turn(p) or (continue_turn.is_valid() and not continue_turn.call()): break
+		if not is_instance_valid(engine) or not engine.is_turn(p) or closed() or (continue_turn.is_valid() and not continue_turn.call()): break
 		actions += 1
 		var candidates = p.hand.filter(func(c): return engine.can_play(p, c))
 		if p.difficulty > 0:
@@ -77,7 +78,7 @@ func take_turn(p):
 			if p.difficulty > 0:
 				candidates.sort_custom(func(a, b): return play_priority(p, a) > play_priority(p, b))
 			var chosen = await turn_search.choose_play(p, candidates) if turn_search != null else candidates[0]
-			if not is_instance_valid(engine) or not engine.is_turn(p): break
+			if not is_instance_valid(engine) or not engine.is_turn(p) or closed(): break
 			wait_started = Time.get_ticks_usec()
 			await engine.play_card(p, chosen)
 			waiting_us += Time.get_ticks_usec() - wait_started
@@ -101,7 +102,7 @@ func take_turn(p):
 			if target != null: fallback = {"kind": "reserve", "uid": target.uid}
 			elif not buys.is_empty() and purchase_value(ai, buys[0], p) >= purchase_threshold(p): fallback = {"kind": "buy", "uid": buys[0].uid}
 			var choice = purchase_policy.call(p, buys, fallback) if purchase_policy.is_valid() else await turn_search.choose_purchase(p, buys, fallback)
-			if not is_instance_valid(engine) or not engine.is_turn(p): break
+			if not is_instance_valid(engine) or not engine.is_turn(p) or closed(): break
 			if choice.kind == "stop": break
 			var found = (engine.state.center_row + p.reserve).filter(func(c): return c != null and c.uid == choice.uid)
 			if found.is_empty(): break
@@ -126,11 +127,15 @@ func take_turn(p):
 				completed()
 				continue
 		break
-	if is_instance_valid(engine) and p == engine.active() and not engine.state.finished and (not continue_turn.is_valid() or continue_turn.call()):
+	if is_instance_valid(engine) and p == engine.active() and not engine.state.finished and not closed() and (not continue_turn.is_valid() or continue_turn.call()):
 		await engine.end_turn(p)
 		completed()
 func completed():
 	if action_completed.is_valid(): action_completed.call()
+## A paced turn waits on its engine's tree. Stop when its table has left the tree, before it is freed.
+## Unpaced simulations and search rollouts intentionally run without a scene tree.
+func closed() -> bool:
+	return (action_delay > 0.0 or yield_frame) and is_instance_valid(engine) and not engine.is_inside_tree()
 func fingerprint(p) -> String:
 	return str([p.hacking, p.life, p.hand.size(), engine.state.removed.size(), engine.permanents().map(func(c): return [c.uid, c.counters, c.flags.get("used", false)]), engine.state.players.map(func(q): return [q.life, q.hand.size()])])
 func want_buy(p) -> bool:
