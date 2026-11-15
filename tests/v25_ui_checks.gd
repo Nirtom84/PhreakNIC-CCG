@@ -32,6 +32,9 @@ func visible_buttons_fit(node):
    parent = parent.get_parent()
   if visible_rect.has_area(): verify(viewport.encloses(visible_rect), "Visible button fits: " + button.text + " " + str(visible_rect))
 func run():
+ var backups = {}
+ for path in ["user://decks.json", "user://decks.json.tmp"]:
+  backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  await compact_menu_layout_checks()
  BUILDER = load("res://scripts/ui/deck_builder.gd")
  root.size = Vector2i(1920, 1080)
@@ -187,9 +190,16 @@ func run():
  builder.back()
  await frames()
  verify(not is_instance_valid(builder.modal), "Back closes overlay")
+ # The starter copy isn't saved yet, so Back asks before throwing it away.
  builder.back()
  await frames()
- verify(builder.deck.is_empty(), "Back returns to list")
+ var asked = not builder.deck.is_empty() and is_instance_valid(builder.modal) and find_button(builder.modal, "Discard") != null
+ verify(asked, "Back on an unsaved deck asks first")
+ if asked:
+  visible_buttons_fit(builder.modal)
+  find_button(builder.modal, "Discard").pressed.emit()
+  await frames()
+ verify(builder.deck.is_empty(), "Discard returns to list")
  builder.queue_free()
  style.compact_override = null
  await frames()
@@ -250,8 +260,78 @@ func run():
  SaveGame.remove()
  for path in ["res://scripts/ui/deck_builder.gd", "res://scripts/ui/menu.gd", "res://scripts/ui/result_share.gd"]:
   verify(not FileAccess.get_file_as_string(path).contains("JavaScriptBridge" + ".eval"), "No eval: " + path)
+ await unsaved_deck_checks()
+ for path in backups:
+  if backups[path] == null:
+   if FileAccess.file_exists(path): DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
+  else:
+   var restored_file = FileAccess.open(path, FileAccess.WRITE)
+   restored_file.store_buffer(backups[path])
+   restored_file.close()
  print("v25 UI checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+
+func copies(builder, id: String) -> int:
+ return int(builder.deck.get("cards", {}).get(id, 0))
+## The three ways out of the deck editor.
+func leave_editor(builder, path: String):
+ match path:
+  "Back button": find_button(builder, "Back").pressed.emit()
+  "Escape":
+   var escape = InputEventKey.new()
+   escape.keycode = KEY_ESCAPE
+   escape.physical_keycode = KEY_ESCAPE
+   escape.pressed = true
+   builder._unhandled_key_input(escape)
+  "Android Back": builder.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+## Leaving the deck editor with unsaved work asks first: Keep draft, Discard or Cancel. Back on the question cancels it.
+func unsaved_deck_checks():
+ DirAccess.remove_absolute(ProjectSettings.globalize_path(BUILDER.PATH))
+ var builder = BUILDER.new()
+ root.add_child(builder)
+ await frames()
+ builder.edit({"name": "Unsaved", "cards": {}}, -1)
+ builder.back()
+ await frames()
+ verify(builder.deck.is_empty() and not is_instance_valid(builder.modal), "Back from an empty new deck returns to the list")
+ for path in ["Back button", "Escape", "Android Back"]:
+  builder.edit({"name": "Unsaved", "cards": {}}, -1)
+  for i in 4: builder.change_card("nirtom", 1)
+  leave_editor(builder, path)
+  await frames()
+  var asked = is_instance_valid(builder.modal) and find_button(builder.modal, "Keep draft") != null and find_button(builder.modal, "Discard") != null and find_button(builder.modal, "Cancel") != null
+  verify(asked and copies(builder, "nirtom") == 4, path + " with unsaved cards asks first")
+  if asked:
+   if path == "Back button": find_button(builder.modal, "Cancel").pressed.emit()
+   else: leave_editor(builder, path)
+   await frames()
+  verify(not is_instance_valid(builder.modal) and copies(builder, "nirtom") == 4, path + ": Cancel keeps editing")
+ builder.edit({"name": "Unsaved", "cards": {}}, -1)
+ for i in 4: builder.change_card("nirtom", 1)
+ builder.back()
+ await frames()
+ if is_instance_valid(builder.modal): find_button(builder.modal, "Keep draft").pressed.emit()
+ await frames()
+ verify(builder.deck.is_empty() and BUILDER.saved().any(func(d): return d.name == "Unsaved" and CustomDeck.total(d) == 4), "Keep draft saves the deck and returns to the list")
+ builder.edit({"name": "Saved", "cards": {"nirtom": 4}}, -1)
+ builder.save_deck(true)
+ var index = builder.decks.size() - 1
+ builder.edit(builder.decks[index], index)
+ builder.back()
+ await frames()
+ verify(builder.deck.is_empty() and not is_instance_valid(builder.modal), "Back from an unchanged saved deck returns to the list")
+ builder.edit(builder.decks[index], index)
+ builder.change_card("nirtom", -1)
+ builder.back()
+ await frames()
+ var changed_asked = is_instance_valid(builder.modal) and find_button(builder.modal, "Discard") != null
+ verify(changed_asked, "Back from a changed saved deck asks first")
+ if changed_asked: find_button(builder.modal, "Discard").pressed.emit()
+ await frames()
+ verify(builder.deck.is_empty() and BUILDER.saved()[index].cards.get("nirtom", 0) == 4, "Discard keeps the saved deck as it was")
+ builder.queue_free()
+ await frames()
+ DirAccess.remove_absolute(ProjectSettings.globalize_path(BUILDER.PATH))
 
 func compact_menu_layout_checks():
  var style = load("res://scripts/ui/style.gd")
