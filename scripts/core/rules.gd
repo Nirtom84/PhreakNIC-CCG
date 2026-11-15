@@ -293,6 +293,9 @@ func buy_card(p, card, mandatory: bool = false) -> bool:
 	busy = true
 	var from_row = card in state.center_row
 	var price = effective_cost(p, card)
+	# "You may buy … for free": a player who could pay may keep the free buy for another card.
+	var full = effects.cost(p, card, false)
+	if price < full and p.hacking >= full and not await dec(p).confirm(p, "Use your free buy on %s? Otherwise pay %d Hacking." % [db().get_card(card.id).name, full]): price = full
 	p.hacking -= price
 	effects.consume_free_buy(p, card, price)
 	p.turn_flags.bought = p.turn_flags.get("bought", 0) + 1
