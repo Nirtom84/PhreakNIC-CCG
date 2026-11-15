@@ -117,6 +117,17 @@ func run():
  settings.visuals_changed.emit(false)
  verify(not tween.is_valid() and target.modulate == Color.WHITE, "Live looping motion stops")
  target.free()
+ # A finished animation lets go of its connections. The table's banner flashes on every card move and lasts the
+ # whole game, so it used to collect one Sfx.visuals_changed connection per move.
+ settings.visual_effects = true
+ var listeners = settings.get_signal_connection_list("visuals_changed").size()
+ var banner = Label.new()
+ root.add_child(banner)
+ for i in 40: style.animation(banner).tween_property(banner, "modulate", Color.WHITE, 0.01)
+ await create_timer(0.2).timeout
+ verify(settings.get_signal_connection_list("visuals_changed").size() <= listeners and banner.tree_exiting.get_connections().is_empty(), "Finished animations release their connections")
+ banner.free()
+ settings.visual_effects = false
  settings.auto_end_turn = false
  var table = load("res://scenes/table.tscn").instantiate()
  table.auto_drive = false
@@ -152,6 +163,26 @@ func run():
  await process_frame
  verify(table.rebuild_count == rebuilds + 1, "Redraw requests coalesce per frame")
  table.synchronous_redraw = true
+ # The UI asks UIStyle.compact() for nearly every node it builds: a phone-layout redraw must not read settings.cfg
+ # each time (read syscalls from /proc/self/io, Linux only), and the in-game Layout picker must still switch.
+ var pick_layout = func(index):
+  table.menu()
+  for picker in table.game_menu.find_children("*", "OptionButton", true, false):
+   if picker.item_count == 3 and picker.get_item_text(2) == "Layout: Phone":
+    picker.select(index)
+    picker.item_selected.emit(index)
+  table.close_menu()
+ pick_layout.call(2)
+ table.redraw_now()
+ var phone = style.compact()
+ var reads = read_calls()
+ table.redraw_now()
+ if reads >= 0: reads = read_calls() - reads
+ pick_layout.call(0)
+ table.redraw_now()
+ verify(phone and not style.compact(), "In-game Layout picker switches to the phone layout and back")
+ if reads < 0: print("SKIP: /proc/self/io isn't readable here, so settings.cfg reads aren't counted")
+ else: verify(reads < 100, "A phone-layout redraw doesn't read settings.cfg for every node (%d read calls)" % reads)
  var stable = human.hand[0]
  var stable_widget = table.shown_widgets[stable.uid]
  var stable_id = stable_widget.get_instance_id()
@@ -347,6 +378,14 @@ func run():
  await online_result_checks()
  print("v15 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+# Read syscalls made by this process so far (Linux), or -1.
+func read_calls() -> int:
+ var file = FileAccess.open("/proc/self/io", FileAccess.READ)
+ if file == null: return -1
+ while not file.eof_reached():
+  var line = file.get_line()
+  if line.begins_with("syscr:"): return int(line.get_slice(":", 1).strip_edges())
+ return -1
 func no_reference(path: String, needle: String) -> bool:
  for file in DirAccess.get_files_at(path):
   if file.get_extension() in ["gd", "tscn", "tres"] and needle in FileAccess.get_file_as_string(path + "/" + file): return false

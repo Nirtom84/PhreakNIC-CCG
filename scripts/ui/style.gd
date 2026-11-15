@@ -21,9 +21,13 @@ static func is_touch_platform() -> bool:
  var ios = OS.has_feature("web_ios") if web_ios_override == null else bool(web_ios_override)
  return OS.has_feature("mobile") or (is_web() and (android or ios))
 static var compact_override = null
+# compact() runs for nearly every node the UI builds, so the Layout setting is read from settings.cfg once and kept
+# current by layout_setting(), the only place that changes it.
+static var layout_cache = null
 static func compact() -> bool:
  if compact_override != null: return bool(compact_override)
- var layout = OnlineAPI.settings().get_value("ui", "layout", "auto")
+ if layout_cache == null: layout_cache = OnlineAPI.settings().get_value("ui", "layout", "auto")
+ var layout = layout_cache
  if layout != "auto": return layout == "compact"
  if OS.has_feature("android") or OS.has_feature("ios"): return true
  if OS.has_feature("web"):
@@ -37,7 +41,8 @@ static func layout_setting(parent: Control):
  parent.add_child(picker)
  picker.item_selected.connect(func(index):
   var config = OnlineAPI.settings()
-  config.set_value("ui", "layout", ["auto", "desktop", "compact"][index])
+  layout_cache = ["auto", "desktop", "compact"][index]
+  config.set_value("ui", "layout", layout_cache)
   config.save("user://settings.cfg"))
 static func touch_fit_id(id: int):
  var node = instance_from_id(id)
@@ -289,9 +294,15 @@ static func animation(node: Node, looping: bool = false) -> Tween:
    if node.get_parent() is Container: node.get_parent().queue_sort()
    if node is Label: node.add_theme_constant_override("shadow_offset_x", 0)
   else: tween.custom_step(100000.0)
+ var release = func():
+  if Sfx.visuals_changed.is_connected(finish): Sfx.visuals_changed.disconnect(finish)
  Sfx.visuals_changed.connect(finish)
- node.tree_exiting.connect(func():
-  if Sfx.visuals_changed.is_connected(finish): Sfx.visuals_changed.disconnect(finish), CONNECT_ONE_SHOT)
+ node.tree_exiting.connect(release, CONNECT_ONE_SHOT)
+ # A finished tween needs neither connection. Without this a long-lived node collects a pair per animation: the
+ # turn banner flashes on every card move.
+ tween.finished.connect(func():
+  release.call()
+  if is_instance_valid(node) and node.tree_exiting.is_connected(release): node.tree_exiting.disconnect(release))
  return tween
 static func music_controls(parent: Control):
  var row = HBoxContainer.new()
