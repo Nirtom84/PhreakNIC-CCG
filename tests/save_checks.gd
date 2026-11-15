@@ -288,12 +288,43 @@ func ui():
   file.store_string(corrupt)
   file.close()
   verify(SaveGame.read().is_empty(), "Corrupt/old file ignored")
+## Knocked out of a 4-player game while the bots play on: the save from your last turn would seat you again, alive.
+func knocked_out():
+ SaveGame.remove()
+ var table = load("res://scenes/table.tscn").instantiate()
+ table.auto_drive = false
+ table.player_count = 4
+ table.seed_value = 7
+ table.bot_pace = 0
+ root.add_child(table)
+ current_scene = table
+ await process_frame
+ while table.engine.active().is_bot: await table.drive_reaction(table.engine.active())
+ var players = table.engine.state.players
+ verify(table.save_game() and not SaveGame.read().is_empty(), "Knockout setup: saved on your turn")
+ await table.engine.end_turn(players[0])
+ var bot = players[1]
+ await table.engine.damage(bot, players[3], players[3].life, null, true)
+ verify(not players[3].alive and not SaveGame.read().is_empty(), "A bot knocked out: your save stays")
+ await table.engine.damage(bot, players[0], players[0].life, null, true)
+ verify(not players[0].alive and not table.engine.state.finished, "Knocked out while two bots play on")
+ verify(not FileAccess.file_exists(SaveGame.PATH), "Being knocked out removes your save")
+ table.queue_free()
+ current_scene = null
+ await process_frame
+ var menu = load("res://scenes/menu.tscn").instantiate()
+ root.add_child(menu)
+ await process_frame
+ verify(find_button(menu, "Resume game") == null, "No Resume game after being knocked out")
+ menu.queue_free()
+ await process_frame
 func run():
  for path in ["user://settings.cfg", SaveGame.PATH]:
   backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  await round_trips()
  await focused()
  await ui()
+ await knocked_out()
  for path in backups:
   if backups[path] == null:
    if FileAccess.file_exists(path): DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

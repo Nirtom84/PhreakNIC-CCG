@@ -1323,6 +1323,8 @@ func append_log(message: String):
  if "eliminat" in message.to_lower() and online_session == null:
   Sfx.play("eliminated")
   show_notice(display, 7.0)
+  # Knocked out while bots play on: the last save would bring you back alive.
+  if not tutorial_mode and not engine.state.players[human_seat].alive: SaveGame.remove()
  for verbs in [["plays", "play"], ["buys", "buy"], ["takes", "take"], ["reserves", "reserve"], ["reveals", "reveal"], ["goes", "go"], ["loses", "lose"], ["gains", "gain"], ["discards", "discard"], ["draws", "draw"]]:
   if seat_name(human_seat) == "You" and message.begins_with("Seat %d " % human_seat + verbs[0] + " "):
    display = "You " + verbs[1] + " " + display.substr(("You " + verbs[0] + " ").length())
