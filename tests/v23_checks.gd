@@ -79,6 +79,16 @@ func run():
  config.load("res://export_presets.cfg")
  for preset in ["preset.3", "preset.4"]:
   verify("assets/music/*" in str(config.get_value(preset, "exclude_filter")), "exclude " + preset)
+ # Repo-only folders (rules sources, the 100 shared decks, the frozen baseline bots) stay out of every export.
+ for section in config.get_sections():
+  if not section.begins_with("preset.") or section.ends_with(".options"): continue
+  var name = config.get_value(section, "name")
+  var filters = Array(str(config.get_value(section, "exclude_filter")).split(",")).map(func(f): return f.strip_edges())
+  var excluded = func(path): return filters.any(func(f): return path.matchn(f))
+  for folder in ["reference", "decks/custom", "scripts/ai/baseline"]:
+   var kept = Array(DirAccess.get_files_at("res://" + folder)).filter(func(f): return not excluded.call(folder + "/" + f))
+   verify(kept.is_empty(), "%s export excludes %s/ (%d files not excluded)" % [name, folder, kept.size()])
+  verify(not excluded.call("scripts/ai/bot_player.gd") and not excluded.call("data/cards.json"), "%s export keeps the game's bots and data" % name)
  var table = load("res://scenes/table.tscn").instantiate()
  table.auto_drive = false
  root.add_child(table)
