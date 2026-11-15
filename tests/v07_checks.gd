@@ -79,6 +79,7 @@ func run():
  style.web_override = null
  style.web_android_override = null
  check_export_versions()
+ quit_checks()
  for path in backups:
   if backups[path] == null:
    if FileAccess.file_exists(path): DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
@@ -88,6 +89,36 @@ func run():
    file.close()
  print("v07 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+func remove_tree(path: String):
+ var dir = DirAccess.open(path)
+ if dir == null: return
+ dir.include_hidden = true
+ for name in dir.get_files(): DirAccess.remove_absolute(path.path_join(name))
+ for name in dir.get_directories(): remove_tree(path.path_join(name))
+ DirAccess.remove_absolute(path)
+## Back and Escape on the main menu. A quit() would also end this suite (with exit code 0), so each case runs
+## in a subprocess (menu_quit_helper.gd, next to this file) with an empty user:// of its own.
+func quit_checks():
+ var helper = get_script().resource_path.get_base_dir().path_join("menu_quit_helper.gd")
+ var scratch = OS.get_user_data_dir().path_join("v07-subprocess-%d" % OS.get_process_id())
+ DirAccess.make_dir_recursive_absolute(scratch)
+ var had_xdg = OS.has_environment("XDG_DATA_HOME")
+ var old_xdg = OS.get_environment("XDG_DATA_HOME")
+ OS.set_environment("XDG_DATA_HOME", scratch)
+ var alive = {}
+ for scenario in ["desktop-escape", "menu-back", "stats-back", "web-escape"]:
+  var output = []
+  var code = OS.execute(OS.get_executable_path(), ["--headless", "--path", ProjectSettings.globalize_path("res://"), "-s", helper, "--", scenario], output, true)
+  var text = "\n".join(output)
+  verify(code == 0 and ("MENU_QUIT_HELPER START " + scenario) in text and not "SCRIPT ERROR" in text, "Menu subprocess runs cleanly: " + scenario)
+  alive[scenario] = "MENU_QUIT_HELPER ALIVE stats_open=false" in text
+ if had_xdg: OS.set_environment("XDG_DATA_HOME", old_xdg)
+ else: OS.unset_environment("XDG_DATA_HOME")
+ remove_tree(scratch)
+ verify(not alive["desktop-escape"], "Escape on the desktop main menu quits")
+ verify(not alive["menu-back"], "Android Back on the main menu quits the app")
+ verify(alive["stats-back"], "Android Back on Stats closes Stats and keeps the app running")
+ verify(alive["web-escape"], "Escape on the web main menu keeps the game running")
 func check_rotate(scene):
  var cover = get_first_node_in_group("rotate_cover")
  var probe = Button.new()
