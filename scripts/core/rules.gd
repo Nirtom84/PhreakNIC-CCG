@@ -479,14 +479,18 @@ func reaction_turn(p):
 	for c in permanents(): used[c.uid] = c.flags.get("used", false)
 	var saved_extra = state.extra_turns
 	state.extra_turns = []
+	# Eliminations during this turn are not part of an interrupted simultaneous loss.
+	var saved_simultaneous = simultaneous_depth
+	simultaneous_depth = 0
 	reaction_depth += 1
+	var depth = reaction_depth
 	await start_turn(p.seat)
 	if p.alive and not state.finished:
 		if p.is_bot:
 			if turn_driver.is_valid(): await turn_driver.call(p)
 			else: await preload("res://scripts/ai/bot_player.gd").new(self).take_turn(p)
 		else:
-			await turn_or_game_over
+			await human_turn_over(depth)
 			# Let end_turn finish while reaction_depth still describes its turn.
 			await Engine.get_main_loop().process_frame
 	while not state.extra_turns.is_empty() and not state.finished:
@@ -499,11 +503,12 @@ func reaction_turn(p):
 			if turn_driver.is_valid(): await turn_driver.call(next_player)
 			else: await preload("res://scripts/ai/bot_player.gd").new(self).take_turn(next_player)
 		else:
-			await turn_or_game_over
+			await human_turn_over(depth)
 			# Let end_turn finish while reaction_depth still describes its turn.
 			await Engine.get_main_loop().process_frame
 	state.extra_turns = saved_extra
 	reaction_depth -= 1
+	simultaneous_depth = saved_simultaneous
 	busy = saved_busy
 	state.active_seat = paused.seat
 	paused.turn_flags = saved.flags
@@ -513,6 +518,11 @@ func reaction_turn(p):
 	for c in permanents():
 		if used.has(c.uid): c.flags.used = used[c.uid]
 	state_changed.emit()
+## A human's reaction turn at this depth has ended, or the game is over. A nested reaction turn
+## ending first also emits turn_ended; resumed inside that emit, reaction_depth is still deeper.
+func human_turn_over(depth: int):
+	await turn_or_game_over
+	while reaction_depth > depth and not state.finished: await turn_or_game_over
 func check_win():
 	if state.finished or simultaneous_depth > 0: return
 	var alive = state.players.filter(func(p): return p.alive)

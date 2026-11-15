@@ -7,6 +7,8 @@ class SearchSpy extends Decider:
  func choose_cards(_p, text: String, cards: Array, minimum: int, _maximum: int) -> Array:
   if text == "Search for five cards": seen = cards.duplicate()
   return cards.slice(0, minimum)
+class Yes extends Decider:
+ func confirm(_p, _prompt: String) -> bool: return true
 func _initialize(): run.call_deferred()
 func verify(ok: bool, text: String):
  checks += 1
@@ -162,6 +164,7 @@ func run():
  await frames()
  verify(reaction.reaction_depth == 0 and completed == [true], "Game over releases suspended human reaction")
  reaction.queue_free()
+ await toctou_turns()
  var bad = SaveGame.snapshot(local_a.state)
  bad.state.starting_life = -100
  verify(SaveGame.restore(bad) == null, "Save range validation")
@@ -176,3 +179,71 @@ func run():
  verify(eval_users.is_empty(), "No script uses JavaScriptBridge.eval: %s" % [eval_users])
  print("V11 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+## TOCTOU: "pause the current player's turn, and take an extra turn immediately. After the extra turn,
+## return play to the paused turn." Shipped deck 082 has three TOCTOU; every seat uses them.
+func toctou_game(levels: Array, active: int):
+ var engine = GameEngine.new()
+ root.add_child(engine)
+ var deck = CustomDeck.decode(JSON.parse_string(FileAccess.get_file_as_string("res://decks/custom/082-max-chaos.phreakdeck.json")).code)
+ var deciders = []
+ for seat in levels.size(): deciders.append(Yes.new())
+ engine.setup(levels, 991, deciders, "custom", 50, [], deck)
+ # Keep Rickroll's forced buy out of the turns started here.
+ for slot in 5:
+  while engine.state.center_row[slot] != null and engine.state.center_row[slot].id == "Rickroll":
+   var roll = engine.state.center_row[slot]
+   engine.detach(roll)
+   engine.state.center_deck.push_front(roll)
+ engine.turn_driver = func(p): await engine.end_turn(p)   # bots end their TOCTOU turn at once
+ await engine.start_turn(active)
+ return engine
+## A card moved into a seat's hand, as if bought and drawn earlier.
+func toctou_hand(engine, id: String, seat: int):
+ var p = engine.state.players[seat]
+ for c in p.hand + p.deck + engine.state.center_deck:
+  if c.id == id:
+   engine.gain_owner(c, p)
+   engine.move(c, p.hand, "hand")
+   return c
+ return null
+func toctou_turns():
+ # A TOCTOU turn nested in a human's TOCTOU turn, by a bot or by a second human.
+ for inner_human in [false, true]:
+  var engine = await toctou_game([-1, -1 if inner_human else 2, 2], 2)
+  var outer = engine.state.players[0]
+  var inner = engine.state.players[1]
+  var bot = engine.state.players[2]
+  outer.life = 1
+  inner.life = 1
+  toctou_hand(engine, "TOCTOU", 0)
+  var inner_toctou = toctou_hand(engine, "TOCTOU", 1)
+  engine.play_card(bot, toctou_hand(engine, "Damage", 2))   # seat 0 takes a TOCTOU turn
+  await frames()
+  engine.play_card(outer, toctou_hand(engine, "Damage", 0))   # seat 1 takes one inside it
+  await frames()
+  if inner_human: engine.end_turn(inner)
+  await frames()
+  var label = "human" if inner_human else "bot"
+  verify(inner_toctou in engine.state.removed and engine.reaction_depth == 1 and engine.is_turn(outer), "Human TOCTOU turn continues after a nested %s TOCTOU turn ends" % label)
+  engine.end_turn(outer)
+  await frames()
+  verify(engine.reaction_depth == 0 and engine.active() == bot and outer.alive, "Ending it returns play to the paused turn (nested %s)" % label)
+  engine.queue_free()
+ # Seat 1's TOCTOU turn interrupts r0nk's simultaneous loss. Seat 0 dies alone during that turn.
+ var engine = await toctou_game([2, 2], 0)
+ var caster = engine.state.players[0]
+ var survivor = engine.state.players[1]
+ caster.life = 2
+ survivor.life = 1
+ toctou_hand(engine, "TOCTOU", 1)
+ var kill = toctou_hand(engine, "Damage", 1)
+ var second = toctou_hand(engine, "r0nk", 1)
+ var during = {}
+ engine.turn_driver = func(p):
+  await engine.play_card(p, kill)
+  during.over = engine.state.finished
+  await engine.play_card(p, second)   # refused once the game is over
+  if not engine.state.finished: await engine.end_turn(p)
+ await engine.play_card(caster, toctou_hand(engine, "r0nk", 0))
+ verify(during.get("over", false) and engine.state.winner == survivor, "Last player alive wins during a TOCTOU turn that interrupted r0nk")
+ engine.queue_free()
