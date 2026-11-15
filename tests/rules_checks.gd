@@ -258,6 +258,22 @@ func run():
 	check(hero in org.attached, "pTFS stores purchased hero")
 	await e.start_turn(0)
 	check(hero in p.hand and org.attached.is_empty(), "pTFS releases heroes at start")
+	# Seat 0 controls seat 1's pTFS and The Book: the cards they hand over become seat 0's.
+	await fixture()
+	p = e.active()
+	org = card("pTFS", "play_area", 1)
+	hero = card("Altk3y", "hand", 1)
+	e.move(hero, org.attached, "attached")
+	e.take_control(org, p)
+	book = card("The Book", "play_area", 1)
+	var titor = card("John Titor", "hand", 1)
+	e.move(titor, book.attached, "attached")
+	e.take_control(book, p)
+	await e.start_turn(0)
+	check(hero in p.hand and hero.owner == p.seat, "Hero from a stolen pTFS joins the new controller's hand as theirs")
+	check(titor in p.deck and titor.owner == p.seat, "John Titor shuffled in by a stolen The Book joins the new controller's deck as theirs")
+	await e.play_card(p, hero)
+	check(hero in p.discard, "Hero from a stolen pTFS goes to the new controller's discard pile when played")
 	# Logs: count targeted hits, including two physical copies of the same name.
 	for holders in [1, 2, 0]:
 		await fixture(3)

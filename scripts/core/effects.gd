@@ -562,6 +562,8 @@ func _effect_jenny(p, c):
 ## John Titor
 func _effect_john_titor(p, c):
 	if await e.dec(p).confirm(p, "Shuffle John Titor into deck?"):
+		# Played from a stolen The Book, it joins the player's own deck.
+		e.gain_owner(c, p)
 		e.move(c, p.deck, "deck")
 		e.shuffle(p.deck)
 
@@ -1144,7 +1146,10 @@ func start_trigger(p, c):
 			e.remove(c)
 			await e.deal(p, 5, c)
 		"pTFS":
-			for x in c.attached.duplicate(): e.move(x, p.hand, "hand")
+			# Heroes on a stolen pTFS become the new controller's cards.
+			for x in c.attached.duplicate():
+				e.gain_owner(x, p)
+				e.move(x, p.hand, "hand")
 		"The Book":
 			for x in await e.choose(p, "Attach action to The Book", p.hand.filter(func(x): return e.db().get_card(x.id).kind == "Action")):
 				e.move(x, c.attached, "attached")
