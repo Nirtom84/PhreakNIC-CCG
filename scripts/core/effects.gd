@@ -1005,12 +1005,13 @@ func cost(p, c) -> int:
 	var value = int(data.cost)
 	for name in p.turn_flags.get("free_names", []):
 		if free_matches(c, name): return 0
-	if e.db().named(c.id, "Walmart Parking Lot") and e.played_name(p, "heartsh8ped"): return 0
+	# "You may buy this card for free": Walmart itself (any printing), not every card sharing its name.
+	if CustomDeck.rules_id(c.id) == "Walmart Parking Lot" and e.played_name(p, "heartsh8ped"): return 0
 	if e.db().has_subtype(c.id, "FOTTR Hero") and not e.controlled(p, "The Fellowship of the Token Ring").is_empty(): return 0
-	if e.db().has_subtype(c.id, "pTFS Hero") and not e.controlled(p, "pTFS").is_empty(): return 0
+	if e.db().has_subtype(c.id, "pTFS Hero") and not e.controlled_id(p, "pTFS").is_empty(): return 0
 	for subtype in p.turn_flags.get("reductions", {}):
 		if data.kind == subtype or e.db().has_subtype(c.id, subtype): value -= p.turn_flags.reductions[subtype]
-	if e.db().has_subtype(c.id, "Hero"): value -= e.controlled(p, "Makeshift Lectern").size()
+	if e.db().has_subtype(c.id, "Hero"): value -= e.controlled_id(p, "Makeshift Lectern").size()
 	if e.db().has_subtype(c.id, "Technology"): value -= e.controlled(p, "Hardware Hacking Village").size()
 	return maxi(0, value)
 func on_play(p, c):

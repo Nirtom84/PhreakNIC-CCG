@@ -9,6 +9,8 @@ class FakeAPI extends Node:
 class CaptureLink extends LinkServer:
  var sent = []
  func _send(message: Dictionary): sent.append(message)
+class Yes extends Decider:
+ func confirm(_p, _prompt: String) -> bool: return true
 func _initialize(): call_deferred("run")
 func verify(value, text):
  checks += 1
@@ -50,6 +52,13 @@ func run():
  var restored = SaveGame.restore(SaveGame.snapshot(engine.state))
  verify(restored != null and restored.card_pool == "2026mog", "Mog save round trip")
  engine.free()
+ # Mog printings with IDENTICAL rules keep the effects the engine looks up for them, in the
+ # Mog set and as @mog printings in a custom deck (shipped deck 100 has all five).
+ var saga = CustomDeck.decode(JSON.parse_string(FileAccess.get_file_as_string("res://decks/custom/100-expansion-saga.phreakdeck.json")).code)
+ saga.cards["heartsh8ped"] = 1
+ saga.cards["Bribery"] = 1
+ verify(CustomDeck.validate(saga).is_empty(), "Mog rules: custom fixture deck is valid")
+ for pool in ["2026", "2026mog", "custom"]: await mog_rules(pool, saga if pool == "custom" else {})
  var bot_server = GameServer.new()
  root.add_child(bot_server)
  verify(bot_server.setup([{"name": "Host", "bot": false}, {"bot": true}], "2026mog"), "Online Mog setup")
@@ -110,3 +119,69 @@ func buttons_fit(node: Node, bounds: Rect2) -> bool:
  for child in node.get_children():
   if not buttons_fit(child, bounds): return false
  return true
+## A two-player game on seat 0's first turn, with no Rickroll in the row to force a buy.
+func mog_game(pool: String, deck: Dictionary):
+ var engine = GameEngine.new()
+ root.add_child(engine)
+ engine.setup([2, 2], 991, [Yes.new(), Yes.new()], pool, 50, [], deck)
+ for attempt in 10:
+  var roll = engine.state.center_row.filter(func(c): return c != null and CustomDeck.rules_id(c.id) == "Rickroll")
+  if roll.is_empty(): break
+  engine.detach(roll[0])
+  engine.state.center_deck.push_front(roll[0])
+ await engine.start_turn(0)
+ return engine
+## A Center Deck card of this id (taken as if bought and drawn), or null.
+func mog_find(engine, id: String):
+ for c in engine.state.center_deck + engine.state.center_row:
+  if c != null and c.id == id: return c
+ return null
+func mog_play(engine, id: String):
+ var p = engine.active()
+ var card = mog_find(engine, id)
+ if card == null: return null
+ engine.gain_owner(card, p)
+ engine.move(card, p.hand, "hand")
+ await engine.play_card(p, card)
+ return card if card in p.play_area else null
+func mog_rules(pool: String, deck: Dictionary):
+ var suffix = "@mog" if pool == "custom" else ""
+ var label = " (%s)" % pool
+ # Grass: "Players may not buy cards."
+ var engine = await mog_game(pool, deck)
+ var p = engine.active()
+ var grass = await mog_play(engine, "Touch Grass" + suffix)
+ p.hacking = 20
+ var target = engine.state.center_row.filter(func(c): return c != null)[0]
+ verify(grass != null and not engine.can_buy(p, target), "Mog rules: %s stops buying%s" % [engine.db().get_card(grass.id).name if grass else "Grass", label])
+ engine.free()
+ # CTF Bangers: "Whenever a permanent you control would deal damage, it deals 1 extra damage."
+ engine = await mog_game(pool, deck)
+ p = engine.active()
+ var ctf = await mog_play(engine, "CTF Bangers" + suffix)
+ var bribery = await mog_play(engine, "Bribery")
+ p.hacking = 2
+ var life = engine.state.players[1].life
+ var used = false
+ if bribery != null: used = await engine.activate(p, bribery, 0)
+ verify(ctf != null and used and life - engine.state.players[1].life == 2, "Mog rules: %s adds 1 to Bribery's damage%s" % [engine.db().get_card(ctf.id).name if ctf else "CTF Bangers", label])
+ engine.free()
+ # Walmart Parking Lot: "If you have played a card named "heartsh8ped" this turn, you may buy this card for free."
+ engine = await mog_game(pool, deck)
+ p = engine.active()
+ await mog_play(engine, "heartsh8ped")
+ var lot = mog_find(engine, "Walmart Parking Lot" + suffix)
+ verify(engine.played_name(p, "heartsh8ped") and lot != null and engine.effective_cost(p, lot) == 0, "Mog rules: %s is free after heartsh8ped%s" % [engine.db().get_card(lot.id).name if lot else "Walmart", label])
+ # ...but only Walmart itself: What is Truth? has every name, not Walmart's text.
+ var truth = mog_find(engine, "What is Truth")
+ if truth != null: verify(engine.effective_cost(p, truth) == int(engine.db().get_card(truth.id).cost), "Mog rules: %s keeps its cost after heartsh8ped%s" % [engine.db().get_card(truth.id).name, label])
+ engine.free()
+ # pTFS: "You may buy pTFS Heros for free." Makeshift Lectern: "On your turn, hero cards cost 1 less."
+ for id in ["pTFS", "Makeshift Lectern"]:
+  engine = await mog_game(pool, deck)
+  p = engine.active()
+  var permanent = await mog_play(engine, id + suffix)
+  var hero = mog_find(engine, "Venaul")
+  var expected = 0 if id == "pTFS" else int(engine.db().get_card("Venaul").cost) - 1
+  verify(permanent != null and hero != null and engine.effective_cost(p, hero) == expected, "Mog rules: %s makes Venaul cost %d%s" % [engine.db().get_card(permanent.id).name if permanent else id, expected, label])
+  engine.free()

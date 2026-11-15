@@ -118,6 +118,12 @@ func controlled(p, name: String) -> Array:
 	return p.play_area.filter(func(c): return db().named(c.effect_id(), name))
 func in_play(name: String) -> bool:
 	return permanents().any(func(c): return db().named(c.effect_id(), name))
+## By rules id instead of printed name: every printing of the card (originals, Mog printings,
+## @mog copies in custom decks) and anything copying it, but not What is Truth?'s all-names rule.
+func controlled_id(p, id: String) -> Array:
+	return p.play_area.filter(func(c): return CustomDeck.rules_id(c.effect_id()) == id)
+func in_play_id(id: String) -> bool:
+	return permanents().any(func(c): return CustomDeck.rules_id(c.effect_id()) == id)
 func played_name(p, name: String, contains: bool = false) -> bool:
 	return p.played.any(func(c): return db().name_contains(c.id, name) if contains else db().named(c.id, name))
 func draw(p, count: int):
@@ -276,7 +282,7 @@ func why_not_buy(p, card) -> String:
 	if card not in state.center_row and card not in p.reserve: return "Card is not available to buy"
 	if not can_acquire(p): return "You reserved this turn: cannot acquire more cards"
 	if p.turn_flags.get("no_buy", false): return "Buying is blocked this turn"
-	if in_play("Grass"): return "Grass is in play: no one can buy"
+	if in_play_id("Touch Grass"): return "Grass is in play: no one can buy"
 	var cost = effective_cost(p, card)
 	if p.hacking < cost: return "Costs %d Hacking — you have %d" % [cost, p.hacking]
 	return ""
@@ -379,7 +385,7 @@ func counter_removed(card):
 	if id == "The Clarion Inn": await damage(p, p, 4, card, false)
 func deal(p, amount: int, source = null):
 	if amount <= 0 or not p.alive: return
-	if source != null and db().get_card(source.effect_id()).kind == "Permanent": amount += controlled(p, "CTF Bangers").size()
+	if source != null and db().get_card(source.effect_id()).kind == "Permanent": amount += controlled_id(p, "CTF Bangers").size()
 	for q in opponents(p): await damage(p, q, amount, source, true)
 func damage(p, q, amount: int, source = null, dealing: bool = false):
 	var saved_busy = busy

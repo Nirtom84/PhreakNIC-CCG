@@ -233,7 +233,7 @@ func reserve_priority(card, p) -> float:
 func ability_wins(p, card) -> bool:
 	if CustomDeck.rules_id(card.effect_id()) == "Lowes Shopping Cart": return p.hacking >= 25 - card.counters
 	if CustomDeck.rules_id(card.effect_id()) != "Bribery": return false
-	var damage = floori(float(p.hacking) / 2.0) * (1 + engine.controlled(p, "CTF Bangers").size())
+	var damage = floori(float(p.hacking) / 2.0) * (1 + engine.controlled_id(p, "CTF Bangers").size())
 	for q in engine.opponents(p):
 		if q.turn_flags.get("prevent_all", false) or not engine.controlled(q, "Military-Grade Card Encapsulation").is_empty() or not engine.controlled(q, "Phreaknic Network").is_empty(): return false
 		var effective_life = q.life
