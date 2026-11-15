@@ -761,10 +761,10 @@ func card_widget(c, zone: String, width: int) -> Control:
    var b = UIStyle.button(ability_row, "Use %d" % (ability.index + 1) if abilities.size() > 1 else "Activate", activate_card.bind(c, ability.index))
    b.disabled = not available() or not ability.enabled
    b.add_theme_font_size_override("font_size", 12)
-   b.tooltip_text = ability.label
+   b.tooltip_text = plain_text(ability.label)
  if not auto_group.is_empty():
   # Desktop: the rig row has room for one button row only, so the toggle sits on the foot of the card art.
-  # Phone: the board popup has the height for a full-size button under the card.
+  # Phone: the rig is folded behind Open board, so the card's sheet carries the toggle (inspect_card).
   var toggle = UIStyle.button(box if UIStyle.compact() else button, "Auto: on" if Sfx.auto_enabled(auto_group) else "Auto: off", func():
    Sfx.auto_activate[auto_group] = not Sfx.auto_enabled(auto_group)
    Sfx.save()
@@ -1233,14 +1233,15 @@ func decision_zone_name(zone: String) -> String:
   return seat_name(seat) + "'s " + names[parts[1]]
  return {"center_row": "Center Row", "center_deck": "Center Deck", "removed": "Removed from game"}.get(zone, "Other")
 func view_cards(title: String, cards: Array):
- if pending or engine.busy or driving or acting: return
+ # A TOCTOU reaction turn runs inside the bot's turn (driving), but it's yours to act in.
+ if pending or engine.busy or ((driving or acting) and not available()): return
  await decision(title, ["Close"] if cards.is_empty() else [], cards, 0, 0, true)
 # Phone layout folds the rig and reserve behind one button. A viewer alone would leave no way to buy a
 # reserved card or use a permanent's ability, so a tap closes the viewer and opens that card's action sheet.
 var board_viewer = false
 var board_pick = null
 func open_board():
- if pending or engine.busy or driving or acting: return
+ if pending or engine.busy or ((driving or acting) and not available()): return
  var p = engine.state.players[human_seat]
  board_viewer = true
  board_pick = null
@@ -1360,6 +1361,9 @@ func plain_log_entries() -> Array:
  return result
 func escaped(text: String) -> String:
  return UIStyle.escape_bbcode(text)
+## Card text on a plain button or tooltip, which can't show the {H}/{D} icons.
+func plain_text(text: String) -> String:
+ return text.replace("{H}", "Hacking").replace("{D}", "damage")
 func link_cards(message: String) -> String:
  var result = ""
  var offset = 0
@@ -1872,7 +1876,19 @@ func inspect_card(c, interactive: bool = false):
   UIStyle.label(box, "Nashville 2600 is in play: no one can play permanents.", 18).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
  if c is CardInstance and available() and c in engine.permanents():
   for ability in engine.activatable_abilities(p, c):
-   if ability.enabled: UIStyle.button(box, ability.label, sheet_activate.bind(c, ability.index))
+   if ability.enabled: UIStyle.button(box, plain_text(ability.label), sheet_activate.bind(c, ability.index))
+ var auto_group = Sfx.AUTO_GROUPS.get(CustomDeck.rules_id(c.effect_id()), "") if c is CardInstance and c.controller == human_seat and c in engine.permanents() else ""
+ if not auto_group.is_empty():
+  # The rig's Auto toggle, here too: the phone layout folds the rig behind Open board.
+  var auto = CheckButton.new()
+  auto.name = "AutoActivate"
+  auto.text = "Auto: activate by itself each turn"
+  auto.button_pressed = Sfx.auto_enabled(auto_group)
+  box.add_child(auto)
+  auto.toggled.connect(func(on):
+   Sfx.auto_activate[auto_group] = on
+   Sfx.save()
+   redraw())
  if interactive and available():
   if c in engine.state.center_row or c in p.reserve:
    var buy = UIStyle.button(box, "Buy — %d Hacking" % cost, sheet_buy.bind(c))

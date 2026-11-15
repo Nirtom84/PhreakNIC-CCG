@@ -112,11 +112,37 @@ func run():
  table.auto_notice()
  verify(table.notice_text == "sentinel", "Tip once")
  var style = load("res://scripts/ui/style.gd")
+ # The phone layout folds the rig behind Open board and never builds its card widgets, so the toggle is
+ # reached the way a player does: Open board, tap Botnet, its card sheet.
  style.compact_override = true
- widget = table.card_widget(b, "permanent", 100)
- verify(autos(widget)[0].custom_minimum_size.y >= 72, "Compact target")
- widget.free()
+ table.redraw()
+ await frames()
+ var open_board = table.find_children("*", "Button", true, false).filter(func(x): return x.text.begins_with("Rig: ") and x.is_visible_in_tree())
+ if not open_board.is_empty(): open_board[0].pressed.emit()
+ await frames()
+ for x in table.find_children("*", "Button", true, false):
+  if x.has_meta("uid") and x.get_meta("uid") == b.uid: x.pressed.emit(); break
+ await frames()
+ var sheet_toggles = autos(table.inspect_overlay) if is_instance_valid(table.inspect_overlay) else []
+ verify(sheet_toggles.size() == 1 and sheet_toggles[0].custom_minimum_size.y >= 72, "Compact target: Open board > Botnet's sheet has its Auto toggle")
+ if sheet_toggles.size() == 1: sheet_toggles[0].button_pressed = true
+ verify(settings.auto_enabled("Botnet"), "Sheet toggle turns Botnet's Auto on")
+ settings.auto_activate.clear()
+ table.close_inspect()
  style.compact_override = null
+ # Ability labels are card text; plain buttons and tooltips can't show the {H}/{D} icons, so they read as words.
+ var bribery = card("Bribery", 91010)
+ p.play_area.append(bribery)
+ p.hacking = 2
+ widget = table.card_widget(bribery, "permanent", 100)
+ var tips = widget.find_children("*", "Button", true, false).map(func(x): return x.tooltip_text)
+ verify(tips.any(func(t): return "pay 2 Hacking to deal 1 damage" in t) and not tips.any(func(t): return "{H}" in t or "{D}" in t), "Rig ability tooltip shows no raw {H}/{D}")
+ widget.free()
+ table.inspect_card(bribery, true)
+ var labels = table.inspect_overlay.find_children("*", "Button", true, false).map(func(x): return x.text)
+ verify(labels.any(func(t): return "pay 2 Hacking to deal 1 damage" in t) and not labels.any(func(t): return "{H}" in t or "{D}" in t), "Card sheet ability button shows no raw {H}/{D}")
+ table.close_inspect()
+ p.play_area.erase(bribery)
  verify(style.avatar_id("Botnet", "Elonka") == root.get_node("CardDB").card_id_for_name("Botnet"), "Handle wins avatar")
  verify(style.avatar_id("unknown handle", "Elonka") == "Elonka", "Hero fallback")
  var mog_book = root.get_node("CardDB").catalog("2026mog")
