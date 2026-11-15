@@ -280,6 +280,45 @@ func run():
 		check((fore in p.deck) == (order == 0) and fore not in p.discard, "Controller selects Fore04 destination by trigger order")
 		check(e.dec(p).confirmations == (["Put bought card on deck?"] if order == 0 else ["Put bought hero in hand?"]), "Second destination prompt suppressed")
 		check(moves.size() == 2, "Fore04 moves once into discard and redirects only once")
+	# JousterL: "you may put a card from your discard pile on top of your deck", itself included;
+	# G4nd4lf says "another card". On the deck, JousterL has its one destination, even with pTFS.
+	for id in ["JousterL", "G4nd4lf", "pTFS"]:
+		await fixture()
+		p = e.active()
+		if id == "pTFS": card("pTFS", "play_area")
+		var bought_hero = card("G4nd4lf" if id == "G4nd4lf" else "JousterL", "reserve")
+		e.dec(p).requested_id = bought_hero.id
+		e.dec(p).confirmations.clear()
+		p.hacking = 10
+		await e.buy_card(p, bought_hero)
+		var on_top = not p.deck.is_empty() and p.deck.back() == bought_hero
+		match id:
+			"JousterL": check(on_top, "JousterL can put itself on top of the deck")
+			"G4nd4lf": check(not on_top and bought_hero in p.discard, "G4nd4lf can't put itself on top of the deck")
+			"pTFS": check(on_top and e.dec(p).confirmations.is_empty(), "JousterL put on top of the deck isn't also stored on pTFS")
+	# Egg in Your Soup adds its 2 ICE counters to one Sandwich Factory, the player's pick.
+	await fixture()
+	p = e.active()
+	var factory = card("The Sandwich Factory")
+	await e.play_card(p, factory)
+	var restaurant = card("[Restaurant Name] Restaurant")
+	e.dec(p).requested_id = "The Sandwich Factory"
+	await e.play_card(p, restaurant)   # comes into play as a copy of the Sandwich Factory
+	e.dec(p).requested_id = restaurant.id
+	await e.play_card(p, card("Egg in Your Soup"))
+	check(restaurant.effect_id() == "The Sandwich Factory" and restaurant.counters == 4 and factory.counters == 2, "Egg in Your Soup adds 2 ICE counters to the one Sandwich Factory picked")
+	# Every discard-into-deck shuffle reports each card, as draw() does (the table's shuffle sound).
+	for id in ["Lightning Talks", "LAN Party", "Speakers Needed"]:
+		await fixture()
+		p = e.active()
+		var shuffler = e.state.players[1] if id == "LAN Party" else p
+		for c in shuffler.deck.duplicate(): e.move(c, shuffler.discard, "discard")
+		var expected = shuffler.discard.size()
+		var reported: Array = []
+		e.card_moved.connect(func(moved, origin, destination):
+			if origin == "discard" and destination == "deck" and moved.owner == shuffler.seat: reported.append(moved))
+		await e.play_card(p, card(id))
+		check(expected == 5 and reported.size() == expected, "%s reports each card it shuffles from the discard pile into the deck" % e.db().get_card(id).name)
 	# Flesh Oprah: the free buy needs a buyable O.P.R.A.H.; with none, the prompt must say so.
 	await fixture()
 	p = e.active()
