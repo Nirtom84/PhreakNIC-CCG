@@ -1,4 +1,16 @@
 extends SceneTree
+# Fixed-count comparisons must finish their one rollout batch before comparing decisions. The production
+# 80 ms deadline can interrupt different candidates on a busy runner; wall-cap behavior is tested separately.
+class RepeatabilitySearch extends DefconSearch:
+ func begin() -> int:
+  var seed_value = super.begin()
+  deadline = Time.get_ticks_msec() + 10000
+  return seed_value
+func count_purchase(game, player, buys, fallback):
+ var search = RepeatabilitySearch.new(game)
+ var result = await search.choose_purchase(player, buys, fallback)
+ verify(not search.expired and search.rollouts > 0, "Repeatability comparison completes its fixed rollout batch")
+ return result
 var checks = 0
 var failures = 0
 var style
@@ -154,8 +166,8 @@ func run():
  buys.sort_custom(func(a, b): return game.dec(p).value(a, p) > game.dec(p).value(b, p))
  var fallback = {"kind": "stop", "uid": -1}
  before = state_hash(game)
- var first = await DefconSearch.new(game).choose_purchase(p, buys, fallback)
- var second = await DefconSearch.new(game).choose_purchase(p, buys, fallback)
+ var first = await count_purchase(game, p, buys, fallback)
+ var second = await count_purchase(game, p, buys, fallback)
  verify(first == second, "Count mode repeatability")
  verify(before == state_hash(game), "Search leaves real state and RNG untouched")
  var control_rng = RandomNumberGenerator.new()
@@ -172,7 +184,7 @@ func run():
  opponent.deck = unknown.slice(opponent.hand.size())
  game.state.center_deck.reverse()
  p.deck.reverse()
- var third = await DefconSearch.new(game).choose_purchase(p, buys, fallback)
+ var third = await count_purchase(game, p, buys, fallback)
  verify(first == third, "Hidden arrangements do not change count-mode decisions")
  var a = DefconSearch.sandbox(game, p.seat, 123)
  opponent.hand.reverse()
