@@ -327,6 +327,24 @@ func run():
 	q.life = 1
 	await e.play_card(p, card("r0nk"))
 	check(e.state.finished and e.state.winner == null and not p.alive and not q.alive, "Simultaneous self-and-opponent death is draw")
+	# Rookie Numbers: every player with a "Mog" card in their discard pile loses 2 life, at the same time.
+	for seat in [0, 1]:
+		await fixture()
+		if seat == 1: await e.start_turn(1)
+		p = e.active()
+		q = e.state.players[1 - seat]
+		card("mog", "discard", 0)
+		card("Mogs Pancake Breakfast", "discard", 1)
+		p.life = 2
+		q.life = 4
+		await e.play_card(p, card("Rookie Numbers", "hand", seat))
+		check(e.state.finished and e.state.winner == null and not p.alive and not q.alive, "Rookie Numbers dropping both players to 0 is a draw (seat %d casts)" % seat)
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	card("Mogs Pancake Breakfast", "discard", 1)
+	await e.play_card(p, card("Rookie Numbers"))
+	check(p.life == 100 and q.life == 96, "Rookie Numbers drains only players with a Mog card in their discard pile")
 	await fixture()
 	p = e.active()
 	var async_decider = AsyncDecider.new()
