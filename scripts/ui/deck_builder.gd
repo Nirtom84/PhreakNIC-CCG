@@ -243,7 +243,7 @@ func edit(value: Dictionary, index: int):
  name_input.text_changed.connect(func(v): deck.name = v; refresh_counts())
  save_button = UIStyle.button(header, "Save", func(): save_deck())
  UIStyle.button(header, "Keep draft", func(): save_deck(true))
- UIStyle.button(header, "Back", show_list)
+ UIStyle.button(header, "Back", back)
  var filters = HBoxContainer.new()
  body.add_child(filters)
  search = LineEdit.new()
@@ -415,9 +415,21 @@ func preview(p: Dictionary):
 func back():
  if inspector.close_top(): return
  if is_instance_valid(modal) and not modal.is_queued_for_deletion(): modal.queue_free(); return
- if not deck.is_empty(): show_list(); return
+ if not deck.is_empty():
+  if unsaved(): confirm_discard()
+  else: show_list()
+  return
  closed.emit()
  queue_free()
+## Leaving the editor now would lose changes to a saved deck, or a new deck that has cards.
+func unsaved() -> bool:
+ if editing >= 0: return CustomDeck.normalize(deck) != decks[editing]
+ return not deck.cards.is_empty()
+func confirm_discard():
+ var box = popup("Keep your changes to this deck?")
+ UIStyle.button(box, "Keep draft", func(): modal.queue_free(); save_deck(true))
+ UIStyle.button(box, "Discard", func(): modal.queue_free(); show_list())
+ UIStyle.button(box, "Cancel", func(): modal.queue_free())
 func _unhandled_key_input(event):
  if event.is_action_pressed("ui_cancel"): back(); get_viewport().set_input_as_handled()
 func _notification(what):
