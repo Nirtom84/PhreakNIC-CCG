@@ -10,6 +10,14 @@ var saved: Dictionary = {}
 var snapshots = 0
 var over = false
 var version = str(ProjectSettings.get_setting("application/config/version", ""))
+var errors = ErrorCounter.new()
+class ErrorCounter extends Logger:
+ var count = 0
+ var lines: Array = []
+ func _log_error(_function: String, file: String, line: int, code: String, rationale: String, _notify: bool, error_type: int, _traces: Array[ScriptBacktrace]) -> void:
+  if error_type == ERROR_TYPE_WARNING: return
+  count += 1
+  if lines.size() < 100: lines.append(("%s:%d %s %s" % [file.get_file(), line, code, rationale]).strip_edges())
 class Route extends NetTransport:
  var wire
  var seat: int
@@ -118,6 +126,7 @@ func setup():
  wire.send({"t": "setup", "room": "TEST", "bot_pace": 0, "seats": [{"name": "A", "hero": "nirtom", "bot": false, "difficulty": 0, "token": "a"}, {"name": "B", "hero": "r0nk", "bot": false, "difficulty": 0, "token": "b"}, {"name": "C", "bot": true, "difficulty": 2, "token": ""}], "card_pool": "2026", "starting_life": 12, "seed": 12})
  verify(await until(func(): return not saved.is_empty()), "Initial safe snapshot received")
 func run():
+ OS.add_logger(errors)
  server = LinkServer.new()
  root.add_child(server)
  if server.listen(0) != OK:
@@ -184,12 +193,22 @@ func run():
  var now = server.game.now()
  server.game.clock = func(): return now + 121.0
  verify(await until(func(): return over, 40000), "Bots and takeover run with no connected humans")
+ await abrupt_drop()
  await subprocess_smoke()
  server.stop()
  server.queue_free()
  await frames(2)
  print("Link checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+# The Room's end of the link can vanish without a close frame (a Worker restart, a network fault).
+func abrupt_drop():
+ await open_wire()
+ verify(await until(func(): return server.bridges.size() == 1), "Only the live link's bridge remains")
+ var before = errors.count
+ wire.peer.close(-1)
+ verify(await until(func(): return server.link == null and server.bridges.is_empty()), "An abruptly dropped link is cleaned up")
+ await frames(5)
+ verify(errors.count == before, "An abruptly dropped link logs no engine error (%s)" % " | ".join(errors.lines.slice(before)))
 func subprocess_smoke():
  var binary = ProjectSettings.globalize_path("res://build/server/phreaknic-server.x86_64")
  if not FileAccess.file_exists(binary):

@@ -124,7 +124,8 @@ func _bridge(bridge: Dictionary):
 	for direction in ["up", "down"]:
 		var source = bridge.remote if direction == "up" else bridge.local
 		var target = bridge.local if direction == "up" else bridge.remote
-		var count = source.get_available_bytes()
+		# A socket that has just dropped is closed, and reading a closed socket logs an engine error.
+		var count = source.get_available_bytes() if source.get_status() == StreamPeerTCP.STATUS_CONNECTED else 0
 		if count > 0:
 			var data = source.get_partial_data(count)
 			if data[0] == OK: bridge[direction].append_array(data[1])
