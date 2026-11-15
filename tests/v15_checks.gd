@@ -50,6 +50,37 @@ func run():
  root.add_child(restored)
  verify(restored.music_volume == 0.35 and not restored.music_muted, "Music settings validate on load")
  restored.free()
+ # The music slider saves a step made with the mouse wheel or an arrow key (a drag saves once, on release).
+ var menu = load("res://scenes/menu.tscn").instantiate()
+ root.add_child(menu)
+ for i in 2: await process_frame
+ var slider = menu.find_children("*", "HSlider", true, false).filter(func(s): return s.get_parent().get_children().any(func(c): return c is CheckButton and c.text == "Music"))[0]
+ var before = slider.value
+ var point = slider.get_global_rect().get_center()
+ for down in [true, false]:
+  var wheel = InputEventMouseButton.new()
+  wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+  wheel.factor = 1.0
+  wheel.pressed = down
+  wheel.position = point
+  wheel.global_position = point
+  root.push_input(wheel, true)
+ for i in 2: await process_frame
+ config = ConfigFile.new()
+ config.load("user://settings.cfg")
+ verify(slider.value > before and is_equal_approx(float(config.get_value("sound", "music_volume", -1.0)), slider.value), "Music volume set with the mouse wheel is saved")
+ before = slider.value
+ slider.grab_focus()
+ for down in [true, false]:
+  var key = InputEventKey.new()
+  key.keycode = KEY_RIGHT
+  key.physical_keycode = KEY_RIGHT
+  key.pressed = down
+  Input.parse_input_event(key)
+ for i in 2: await process_frame
+ config.load("user://settings.cfg")
+ verify(slider.value > before and is_equal_approx(float(config.get_value("sound", "music_volume", -1.0)), slider.value), "Music volume set with an arrow key is saved")
+ menu.free()
  var count = 0
  for file in DirAccess.get_files_at("res://assets/cards/mog"):
   if not file.ends_with(".jpg.import"): continue

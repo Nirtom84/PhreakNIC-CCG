@@ -41,6 +41,7 @@ func load_auto(config: ConfigFile):
   var value = config.get_value("auto_activate", group, legacy is bool and legacy)
   auto_activate[group] = value if value is bool else false
 var difficulty: int = 0
+var player_count: int = 2
 var starting_life: int = 0
 var custom_deck_name: String = "Tag Team"
 var card_pool: String = "2026"
@@ -81,6 +82,8 @@ func _ready():
  music_muted = v if v is bool else false
  v = config.get_value("game", "difficulty", 0)
  if v is int and v >= 0 and v <= 3: difficulty = v
+ v = config.get_value("game", "player_count", 2)
+ if v is int and v >= 2 and v <= 4: player_count = v
  v = config.get_value("game", "starting_life", 0)
  if v is int and v >= 0 and v <= 10000: starting_life = v
  for selected_pool in ["2025", "2026", "2026mog"]:
@@ -107,6 +110,7 @@ func save():
  if config.has_section_key("game", "auto_botnet"): config.erase_section_key("game", "auto_botnet")
  for group in AUTO_GROUPS.values(): config.set_value("auto_activate", group, auto_enabled(group))
  config.set_value("game", "difficulty", difficulty)
+ config.set_value("game", "player_count", player_count)
  config.set_value("game", "starting_life", starting_life)
  config.set_value("game", "bot_pace", bot_pace)
  config.set_value("game", "card_pool", card_pool)

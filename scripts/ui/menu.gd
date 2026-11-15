@@ -197,15 +197,16 @@ func _ready():
  count = OptionButton.new()
  count.visible = false
  for n in [2, 3, 4]: count.add_item(str(n), n)
+ count.select(Sfx.player_count - 2)
  menu.add_child(count)
  var seats = HBoxContainer.new()
  players_box.add_child(seats)
  var seat_group = ButtonGroup.new()
  for n in PLAYER_COUNTS:
-  var seat = UIStyle.button(seats, str(n) + " players", func(): count.select(n - 2); count.item_selected.emit(n - 2))
+  var seat = UIStyle.button(seats, str(n) + " players", func(): Sfx.player_count = n; Sfx.save(); count.select(n - 2); count.item_selected.emit(n - 2))
   seat.toggle_mode = true
   seat.button_group = seat_group
-  seat.button_pressed = n == 2
+  seat.button_pressed = n == Sfx.player_count
   seat.custom_minimum_size.x = 96
   seat.add_theme_font_size_override("font_size", 14)
   if UIStyle.compact():
@@ -251,10 +252,11 @@ func _ready():
  UIStyle.label(life_row, "Starting life", 18)
  var life = OptionButton.new()
  life_row.add_child(life)
+ var standard = func(): return "Standard · %d" % (24 if count.get_selected_id() == 2 else 10 * count.get_selected_id())
  for n in [0, 20, 30, 40]:
-  life.add_item("Standard · 24" if n == 0 else str(n), n)
+  life.add_item(standard.call() if n == 0 else str(n), n)
   if n == Sfx.starting_life: life.select(life.item_count - 1)
- count.item_selected.connect(func(_i): life.set_item_text(0, "Standard · %d" % (24 if count.get_selected_id() == 2 else 10 * count.get_selected_id())))
+ count.item_selected.connect(func(_i): life.set_item_text(0, standard.call()))
  life.item_selected.connect(func(_i): Sfx.starting_life = life.get_selected_id(); Sfx.save())
  bans_button = UIStyle.button(life_row, "", func(): ban_picker.open_bans(Sfx.card_pool, Sfx.banned_cards(Sfx.card_pool), func(ids): Sfx.set_banned(Sfx.card_pool, ids); Sfx.save(); refresh_bans()))
  refresh_bans()

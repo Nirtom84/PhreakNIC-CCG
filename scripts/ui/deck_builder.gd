@@ -153,6 +153,10 @@ func save_deck(draft: bool = false) -> bool:
  if editing < 0: decks.append(CustomDeck.normalize(deck))
  else: decks[editing] = CustomDeck.normalize(deck)
  if not persist(): decks = previous; return false
+ # The main menu remembers its custom deck by name, so renaming that deck keeps it chosen.
+ if editing >= 0 and previous[editing].name == Sfx.custom_deck_name and deck.name != Sfx.custom_deck_name:
+  Sfx.custom_deck_name = deck.name
+  Sfx.save()
  status.text = "Draft saved · Incomplete" if not CustomDeck.validate(deck).is_empty() else "Deck saved"
  show_list()
  return true

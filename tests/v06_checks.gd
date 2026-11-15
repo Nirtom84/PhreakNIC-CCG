@@ -21,8 +21,76 @@ class NamingUI:
  func decision(_prompt, names, _cards, _min, _max, _multi, _search):
   ids = names
   return 0
+## The main menu builds itself anew after every game; it must come back with the same player count.
+func player_count_memory():
+ var settings = root.get_node("Sfx")
+ var style = load("res://scripts/ui/style.gd")
+ for phone in [false, true]:
+  style.compact_override = phone
+  var layout = " (phone layout)" if phone else " (desktop layout)"
+  var menu = load("res://scenes/menu.tscn").instantiate()
+  root.add_child(menu)
+  await process_frame
+  find_button(menu, "4 players").pressed.emit()
+  menu.free()
+  menu = load("res://scenes/menu.tscn").instantiate()
+  root.add_child(menu)
+  await process_frame
+  var standard = menu.find_children("*", "OptionButton", true, false).filter(func(o): return o.item_count == 4 and o.get_item_text(0).begins_with("Standard"))
+  verify(find_button(menu, "4 players").button_pressed and not find_button(menu, "2 players").button_pressed and menu.count.get_selected_id() == 4, "Reopened menu keeps 4 players" + layout)
+  verify(standard.size() == 1 and standard[0].get_item_text(0) == "Standard · 40", "Starting life shows the 4-player standard" + layout)
+  menu.free()
+ style.compact_override = null
+ var reloaded_settings = load("res://scripts/ui/sfx.gd").new()
+ root.add_child(reloaded_settings)
+ verify(reloaded_settings.get("player_count") == 4, "Settings reload keeps the player count")
+ reloaded_settings.free()
+ var config = ConfigFile.new()
+ config.load("user://settings.cfg")
+ config.set_value("game", "player_count", 7)
+ config.save("user://settings.cfg")
+ reloaded_settings = load("res://scripts/ui/sfx.gd").new()
+ root.add_child(reloaded_settings)
+ verify(reloaded_settings.get("player_count") == 2, "Invalid player count loads as 2")
+ reloaded_settings.free()
+ settings.set("player_count", 2)
+ settings.save()
+## The menu finds its chosen custom deck by name, so renaming that deck must keep it chosen.
+func renamed_deck_memory():
+ var settings = root.get_node("Sfx")
+ var Builder = load("res://scripts/ui/deck_builder.gd")
+ DirAccess.remove_absolute(ProjectSettings.globalize_path(Builder.PATH))
+ var menu = load("res://scenes/menu.tscn").instantiate()
+ root.add_child(menu)
+ await process_frame
+ find_button(menu, "Decks (experimental)").pressed.emit()
+ var builder = menu.get_children().filter(func(child): return child.get_script() == Builder)[0]
+ await process_frame
+ for deck_name in ["Mine", "Other"]:
+  var copy = Builder.builtins()[0].duplicate(true)
+  copy.name = deck_name
+  builder.edit(copy, -1)
+  builder.save_deck()
+ settings.custom_deck_name = "Mine"
+ settings.save()
+ builder.edit(builder.decks[1], 1)
+ builder.deck.name = "Other v2"
+ builder.save_deck()
+ verify(settings.custom_deck_name == "Mine", "Renaming another deck keeps the chosen one")
+ builder.edit(builder.decks[0], 0)
+ builder.deck.name = "Mine v2"
+ builder.save_deck()
+ builder.back()
+ await process_frame
+ var config = ConfigFile.new()
+ config.load("user://settings.cfg")
+ verify(menu.custom_tile.text.ends_with("Mine v2 · 60 cards") and config.get_value("game", "custom_deck_name") == "Mine v2", "Renaming the chosen custom deck keeps it chosen")
+ menu.free()
+ DirAccess.remove_absolute(ProjectSettings.globalize_path(Builder.PATH))
+ settings.custom_deck_name = "Tag Team"
+ settings.save()
 func run():
- for path in ["user://settings.cfg", SaveGame.PATH]:
+ for path in ["user://settings.cfg", SaveGame.PATH, "user://decks.json", "user://decks.json.tmp"]:
   backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  var settings = root.get_node("Sfx")
  settings.visual_effects = false
@@ -115,6 +183,8 @@ func run():
    verify(rect.position.x >= 0 and rect.position.y >= 0 and rect.end.x <= dimensions.x and rect.end.y <= dimensions.y, "Choice fits " + prefix + str(dimensions))
  menu.queue_free()
  await process_frame
+ await player_count_memory()
+ await renamed_deck_memory()
  for path in backups:
   if backups[path] == null:
    if FileAccess.file_exists(path): DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
