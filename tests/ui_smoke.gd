@@ -138,5 +138,11 @@ func run():
  await process_frame
  settings.auto_end_turn = old_auto_end
  settings.handle = previous_handle
+ # Leaving while the bots play on used to hang in an endless error loop, so it runs in a guarded subprocess.
+ var output = []
+ var code = OS.execute(OS.get_executable_path(), ["--headless", "--path", ProjectSettings.globalize_path("res://"), "-s", get_script().resource_path.get_base_dir().path_join("leave_helper.gd")], output, true)
+ var text = "\n".join(output)
+ verify("LEAVE_HELPER KNOCKED_OUT true" in text, "Leave helper: knocked out of a 3-player game while two bots play on")
+ verify(code == 0 and "LEAVE_HELPER DONE main_menu=true errors=0" in text, "Knocked out at Bot pace Instant, Menu > Main menu > Leave reaches the main menu without errors")
  print("UI smoke: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)

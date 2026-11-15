@@ -1019,10 +1019,11 @@ func drive_bot():
  if not auto_drive: return
  if driving or engine.busy or engine.state.finished or engine.reaction_depth > 0: return
  driving = true
- while engine.active().is_bot and not engine.state.finished:
+ # Leaving takes the table out of the tree at once and frees it at the end of the frame: stop driving there.
+ while is_inside_tree() and engine.active().is_bot and not engine.state.finished:
   await drive_reaction(engine.active())
  driving = false
- redraw()
+ if is_inside_tree(): redraw()
 func decision(prompt: String, options: Array, cards: Array, min_n: int, max_n: int, multi: bool, searchable: bool = false):
  dismiss_recap()
  hide_zoom()
