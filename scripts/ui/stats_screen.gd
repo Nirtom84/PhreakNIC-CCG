@@ -88,7 +88,7 @@ func record_table(parent: Node, rows: Array):
   var b = row[1]
   if b.games == 0: continue
   line(row[0], grid)
-  for value in [b.games, b.wins, b.games - b.wins, "%d%%" % roundi(100.0 * b.wins / b.games)]: line(str(value), grid)
+  for value in [b.games, b.wins, b.losses, "%d%%" % roundi(100.0 * b.wins / b.games)]: line(str(value), grid)
 func feature(parent: Node, caption: String, id: String, fallback: String):
  var box = VBoxContainer.new()
  box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -176,7 +176,7 @@ func _notification(what):
 
 func refresh_experimental():
  var d = store.experimental()
- line("Experimental decks · offline games")
+ line("Experimental decks · offline and online games")
  if d.games == 0:
   line("No finished custom-deck games yet.")
   return

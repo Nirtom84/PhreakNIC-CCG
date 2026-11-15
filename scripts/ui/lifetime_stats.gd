@@ -82,22 +82,26 @@ func save() -> bool:
 func reset():
  data = empty()
  save()
-func add(b: Dictionary, s: Dictionary, won: bool, duration):
+func add(b: Dictionary, s: Dictionary, won: bool, lost: bool, duration):
  b.games = mini(MAX, b.games + 1)
  b.wins = mini(MAX, b.wins + int(won))
- b.losses = mini(MAX, b.losses + int(not won))
- b.streak = mini(MAX, b.streak + 1) if won else 0
+ b.losses = mini(MAX, b.losses + int(lost))
+ # A draw neither extends nor ends a streak.
+ if won: b.streak = mini(MAX, b.streak + 1)
+ elif lost: b.streak = 0
  for k in TOTALS:
   var value = int(duration) if k == "play_time" else (s.turns if k == "win_turns" and won else s.get(k, 0))
   b[k] = mini(MAX, b[k] + number(value))
 func record(stats, seat: int, hero: String, mode: String, key: String) -> bool:
  if not stats.finished or seat < 0 or seat >= stats.seats.size() or key in data.keys: return false
  if mode not in ["local", "online_humans", "online_bots"]: return false
- if stats.card_pool == "custom": return record_experimental(stats, seat, key)
+ if stats.card_pool == "custom": return record_experimental(stats, seat, key, mode)
  var s = stats.seats[seat]
  var won = stats.winner_seat == seat
+ # No winner (a stalemate) is a draw, not a loss.
+ var lost = stats.winner_seat >= 0 and not won
  var today = Time.get_date_string_from_system()
- add(data, s, won, stats.duration)
+ add(data, s, won, lost, stats.duration)
  var groups = {"modes": mode, "sets": stats.card_pool, "heroes": hero if hero in heroes() else ""}
  if mode == "local":
   var level = 0
@@ -108,7 +112,7 @@ func record(stats, seat: int, hero: String, mode: String, key: String) -> bool:
  for group in groups:
   var id = groups[group]
   if not data[group].has(id): data[group][id] = bucket()
-  add(data[group][id], s, won, stats.duration)
+  add(data[group][id], s, won, lost, stats.duration)
  data.best_streak = maxi(data.best_streak, data.streak)
  if s.biggest_hit > data.biggest_hit: data.biggest_hit = s.biggest_hit; data.biggest_hit_date = today
  data.most_damage = maxi(data.most_damage, s.damage_dealt)
@@ -153,7 +157,7 @@ func share_details(handle: String = "You") -> Dictionary:
  d.handle = handle.left(32)
  d.headline = "My record" if handle == "You" else handle.left(32) + "'s record"
  d.hero = favourite_hero()
- d.hero_name = CardDB.get_card(d.hero).get("name", "No Hero")
+ d.hero_name = CardDB.get_card(d.hero).get("name", "")
  d.signature = top("stars")
  d.rate = "%d%%" % roundi(win_rate())
  d.date = Time.get_date_string_from_system()
@@ -163,21 +167,25 @@ func share_details(handle: String = "You") -> Dictionary:
 ## Returns an isolated copy for the future Experimental decks tab.
 func experimental() -> Dictionary:
  return data.experimental.duplicate(true)
-func record_experimental(stats, seat: int, key: String) -> bool:
+func record_experimental(stats, seat: int, key: String, mode: String) -> bool:
  if not stats.finished or seat < 0 or seat >= stats.seats.size() or key in data.experimental.keys: return false
  if not CustomDeck.validate(stats.custom_deck).is_empty(): return false
  var won = stats.winner_seat == seat
+ var lost = stats.winner_seat >= 0 and not won
  var level = 0
  for i in stats.bot_difficulties.size():
   if i != seat: level = maxi(level, stats.bot_difficulties[i])
  var buckets = [data.experimental]
- for entry in [["difficulties", str(level)], ["decks", stats.custom_deck.name]]:
+ var entries = [["decks", stats.custom_deck.name]]
+ # As in the lifetime stats, only offline games go by bot difficulty (online seats have none).
+ if mode == "local": entries.append(["difficulties", str(level)])
+ for entry in entries:
   if not data.experimental[entry[0]].has(entry[1]): data.experimental[entry[0]][entry[1]] = {"games": 0, "wins": 0, "losses": 0}
   buckets.append(data.experimental[entry[0]][entry[1]])
  for b in buckets:
   b.games = mini(MAX, b.games + 1)
   b.wins = mini(MAX, b.wins + int(won))
-  b.losses = mini(MAX, b.losses + int(not won))
+  b.losses = mini(MAX, b.losses + int(lost))
  data.experimental.keys.append(key.left(256))
  if data.experimental.keys.size() > 50: data.experimental.keys.pop_front()
  save()
