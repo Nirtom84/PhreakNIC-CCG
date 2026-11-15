@@ -161,7 +161,7 @@ export class Room extends DurableObject {
       const seat=socketSeat(this.r,t);if(seat<0)fail('token',401);
       const pair=new WebSocketPair(), ws=pair[1];ws.accept();for(const [old,c]of this.clients)if(c.seat===seat){this.clients.delete(old);old.close(4000,'replaced');}this.clients.set(ws,{seat});
       this.r.emptySince=null;if(seat===this.r.host_seat)delete this.r.hostGoneAt;await this.save();if(this.closing){this.clients.delete(ws);ws.close(1000,'expired');fail('token',401);}
-      ws.addEventListener('message',e=>this.ctx.waitUntil(this.message(ws,e.data).catch(e=>this.send(ws,{t:'error',reason:e.status?e.message:'server'}))));
+      ws.addEventListener('message',e=>this.ctx.waitUntil(this.message(ws,e.data).catch(e=>this.send(ws,{t:'error',reason:e.status?e.message:'server',...e.extra}))));
       const close=()=>this.ctx.waitUntil(this.disconnected(ws));ws.addEventListener('close',close);ws.addEventListener('error',close);
       this.broadcastRoom();
       if(this.r.started&&!this.r.over){if(this.link)this.linkSend({t:'connect',seat,version:this.r.version});else this.ctx.waitUntil(this.ensure().catch(()=>{}));}
@@ -195,7 +195,8 @@ export class Room extends DurableObject {
       }
       return;
     }
-    if(m.t!=='lobby')fail('lobby');if(this.starting)fail('busy',503);
+    // A second Start while the first is still claiming its slot is a double tap, not a full server.
+    if(m.t!=='lobby')fail('lobby');if(this.starting){if(m.action==='start')return;fail('busy',503);}
     if(['submit_deck','withdraw_deck'].includes(m.action)){
       if(this.r.card_pool!=='custom'||this.r.seats[c.seat].bot)fail('deck');
       const seat=this.r.seats[c.seat],credential=seat.token;const deck=m.action==='submit_deck'?await deckSubmission(m.code):null;
@@ -210,11 +211,15 @@ export class Room extends DurableObject {
     }else {
       if(c.seat!==0)fail('host',403);
       if(m.action==='start') {
+        // A deploy since the room was created: the new game server would refuse its version.
+        if(this.env.GAME_VERSION&&this.r.version!==this.env.GAME_VERSION)fail('room_version',409,{room:this.r.version});
         if(this.r.seats.length<2||!this.r.seats.some(s=>!s.bot&&s.token)||this.r.seats.some(s=>!s.bot&&!s.token))fail('seats');
-        if(this.r.card_pool==='custom'){const ranked=deckRanking(this.r.seats);if(!ranked.order.length)fail('Someone needs to submit a deck');this.r.deck_order=ranked.order;this.r.deck_groups=ranked.groups;this.r.deck_roll=ranked.lines;this.r.deck_attempt=0;}
+        const ranked=this.r.card_pool==='custom'?deckRanking(this.r.seats):null;if(ranked&&!ranked.order.length)fail('Someone needs to submit a deck');
         this.starting=true;try{
           const refusal=await lobby(this.env).claim(this.r.code,this.r.created);if(refusal)fail(refusal,503);
           if(!this.r||roomExpired(this.r)){await lobby(this.env).release(this.r?.code||'');fail('busy',503);}
+          // Only a start that goes through keeps a deck roll, and only a custom-deck one has any.
+          this.r.deck_roll=ranked?ranked.lines:[];if(ranked){this.r.deck_order=ranked.order;this.r.deck_groups=ranked.groups;this.r.deck_attempt=0;}
           this.r.started=true;await this.stat('start');await this.save(true);this.broadcastRoom();await this.ensure();return;
         }finally{this.starting=false;}
       }else if(m.action==='kick') {
