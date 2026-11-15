@@ -165,6 +165,8 @@ export class Room extends DurableObject {
       const close=()=>this.ctx.waitUntil(this.disconnected(ws));ws.addEventListener('close',close);ws.addEventListener('error',close);
       this.broadcastRoom();
       if(this.r.started&&!this.r.over){if(this.link)this.linkSend({t:'connect',seat,version:this.r.version});else this.ctx.waitUntil(this.ensure().catch(()=>{}));}
+      // A player who comes back after the game ended gets the result the others were sent.
+      if(this.r.result)this.send(ws,this.r.result);
       return new Response(null,{status:101,webSocket:pair[0]});
     }catch(e){return error(e);}
   }
@@ -313,7 +315,7 @@ export class Room extends DurableObject {
     if(m.t==='diag'){if(typeof m.text==='string')console.log(`room ${this.r.code}: ${m.text.slice(0,300)}`);}
     else if(m.t==='to'){for(const [ws,c]of this.clients)if(c.seat===m.seat)this.send(ws,m.msg);}
     else if(m.t==='snapshot'){this.r.snapshot=m.data;await this.ctx.storage.put('room',this.r);}
-    else if(m.t==='over'&&!this.r.over){this.r.over=true;await this.stat('over',undefined,m);await this.stop('over');await this.save(true);this.broadcast(m.reason?{t:'over',winner:m.winner,reason:String(m.reason)}:{t:'over',winner:m.winner});}
+    else if(m.t==='over'&&!this.r.over){this.r.over=true;this.r.result=m.reason?{t:'over',winner:m.winner,reason:String(m.reason)}:{t:'over',winner:m.winner};await this.stat('over',undefined,m);await this.stop('over');await this.save(true);this.broadcast(this.r.result);}
   }
   async closeByHost() {
     if(this.closing||!this.r||this.r.started)return;
