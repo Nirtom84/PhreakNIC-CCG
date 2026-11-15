@@ -234,5 +234,49 @@ func run():
  negative.seats[1].final_life = -3
  var back = negative.from_dict(JSON.parse_string(JSON.stringify(negative.to_dict())))
  verify(back != null and back.seats[1].final_life == -3, "Match stats with a negative final life round trip")
+ await close_request_checks()
  print("v20 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
+# The window's close button while a prompt is open waits for the prompt, then goes on as usual (here a bot's turn,
+# no save point, so it asks first). It used to be dropped.
+func close_request_checks():
+ var settings = root.get_node("Sfx")
+ var confirm = settings.confirm_end_turn
+ settings.confirm_end_turn = true
+ var saved_game = FileAccess.get_file_as_bytes(SaveGame.PATH) if FileAccess.file_exists(SaveGame.PATH) else null
+ table = load("res://scenes/table.tscn").instantiate()
+ table.auto_drive = false
+ table.bot_pace = 0
+ table.seed_value = 7
+ root.add_child(table)
+ await frames(6)
+ while table.engine.active().is_bot: await table.drive_reaction(table.engine.active())
+ await frames()
+ var button_in = func(text, label):
+  for child in table.get_children():
+   if child is PanelContainer and named(child, "DecisionDone") != null and not child.is_queued_for_deletion() and text in child.get_child(0).get_child(0).get_parsed_text():
+    for b in child.find_children("*", "Button", true, false):
+     if b.text == label: return b
+  return null
+ table.end_button.pressed.emit() # a fresh hand has playable cards, so End Turn asks first
+ await frames()
+ var asked = button_in.call("End your turn?", "End turn") != null
+ table.notification(Node.NOTIFICATION_WM_CLOSE_REQUEST)
+ await frames()
+ verify(asked and table.is_inside_tree() and button_in.call("End your turn?", "End turn") != null and button_in.call("Leave without saving?", "Stay") == null, "Close button with a prompt open waits for the prompt")
+ var end_turn = button_in.call("End your turn?", "End turn")
+ if end_turn != null: end_turn.pressed.emit()
+ await frames(6)
+ var stay = button_in.call("Leave without saving?", "Stay")
+ verify(stay != null, "Once the prompt is answered the close goes on: a bot's turn is no save point, so it asks Leave without saving?")
+ if stay != null: stay.pressed.emit()
+ await frames()
+ verify(table.is_inside_tree() and not table.pending, "Stay keeps the game")
+ table.queue_free()
+ await frames()
+ settings.confirm_end_turn = confirm
+ if saved_game == null: SaveGame.remove()
+ else:
+  var file = FileAccess.open(SaveGame.PATH, FileAccess.WRITE)
+  file.store_buffer(saved_game)
+  file.close()
