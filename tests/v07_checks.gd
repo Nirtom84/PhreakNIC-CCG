@@ -78,6 +78,7 @@ func run():
  touch.free()
  style.web_override = null
  style.web_android_override = null
+ check_export_versions()
  for path in backups:
   if backups[path] == null:
    if FileAccess.file_exists(path): DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
@@ -114,3 +115,23 @@ func check_rotate(scene):
  await process_frame
  verify(clicks == before + 1, "Landscape restores clicks")
  probe_layer.queue_free()
+## The Android and Windows builds carry the version from project.godot, as every release since
+## v0.04 has: "0.28" -> Android version/name "0.28" and version/code 28, Windows "0.0.28.0".
+func check_export_versions():
+ var version = str(ProjectSettings.get_setting("application/config/version", ""))
+ var parts = version.split(".")
+ var presets = ConfigFile.new()
+ var readable = presets.load("res://export_presets.cfg") == OK and parts.size() == 2
+ verify(readable, "Export presets and config/version " + version)
+ if not readable: return
+ var options = {}
+ for section in presets.get_sections():
+  if section.begins_with("preset.") and not section.ends_with(".options"): options[presets.get_value(section, "platform", "")] = section + ".options"
+ var android = options.get("Android", "")
+ var windows = options.get("Windows Desktop", "")
+ var code = int(parts[0]) * 100 + int(parts[1])
+ var file_version = "%d.0.%d.0" % [int(parts[0]), int(parts[1])]
+ verify(str(presets.get_value(android, "version/name", "")) == version, "Android version/name is " + version)
+ verify(str(presets.get_value(android, "version/code", "")) == str(code), "Android version/code is %d" % code)
+ for key in ["application/file_version", "application/product_version"]:
+  verify(str(presets.get_value(windows, key, "")) == file_version, "Windows %s is %s" % [key.get_file(), file_version])
