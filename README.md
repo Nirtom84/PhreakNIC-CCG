@@ -104,7 +104,7 @@ tools/build_all.sh release    # zip the builds under stable names in build/relea
 - **GitHub Pages**: `tools/deploy_pages.sh` publishes `build/web/` to the `gh-pages` branch, which GitHub serves at https://nirtom84.github.io/PhreakNIC-CCG/. The branch is replaced on every deploy, so old web builds don't pile up in the repo's history.
 - **Linux**: `build/linux/PhreakNIC-CCG-v<version>.x86_64` — a single file, run it directly.
 - **Windows**: `build/windows/PhreakNIC-CCG-v<version>.exe` — a single file, double-click it.
-- **Android**: `build/android/PhreakNIC-CCG-v<version>.apk`, signed with the project release key when `~/.config/phreaknic/android-signing.sh` exists (maintainer only; it loads the keystore from outside the repo). Without it you get `PhreakNIC-CCG-v<version>-debug.apk`, signed with your own debug key. Install with `adb install` or by copying it to the phone (allow "install unknown apps").
+- **Android**: `build/android/PhreakNIC-CCG-v<version>.apk`, signed with the project release key when `~/.config/phreaknic/android-signing.sh` exists (maintainer only; it loads the keystore from outside the repo). Without it you get `PhreakNIC-CCG-v<version>-debug.apk`, signed with your own debug key, which `tools/build_all.sh release` packages only when `ALLOW_DEBUG_APK=1` is set. Install with `adb install` or by copying it to the phone (allow "install unknown apps").
 
 One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/share/godot/export_templates/4.7.1.stable/`, JDK 17 (`~/.local/opt/jdk-17`), and the Android SDK in `~/Android/Sdk` with `platform-tools`, `build-tools;36.1.0` and `platforms;android-36`. Export settings live in `export_presets.cfg`.
 

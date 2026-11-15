@@ -50,11 +50,22 @@ for target in "${targets[@]}"; do
 		release)
 			# Packages the builds made above under stable names for GitHub Release assets,
 			# so README links to releases/latest/download/<name> keep working.
+			# Players install the APK over the release-signed app, so a debug-signed one is
+			# packaged only on request (ALLOW_DEBUG_APK=1, for local testing).
+			apk="build/android/PhreakNIC-CCG-v$VERSION.apk"
+			if [ ! -f "$apk" ]; then
+				if [ "${ALLOW_DEBUG_APK:-}" != 1 ]; then
+					echo "No release-signed $apk (is ~/.config/phreaknic/android-signing.sh missing?)." >&2
+					echo "Refusing to package the debug-signed APK; set ALLOW_DEBUG_APK=1 to package it anyway." >&2
+					exit 1
+				fi
+				apk="build/android/PhreakNIC-CCG-v$VERSION-debug.apk"
+				echo "ALLOW_DEBUG_APK=1: packaging the debug-signed APK." >&2
+			fi
 			mkdir -p build/release
 			rm -f build/release/*
 			(cd build/linux && zip -q -9 "../release/PhreakNIC-CCG-linux.zip" "PhreakNIC-CCG-v$VERSION.x86_64")
 			(cd build/windows && zip -q -9 "../release/PhreakNIC-CCG-windows.zip" "PhreakNIC-CCG-v$VERSION.exe")
-			apk="build/android/PhreakNIC-CCG-v$VERSION.apk"; [ -f "$apk" ] || apk="build/android/PhreakNIC-CCG-v$VERSION-debug.apk"
 			cp "$apk" "build/release/PhreakNIC-CCG-android.apk"
 			# Checksums so players can verify downloads (attach SHA256SUMS.txt to the GitHub Release).
 			(cd build/release && sha256sum PhreakNIC-CCG-* > SHA256SUMS.txt) ;;
