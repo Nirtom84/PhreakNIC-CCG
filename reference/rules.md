@@ -161,6 +161,8 @@ These came out of a second pass over all 152 cards.
 - **Ruling 27. Rickroll's replacement** moves the Rickroll from your discard pile. If that Rickroll has left your discard pile before your next Center Row buy (removed from the game, given away with Rick Astley), nothing is replaced and the effect is used up. *[2026-11-15, issue #7]*
 - **Ruling 28. A copy has the copied card's printed cost.** A [Restaurant Name] Restaurant that came into play as a copy of a Location uses that Location's cost for "costs X or less" text (a copy of The Clarion Inn costs 6), just as it takes the name, type and ICE counters. *[2026-11-15, issue #8]*
 - **Ruling 29. Taking another player's card is acquiring.** Moving another player's permanent into your discard pile (Altk3y, Botnet Takeover) is gaining a card without buying it, so it counts as acquiring: it does nothing after you reserve (Ruling 8), and it counts as acquiring a card for Zenthere, Mind Goblin. *[2026-11-15, issue #9]*
+- **Ruling 30. Touch Grass after a control change.** "At the end of your next turn" means the next turn of the player who played it. A stolen Grass still leaves at the end of that player's next turn, whoever controls it by then, so stealing it (Kevin's Desk) never extends it. *[2026-11-15, PR #64]*
+- **Ruling 31. Cards on a stolen pTFS or The Book** go to that permanent's current controller: pTFS puts its Heroes into the controller's hand, and when either leaves play its cards go to the controller's discard pile. Receiving them this way is not acquiring. *[2026-11-15, PR #86]*
 
 ## Rulings from the designers, 2026-11-10
 

@@ -936,7 +936,9 @@ func _effect_toctou(p, c):
 
 ## Touch Grass
 func _effect_touch_grass(p, c):
+	# Ruling 30: "your next turn" is the next turn of the player who played it, whoever controls Grass by then.
 	c.flags.expires = p.turns + 1
+	c.flags.expires_seat = p.seat
 
 ## Treasure Hunters
 func _effect_treasure_hunters(p, c):
@@ -1166,7 +1168,7 @@ func end_turn(p):
 	if p.turn_flags.get("acquired", 0) == 0:
 		for i in p.turn_flags.get("zenthere", 0): pending.append({"name": "Zenthere, Mind Goblin", "resolve": e.deal.bind(p, 2)})
 	for c in e.permanents():
-		if CustomDeck.rules_id(c.effect_id()) == "Touch Grass" and c.controller == p.seat and p.turns >= c.flags.get("expires", 999999):
+		if CustomDeck.rules_id(c.effect_id()) == "Touch Grass" and int(c.flags.get("expires_seat", c.controller)) == p.seat and p.turns >= c.flags.get("expires", 999999):
 			pending.append({"card": c, "resolve": e.remove.bind(c)})
 		elif CustomDeck.rules_id(c.effect_id()) == "FOTTR Greatest Hits Vol 2" and c.controller != p.seat and not p.played.any(func(x): return CustomDeck.rules_id(x.id) in RICK_ART):
 			pending.append({"card": c, "resolve": e.damage.bind(e.state.players[c.controller], p, 2, c)})

@@ -175,7 +175,7 @@ func run():
 	await e.start_turn(0)
 	await e.end_turn(p)
 	check(grass in e.state.removed, "Grass expires after next turn")
-	# A stolen Grass lasts until the end of its new controller's next turn, whoever has had more turns.
+	# Ruling 30: a stolen Grass still leaves at the end of the next turn of the player who played it.
 	for extra in ["no", "the owner's", "the stealer's"]:
 		await fixture()
 		p = e.active()
@@ -189,8 +189,19 @@ func run():
 		await e.end_turn(q)
 		var kept = grass in q.play_area
 		await e.end_turn(p)
-		await e.end_turn(q)
-		check(kept and grass in e.state.removed, "Stolen Grass stays through the steal turn and leaves after the stealer's next turn (%s extra turn)" % extra)
+		check(kept and grass in e.state.removed, "Stolen Grass leaves at the end of its player's next turn (%s extra turn)" % extra)
+	# Stealing it back and forth (two Kevin's Desks) can't keep Grass in play.
+	await fixture()
+	p = e.active()
+	q = e.state.players[1]
+	grass = card("Touch Grass")
+	await e.play_card(p, grass)
+	await e.end_turn(p)
+	e.take_control(grass, q)
+	await e.end_turn(q)
+	e.take_control(grass, p)
+	await e.end_turn(p)
+	check(grass in e.state.removed, "Grass stolen back and forth still leaves on schedule")
 	await fixture()
 	p = e.active()
 	q = e.state.players[1]
@@ -390,6 +401,17 @@ func run():
 	check(await e.buy_card(p, breakfast) and p.hacking == 0 and e.dec(p).confirmations.size() == 1, "A player who could pay for Clarion Inn Breakfast may pay and keep Staff's free buy")
 	e.dec(p).yes = true
 	check(await e.buy_card(p, clarion) and clarion in p.discard and e.dec(p).confirmations.size() == 1, "The kept free buy takes The Clarion Inn, without asking when paying isn't possible")
+	# A card other discounts already make free doesn't use up the free buy.
+	await fixture()
+	p = e.active()
+	await e.play_card(p, card("Clarion Inn Staff"))
+	breakfast = card("Clarion Inn Breakfast", "reserve")
+	clarion = card("The Clarion Inn", "reserve")
+	check(e.db().get_card(breakfast.id).kind != e.db().get_card(clarion.id).kind, "Free-buy fixture: Breakfast and The Clarion Inn differ in kind")
+	p.turn_flags.reductions = {e.db().get_card(breakfast.id).kind: 10}
+	p.hacking = 0
+	check(await e.buy_card(p, breakfast) and breakfast in p.discard, "A discount alone makes Clarion Inn Breakfast free")
+	check(await e.buy_card(p, clarion) and clarion in p.discard, "The free buy is still there for The Clarion Inn")
 	await fixture()
 	p = e.active()
 	e.deciders[0] = BotDecider.new(e, 0)

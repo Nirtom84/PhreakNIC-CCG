@@ -1,5 +1,27 @@
 # Release Notes
 
+## v0.31 — More fixes from bitwize
+Another round found, reported and fixed by **bitwize** ([bitwize-music](https://github.com/bitwize-music) on GitHub): 13 pull requests fixing 20 issues, each with tests. Thank you again, bitwize!
+
+**Rules**
+- **TOCTOU:** a TOCTOU turn taken inside a human's TOCTOU turn no longer ends the human's turn too, and knocking out the last opponent during a TOCTOU turn now ends the game.
+- **Rookie Numbers** takes life from everyone at the same time, so it can end in a draw instead of the higher seat winning.
+- **JousterL** can put itself on top of your deck. **Egg in Your Soup** adds counters to one Sandwich Factory, not all of them.
+- **Clarion Inn Staff:** you can save the free buy for a later card by paying for this one instead.
+- **New rulings** (Rulings 30–31 in [the rulebook](reference/rules.md)): a stolen Touch Grass still leaves at the end of the next turn of the player who played it, so stealing it never extends it. Heroes on a stolen pTFS, and actions on a stolen The Book, now go to the new controller instead of back to the old owner.
+
+**Playing on a phone**
+- The Auto toggles (Botnet, Tableskirts…) can be reached, the board and deck viewers work during TOCTOU turns, and ability buttons show {H}/{D} as symbols instead of raw text.
+- The phone layout no longer re-reads the settings file thousands of times per redraw.
+
+**Menus and dialogs**
+- Back, Escape and the desktop close button act on what's on screen: the match summary, the tutorial coach, an open card or prompt.
+- One tap no longer answers two stacked dialogs at once (for example TOCTOU's "Yes" also leaving the game).
+- Leaving after being knocked out at Instant bot pace no longer hangs the game.
+
+**Behind the scenes**
+- Two reshuffles now play their sound, finished animations release their connections, a flaky DEFCON test is fixed, and two unused card-data files are gone.
+
 ## v0.30 — Security hardening for online play
 After a full security review of the game and the online server, this release closes several ways online play could be abused. No player data or secrets were exposed; these were ways to disrupt or cheat in online games. Details stay private for now.
 
