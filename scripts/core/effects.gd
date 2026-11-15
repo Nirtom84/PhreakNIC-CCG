@@ -999,10 +999,11 @@ func _effect_zalphawolf(p, c):
 func _effect_zenthere_mind_goblin(p, c):
 	p.turn_flags.zenthere = p.turn_flags.get("zenthere", 0) + 1
 
-func cost(p, c) -> int:
+## With free_buys false, ignores unused "buy … for free this turn" tokens (Clarion Inn Staff, Payphone Dave).
+func cost(p, c, free_buys: bool = true) -> int:
 	var data = e.db().get_card(c.id)
 	var value = int(data.cost)
-	for name in p.turn_flags.get("free_names", []):
+	for name in (p.turn_flags.get("free_names", []) if free_buys else []):
 		if free_matches(c, name): return 0
 	# "You may buy this card for free": Walmart itself (any printing), not every card sharing its name.
 	if CustomDeck.rules_id(c.id) == "Walmart Parking Lot" and e.played_name(p, "heartsh8ped"): return 0

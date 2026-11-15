@@ -362,6 +362,26 @@ func run():
 	check(e.dec(p).confirmations == ["Remove this for a free O.P.R.A.H.?"] and flesh in e.state.removed, "Flesh Oprah offers the plain prompt when O.P.R.A.H. is buyable")
 	p.hacking = 0
 	check(await e.buy_card(p, oprah) and oprah.owner == p.seat and oprah not in p.reserve, "The free O.P.R.A.H. buy works with no Hacking")
+	# The free buy is optional: a player who could pay may keep it for another card. Bots always take it.
+	await fixture()
+	p = e.active()
+	await e.play_card(p, card("Clarion Inn Staff"))
+	var breakfast = card("Clarion Inn Breakfast", "reserve")
+	clarion = card("The Clarion Inn", "reserve")
+	p.hacking = 2
+	e.dec(p).yes = false
+	e.dec(p).confirmations.clear()
+	check(await e.buy_card(p, breakfast) and p.hacking == 0 and e.dec(p).confirmations.size() == 1, "A player who could pay for Clarion Inn Breakfast may pay and keep Staff's free buy")
+	e.dec(p).yes = true
+	check(await e.buy_card(p, clarion) and clarion in p.discard and e.dec(p).confirmations.size() == 1, "The kept free buy takes The Clarion Inn, without asking when paying isn't possible")
+	await fixture()
+	p = e.active()
+	e.deciders[0] = BotDecider.new(e, 0)
+	await e.play_card(p, card("Clarion Inn Staff"))
+	breakfast = card("Clarion Inn Breakfast", "reserve")
+	p.hacking = 2
+	var rng = e.state.rng.state
+	check(await e.buy_card(p, breakfast) and p.hacking == 2 and e.state.rng.state == rng, "Bots still take the free buy, without a random choice")
 	await fixture(3)
 	p = e.active()
 	q = e.state.players[1]

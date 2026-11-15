@@ -248,6 +248,8 @@ func choose_number(player, prompt: String, allowed: Array[int]) -> int:
 	return allowed.max()
 func confirm(player, prompt: String) -> bool:
 	if "TOCTOU" in prompt: return true
+	# Bots always take a free buy, as they did before it became optional.
+	if "Use your free buy" in prompt: return true
 	if difficulty == 0: return engine.coin_flip()
 	if "Put bought" in prompt or "Store bought" in prompt or "Put discard" in prompt: return true
 	if "Shuffle John" in prompt: return true
