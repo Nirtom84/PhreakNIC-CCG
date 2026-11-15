@@ -1,5 +1,5 @@
 import { DurableObject } from 'cloudflare:workers';
-import {code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave,validEmote,emoteRate,deckSubmission,deckRanking} from './lib/protocol.js';
+import {ipKey,code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave,validEmote,emoteRate,deckSubmission,deckRanking} from './lib/protocol.js';
 import {adminHTML,adminJS,adminHeaders} from './admin.js';
 const HOUR=3600000, IDLE=600000, DAY=24*HOUR;
 let listingCache;
@@ -27,18 +27,18 @@ export default {async fetch(req,env) {
       const l=lobby(env);
       if(r.kind==='health') response=new Response('ok');
       // Serve the cached list without touching the Lobby; only cache misses are rate limited.
-      if(r.kind==='list') {if(!listingCache||listingCache.version!==env.GAME_VERSION||Date.now()>=listingCache.until){if(!await l.allow(req.headers.get('CF-Connecting-IP')||'unknown','list'))fail('rate_limit',429);listingCache={version:env.GAME_VERSION,until:Date.now()+5000,rooms:await l.list(env.GAME_VERSION)};}response=json({rooms:listingCache.rooms});}
+      if(r.kind==='list') {if(!listingCache||listingCache.version!==env.GAME_VERSION||Date.now()>=listingCache.until){if(!await l.allow(ipKey(req.headers.get('CF-Connecting-IP')),'list'))fail('rate_limit',429);listingCache={version:env.GAME_VERSION,until:Date.now()+5000,rooms:await l.list(env.GAME_VERSION)};}response=json({rooms:listingCache.rooms});}
       if(r.kind==='create'||r.kind==='join') {
         if(env.ONLINE_ENABLED==='0'){await l.bump(['refused.maintenance']);fail('maintenance',503);}
         const raw=await body(req), data=r.kind==='create'?creation(raw):identity(raw);data.platform=platform(raw.platform);
         checkVersion(data.version,env.GAME_VERSION);
-        if(!await l.allow(req.headers.get('CF-Connecting-IP')||'unknown',r.kind)) fail('rate_limit',429);
+        if(!await l.allow(ipKey(req.headers.get('CF-Connecting-IP')),r.kind)) fail('rate_limit',429);
         if(r.kind==='create') {
-          const c=await l.reserve();
+          const c=await l.reserve(ipKey(req.headers.get('CF-Connecting-IP')));
           try {const result=await room(env,c).create(c,data);if(result.failure)fail(result.failure.error,result.failure.status,result.failure.extra);response=json(result,201);} catch(e){await l.remove(c);throw e;}
-        } else {const result=await room(env,r.code).join(data);if(result.failure){if(result.failure.error==='not_found')await l.allow(req.headers.get('CF-Connecting-IP')||'unknown','failure');fail(result.failure.error,result.failure.status,result.failure.extra);}response=json(result);}
+        } else {const result=await room(env,r.code).join(data);if(result.failure){if(result.failure.error==='not_found')await l.allow(ipKey(req.headers.get('CF-Connecting-IP')),'failure');fail(result.failure.error,result.failure.status,result.failure.extra);}response=json(result);}
       }
-      if(r.kind==='ws') {const ip=req.headers.get('CF-Connecting-IP')||'unknown';if(!await l.allow(ip,'ws'))fail('rate_limit',429);response=await room(env,r.code).fetch(req);}
+      if(r.kind==='ws') {const ip=ipKey(req.headers.get('CF-Connecting-IP'));if(!await l.allow(ip,'ws'))fail('rate_limit',429);response=await room(env,r.code).fetch(req);}
     }
   } catch(e) {response=error(e);}
   const key=response.status===409?'refused.version':response.status===429?'refused.rate':response.status===500?'errors.internal':null;
@@ -52,11 +52,13 @@ export default {async fetch(req,env) {
   }
   return response;
 }};
-const MAX_ROOMS=500, MAX_ROOM_STARTS=5;
+const MAX_ROOMS=500, MAX_ROOMS_PER_IP=5, MAX_ROOM_STARTS=5;
 export class Lobby extends DurableObject {
   constructor(ctx,env) {
     super(ctx,env); this.sql=ctx.storage.sql;
     this.sql.exec('CREATE TABLE IF NOT EXISTS rooms (code TEXT PRIMARY KEY, summary TEXT, expires INTEGER NOT NULL)');
+    // Who created each room and whether it is still waiting to start (columns added in v0.30.1).
+    for(const column of ['ip TEXT','pending INTEGER'])try{this.sql.exec('ALTER TABLE rooms ADD COLUMN '+column);}catch{}
     this.sql.exec('CREATE TABLE IF NOT EXISTS daily (day TEXT, key TEXT, count INTEGER, PRIMARY KEY(day,key))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS games (code TEXT PRIMARY KEY, created INTEGER, started INTEGER, ended INTEGER, public INTEGER, humans INTEGER, bots INTEGER, difficulties TEXT, card_pool TEXT, starting_life INTEGER, version TEXT, platforms TEXT, result TEXT, turns INTEGER, touched INTEGER, clients INTEGER)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS games_created ON games(created)');
@@ -67,12 +69,16 @@ export class Lobby extends DurableObject {
   clean() {if(Date.now()-(this.cleanedAt||0)<60000)return;this.cleanedAt=Date.now();this.sql.exec('DELETE FROM daily WHERE day < ?',new Date(Date.now()-400*DAY).toISOString().slice(0,10));this.sql.exec('DELETE FROM games WHERE created < ?',Date.now()-90*DAY);this.sql.exec('DELETE FROM rooms WHERE expires <= ?',Date.now());this.sql.exec('DELETE FROM limits WHERE window <= ?',Date.now()-HOUR);}
   // Only list rooms players on the server's current version can join; older rooms linger until they expire.
   list(version) {this.clean();return [...this.sql.exec('SELECT summary FROM rooms WHERE summary IS NOT NULL ORDER BY code LIMIT ?',MAX_ROOMS)].map(r=>JSON.parse(r.summary)).filter(r=>(!version||r.version===version)&&r.created+ROOM_LIFETIME>Date.now()).slice(0,50);}
-  reserve() {
-    // A global cap on open rooms (started or not) bounds storage, sockets and listing work.
-    this.clean();if([...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE expires > ?',Date.now())][0].n>=MAX_ROOMS)fail('capacity',503);
-    for(let i=0;i<100;i++){const c=code();const rows=[...this.sql.exec('INSERT OR IGNORE INTO rooms(code,expires) VALUES(?,?) RETURNING code',c,Date.now()+DAY)];if(rows.length)return c;} fail('capacity',503);
+  reserve(ip='unknown') {
+    // Rooms waiting to start (a new reservation counts as waiting) are capped per client and globally, so a few
+    // sources can't fill the server; running games are bounded by the live and daily caps instead. A reservation
+    // the Room never saves expires within the hour.
+    this.clean();const now=Date.now(),waiting='expires > ? AND pending=1';
+    if([...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE ip=? AND '+waiting,ip,now)][0].n>=MAX_ROOMS_PER_IP)fail('rate_limit',429);
+    if([...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE '+waiting,now)][0].n>=MAX_ROOMS)fail('capacity',503);
+    for(let i=0;i<100;i++){const c=code();const rows=[...this.sql.exec('INSERT OR IGNORE INTO rooms(code,expires,ip,pending) VALUES(?,?,?,1) RETURNING code',c,now+HOUR,ip)];if(rows.length)return c;} fail('capacity',503);
   }
-  upsert(c,s,expires,clients=0) {try{this.touch(c,clients);}catch(e){console.error('stats touch failed');}this.sql.exec('INSERT INTO rooms(code,summary,expires) VALUES(?,?,?) ON CONFLICT(code) DO UPDATE SET summary=excluded.summary, expires=excluded.expires',c,s?JSON.stringify(s):null,expires);}
+  upsert(c,s,expires,clients=0,pending=0) {try{this.touch(c,clients);}catch(e){console.error('stats touch failed');}this.sql.exec('INSERT INTO rooms(code,summary,expires,pending) VALUES(?,?,?,?) ON CONFLICT(code) DO UPDATE SET summary=excluded.summary, expires=excluded.expires, pending=excluded.pending',c,s?JSON.stringify(s):null,expires,pending?1:0);}
   release(c) {this.sql.exec('DELETE FROM live WHERE code=?',c);}
   refund(ip,kind) {this.sql.exec('UPDATE limits SET count=MAX(count-1,0) WHERE ip=? AND kind=?',ip,kind);}
   claim(c,created) {
@@ -123,7 +129,7 @@ export class Room extends DurableObject {
     if(this.closing)return;
     if(activity)this.r.lastActivity=Date.now();
     await this.ctx.storage.put('room',this.r);await this.schedule();
-    await lobby(this.env).upsert(this.r.code,isOpen(this.r)?summary(this.r):null,this.r.created+ROOM_LIFETIME,this.clients.size);
+    await lobby(this.env).upsert(this.r.code,isOpen(this.r)?summary(this.r):null,this.r.created+ROOM_LIFETIME,this.clients.size,!this.r.started);
   }
   async stop(reason) {
     if(this.stopping)return this.stopping;
@@ -166,7 +172,7 @@ export class Room extends DurableObject {
       // Seat check: a plain GET with the token answers 426 while the seat exists and 401 once it's gone, so a
       // client whose sockets keep failing (rate limit, a proxy) can tell a revoked seat from a network problem.
       if(req.headers.get('Upgrade')?.toLowerCase()!=='websocket')fail('upgrade',426);
-      const pair=new WebSocketPair(), ws=pair[1];ws.accept();for(const [old,c]of this.clients)if(c.seat===seat){this.clients.delete(old);old.close(4000,'replaced');}this.clients.set(ws,{seat,ip:req.headers.get('CF-Connecting-IP')||'unknown'});
+      const pair=new WebSocketPair(), ws=pair[1];ws.accept();for(const [old,c]of this.clients)if(c.seat===seat){this.clients.delete(old);old.close(4000,'replaced');}this.clients.set(ws,{seat,ip:ipKey(req.headers.get('CF-Connecting-IP'))});
       this.r.emptySince=null;if(seat===this.r.host_seat)delete this.r.hostGoneAt;await this.save();if(this.closing){this.clients.delete(ws);ws.close(1000,'expired');fail('token',401);}
       ws.addEventListener('message',e=>this.ctx.waitUntil(this.message(ws,e.data).catch(e=>this.send(ws,{t:'error',reason:e.status?e.message:'server',...e.extra}))));
       const close=()=>this.ctx.waitUntil(this.disconnected(ws));ws.addEventListener('close',close);ws.addEventListener('error',close);
@@ -366,9 +372,9 @@ async function admin(req,env,path) {
   if(path!=='/admin/api/stats')return send({error:'not_found'},404);
   const origin=req.headers.get('Origin');if(origin!==null&&origin!=='https://online-01.phreaknic-ccg.net')return send({error:'origin'},403);
   try {
-    const auth=req.headers.get('Authorization')||'',l=lobby(env),ip=req.headers.get('CF-Connecting-IP')||'unknown';
+    const auth=req.headers.get('Authorization')||'',l=lobby(env),ip=ipKey(req.headers.get('CF-Connecting-IP'));
     const status=await adminDecision(await l.locked(ip,'admin'),()=>constantTimeEqual(auth,'Bearer '+env.ADMIN_KEY));if(status===429)return send({error:'rate_limit'},429);const valid=status===200;
-    if(!valid){if(!await l.allow(req.headers.get('CF-Connecting-IP')||'unknown','admin'))return send({error:'rate_limit'},429);return send({error:'unauthorized'},401);}
+    if(!valid){if(!await l.allow(ipKey(req.headers.get('CF-Connecting-IP')),'admin'))return send({error:'rate_limit'},429);return send({error:'unauthorized'},401);}
     return send(await l.stats(statsDays(new URL(req.url).searchParams.get('days'))));
   }catch(e){return send({error:e.status?e.message:'internal'},e.status||500);}
 }

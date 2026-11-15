@@ -2,7 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 const source=(await readFile(new URL('../src/index.js',import.meta.url),'utf8')).replace("import { DurableObject } from 'cloudflare:workers';","class DurableObject {constructor(ctx,env){this.ctx=ctx;this.env=env;}} ").replace("'./lib/protocol.js'",JSON.stringify(new URL('../src/lib/protocol.js',import.meta.url).href)).replace("'./admin.js'",JSON.stringify(new URL('../src/admin.js',import.meta.url).href));
-const {Room,default:worker}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
+const {Room,Lobby,default:worker}=await import('data:text/javascript;base64,'+Buffer.from(source).toString('base64'));
 const binding=value=>({idFromName:x=>x,get:()=>value});
 const makeRoom=()=>Object.assign(Object.create(Room.prototype),{r:{code:'AB23',created:Date.now(),lastActivity:123,started:false,over:false,host_seat:0,seats:[{token:'a'.repeat(32),bot:false},{token:'b'.repeat(32),bot:false}]},clients:new Map(),rates:new Map(),generation:0,save:async()=>{},broadcastRoom:()=>{}});
 const sock=()=>({close(code,reason){this.closed={code,reason};},send(){}});
@@ -279,4 +279,15 @@ test('a start refused for capacity refunds the start allowance',async()=>{
  r.env={LOBBY:binding({allow:async()=>true,refund:async()=>{},claim:async()=>'busy',refund:async(ip,kind)=>refunds.push([ip,kind])})};
  await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'start'})),e=>e.message==='busy');
  assert.deepEqual(refunds,[['5.6.7.8','start']]);assert.equal(r.r.starts||0,0);
+});
+test('waiting rooms are capped per client (IPv6 /64 counts as one) and globally; started rooms don\'t count',async()=>{
+ const {DatabaseSync}=await import('node:sqlite');const db=new DatabaseSync(':memory:');
+ const l=new Lobby({storage:{sql:{exec:(q,...p)=>db.prepare(q).all(...p)}}},{});
+ const mine=[];for(let i=0;i<5;i++)mine.push(l.reserve('2001:db8:1:2::/64'));
+ assert.throws(()=>l.reserve('2001:db8:1:2::/64'),e=>e.message==='rate_limit'&&e.status===429);
+ assert.equal(l.reserve('198.51.100.7').length,6);
+ // Once a room starts it no longer counts as waiting.
+ l.upsert(mine[0],null,Date.now()+3600000,1,false);assert.equal(l.reserve('2001:db8:1:2::/64').length,6);
+ for(let n=0;n<110;n++)for(let i=0;i<5;i++){try{l.reserve('203.0.'+n+'.1');}catch(e){assert.equal(e.message,'capacity');}}
+ assert.throws(()=>l.reserve('192.0.2.200'),e=>e.message==='capacity'&&e.status===503);
 });

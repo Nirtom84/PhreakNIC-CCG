@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {webcrypto} from 'node:crypto';
-import {ALPHABET,code,validCode,token,validToken,creation,identity,settings,difficulty,originAllowed,route,wrap,summary,isOpen,checkVersion,platform,constantTimeEqual,adminEnabled,statsDays,creationKeys} from '../src/lib/protocol.js';
+import {ipKey,ALPHABET,code,validCode,token,validToken,creation,identity,settings,difficulty,originAllowed,route,wrap,summary,isOpen,checkVersion,platform,constantTimeEqual,adminEnabled,statsDays,creationKeys} from '../src/lib/protocol.js';
 if(!globalThis.crypto)globalThis.crypto=webcrypto;
 const input=()=>({name:' Nirtom ',hero:'nirtom',public:true,seats:[{bot:true,difficulty:0},{bot:false,difficulty:0}],card_pool:'2026',starting_life:0,version:'0.09'});
 test('codes use six unambiguous symbols and reject biased random bytes',()=>{
@@ -110,4 +110,12 @@ test('lower D20 ties wait for fallback instead of rolling with the highest group
 });
 test('six-character room codes are generated; four-character codes from older rooms still route',()=>{
  assert.equal(code().length,6);assert(route('GET','/ws/room/ABCDEF'));assert(route('GET','/ws/room/AB23'));assert(!route('GET','/ws/room/ABCDE'));
+});
+test('rate-limit keys group an IPv6 /64 and keep IPv4 as is',()=>{
+ assert.equal(ipKey('2001:db8:1:2:aaaa:bbbb:cccc:dddd'),'2001:db8:1:2::/64');
+ assert.equal(ipKey('2001:DB8:1:2::1'),'2001:db8:1:2::/64');
+ assert.equal(ipKey('2001:db8::5'),'2001:db8:0:0::/64');
+ assert.equal(ipKey('::1'),'0:0:0:0::/64');
+ assert.equal(ipKey('198.51.100.7'),'198.51.100.7');
+ assert.equal(ipKey(null),'unknown');assert.equal(ipKey(''),'unknown');
 });

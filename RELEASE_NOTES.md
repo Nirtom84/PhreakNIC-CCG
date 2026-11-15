@@ -9,6 +9,8 @@ After a full security review of the game and the online server, this release clo
 - A player can no longer hold a game hostage. Every turn has a 10-minute limit that pointless actions can't reset, and an idle reaction turn (TOCTOU) is finished by a bot, just like a normal idle turn.
 - Starting games, creating rooms and joining are limited per player, sized for remote play, so one person can't use up the server for everyone.
 
+- Server update (same day, no new download needed): rooms waiting to start are now capped per player as well as overall, and players on IPv6 connections count as one player for every limit.
+
 **Game**
 - Settings and saved-game files are read more strictly, so a tampered file can't make the game do anything unexpected.
 - The game checks what the server sends before using it.

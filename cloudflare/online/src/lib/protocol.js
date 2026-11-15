@@ -11,6 +11,16 @@ export function code(random = crypto) {
 // codes from before v0.30 are still accepted while those rooms live out their 8 hours.
 export const CODE_LENGTH = 6;
 export const validCode = value => typeof value === 'string' && (value.length === CODE_LENGTH || value.length === 4) && [...value].every(c => ALPHABET.includes(c));
+// Rate-limit key for a client address. An IPv6 home connection gets a whole /64 and can switch addresses within it at
+// will, so every per-IP limit counts the /64 as one client; IPv4 addresses count as they are.
+export function ipKey(raw) {
+  const ip = typeof raw === 'string' && raw ? raw.trim().toLowerCase() : 'unknown';
+  if (!ip.includes(':')) return ip;
+  const [head, tail] = ip.split('::');
+  const left = head ? head.split(':') : [], right = tail !== undefined && tail ? tail.split(':') : [];
+  const groups = tail !== undefined ? [...left, ...Array(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right] : left;
+  return groups.slice(0, 4).map(g => (parseInt(g, 16) || 0).toString(16)).join(':') + '::/64';
+}
 export const token = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
 export const validToken = value => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
 export function originAllowed(origin) {
