@@ -89,6 +89,8 @@ test('site caches full WASM by version and conditional hits avoid R2',async()=>{
  res=await site.fetch(new Request('https://site/index.wasm',{headers:{'If-None-Match':'"strong-v1"'}}),env,ctx);assert.equal(res.status,304);assert.equal(reads,1);
  res=await site.fetch(new Request('https://site/web/test-v1/index.wasm'),env,ctx);assert.equal(await res.text(),'wasm');assert(res.headers.get('cache-control').includes('immutable'));assert.equal(reads,1);
  for(const req of [new Request('https://www.site/'),new Request('https://site/join/AB23'),new Request('https://site/index.wasm',{method:'POST'}),new Request('https://site/icon.png')]){res=await site.fetch(req,env,ctx);for(const name of ['content-security-policy','x-content-type-options','referrer-policy','strict-transport-security','permissions-policy'])assert(res.headers.has(name));}
+ // Invite links: six-character codes (v0.30+) and older four-character ones redirect; other lengths don't.
+ for(const [path,code] of [['/join/AB23CD','AB23CD'],['/join/ab23','AB23'],['/join/AB23C',null]]){res=await site.fetch(new Request('https://site'+path),env,ctx);if(code){assert.equal(res.status,302);assert.equal(new URL(res.headers.get('location')).searchParams.get('join'),code);}else assert.notEqual(res.status,302);}
  }finally{globalThis.caches=original;}
 });
 test('site serves index.pck from R2 when PCK_KEY is set, else from static assets',async()=>{
