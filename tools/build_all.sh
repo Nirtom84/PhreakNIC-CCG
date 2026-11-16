@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# Builds the Linux, Windows, Android and Web versions into build/.
-# Needs: Godot 4.7.1 export templates, JDK 17 and the Android SDK (see README "Building").
-# Usage: tools/build_all.sh [linux|windows|android|web|server|release ...]   (no arguments = all four, then release)
+# Builds the Linux, Windows, macOS, Android and Web versions into build/.
+# Needs: Godot 4.7.1 and matching export templates; Android also needs JDK 17 and the Android SDK.
+# Usage: tools/build_all.sh [linux|windows|macos|android|web|server|release|ios-project|ios|ios-simulator ...]
+# No arguments = the five existing client builds, then release. iOS targets are opt-in.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -10,7 +11,7 @@ export JAVA_HOME="${JAVA_HOME:-$HOME/.local/opt/jdk-17}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 VERSION="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)"
 targets=("$@")
-[ ${#targets[@]} -eq 0 ] && targets=(linux windows android web release)
+[ ${#targets[@]} -eq 0 ] && targets=(linux windows macos android web release)
 
 # Keep Godot from importing the build output (it would add .import files and pack build artefacts).
 mkdir -p build && touch build/.gdignore
@@ -27,6 +28,14 @@ for target in "${targets[@]}"; do
 		windows)
 			mkdir -p build/windows
 			"$GODOT" --headless --path . --export-release "Windows" "build/windows/PhreakNIC-CCG-v$VERSION.exe" ;;
+		macos)
+			mkdir -p build/macos
+			# Godot creates the .app bundle inside the ZIP and preserves executable permissions.
+			# The preset uses built-in ad-hoc signing, so this also works on Linux without Apple credentials.
+			"$GODOT" --headless --path . --export-release "macOS" "build/macos/PhreakNIC-CCG-v$VERSION.zip"
+			(cd build/macos && shasum -a 256 "PhreakNIC-CCG-v$VERSION.zip" > SHA256SUMS.txt) ;;
+		ios-project|ios|ios-simulator)
+			GODOT="$GODOT" tools/build_ios.sh "$target" ;;
 		android)
 			mkdir -p build/android
 			# Release-signed with the project's keystore when ~/.config/phreaknic/android-signing.sh exists
@@ -62,14 +71,20 @@ for target in "${targets[@]}"; do
 				apk="build/android/PhreakNIC-CCG-v$VERSION-debug.apk"
 				echo "ALLOW_DEBUG_APK=1: packaging the debug-signed APK." >&2
 			fi
+			macos="build/macos/PhreakNIC-CCG-v$VERSION.zip"
+			if [ ! -f "$macos" ]; then
+				echo "No $macos; run tools/build_all.sh macos before packaging the release." >&2
+				exit 1
+			fi
 			mkdir -p build/release
 			rm -f build/release/*
 			(cd build/linux && zip -q -9 "../release/PhreakNIC-CCG-linux.zip" "PhreakNIC-CCG-v$VERSION.x86_64")
 			(cd build/windows && zip -q -9 "../release/PhreakNIC-CCG-windows.zip" "PhreakNIC-CCG-v$VERSION.exe")
+			cp "$macos" "build/release/PhreakNIC-CCG-macos.zip"
 			cp "$apk" "build/release/PhreakNIC-CCG-android.apk"
 			# Checksums so players can verify downloads (attach SHA256SUMS.txt to the GitHub Release).
 			(cd build/release && sha256sum PhreakNIC-CCG-* > SHA256SUMS.txt) ;;
-		*) echo "Unknown target: $target (use linux, windows, android, web, server or release)" >&2; exit 1 ;;
+		*) echo "Unknown target: $target (use linux, windows, macos, android, web, server, release, ios-project, ios or ios-simulator)" >&2; exit 1 ;;
 	esac
 done
 ls -la build/*/

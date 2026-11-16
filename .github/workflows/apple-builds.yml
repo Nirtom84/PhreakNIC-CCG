@@ -1,0 +1,119 @@
+name: Apple builds
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, "build/apple-*"]
+    paths:
+      - ".github/workflows/apple-builds.yml"
+      - "project.godot"
+      - "export_presets.cfg"
+      - "assets/**"
+      - "data/**"
+      - "scenes/**"
+      - "scripts/**"
+      - "tests/**"
+      - "tools/build_all.sh"
+      - "tools/build_ios.sh"
+      - "tools/install_apple_ci.sh"
+      - "tools/smoke_ios_simulator.py"
+  pull_request:
+    paths:
+      - ".github/workflows/apple-builds.yml"
+      - "project.godot"
+      - "export_presets.cfg"
+      - "assets/**"
+      - "data/**"
+      - "scenes/**"
+      - "scripts/**"
+      - "tests/**"
+      - "tools/build_all.sh"
+      - "tools/build_ios.sh"
+      - "tools/install_apple_ci.sh"
+      - "tools/smoke_ios_simulator.py"
+permissions:
+  contents: read
+defaults:
+  run:
+    shell: bash
+concurrency:
+  group: apple-builds-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  GODOT_MAC_SHA256: 897cb7f9799796c717ae75f31446aed883dc92b1d6c3b33d893cc7843fff2fa9
+  GODOT_TEMPLATES_SHA256: 86409db6200b6f8fd3230989c2d2002851f3dd18acf11d7bdbafddf5a0dd0f72
+jobs:
+  macos:
+    name: macOS (${{ matrix.runner }})
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install verified Godot and templates
+        run: tools/install_apple_ci.sh
+      - name: Build and launch Mac app
+        run: |
+          tools/build_all.sh macos
+          mkdir -p "$RUNNER_TEMP/mac-smoke"
+          unzip -q build/macos/PhreakNIC-CCG-v*.zip -d "$RUNNER_TEMP/mac-smoke"
+          binary=$(find "$RUNNER_TEMP/mac-smoke" -path '*/Contents/MacOS/*' -type f | head -1)
+          file "$binary"
+          codesign --verify --deep --strict "$(dirname "$(dirname "$(dirname "$binary")")")"
+          "$binary" --headless --quit-after 30 2>&1 | tee build/macos/smoke.log
+          if grep -En 'SCRIPT ERROR:|Parse Error:|Failed loading resource' build/macos/smoke.log; then exit 1; fi
+      - name: Run platform and UI regression checks
+        run: |
+          for suite in v07_checks v08_checks; do
+            "$GODOT" --headless --path . -s "tests/$suite.gd" 2>&1 | tee "build/macos/$suite.log"
+            if grep -En 'SCRIPT ERROR:' "build/macos/$suite.log"; then exit 1; fi
+          done
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: macos-${{ matrix.runner }}
+          path: build/macos/
+          compression-level: 0
+          retention-days: 7
+  ios:
+    name: iOS IPA and Simulator
+    # Godot 4.7.1's official Simulator static library contains x86_64 objects only.
+    runs-on: macos-15-intel
+    timeout-minutes: 45
+    env:
+      # The 4.7.1 template links newer SDK symbols absent from the image's default Xcode 16.4.
+      DEVELOPER_DIR: /Applications/Xcode_26.3.app/Contents/Developer
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+      - name: Install verified Godot and templates
+        run: tools/install_apple_ci.sh
+      - name: Check selected Xcode SDK
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphoneos --show-sdk-version
+      - name: Compile unsigned device IPA
+        run: |
+          mkdir -p build/ios
+          tools/build_all.sh ios 2>&1 | tee build/ios/device-build.log
+          unzip -t build/ios/*-unsigned.ipa
+      - name: Compile Simulator app
+        run: tools/build_all.sh ios-simulator 2>&1 | tee build/ios/simulator-build.log
+      - name: Launch on iPhone Simulator
+        run: python3 tools/smoke_ios_simulator.py
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always()
+        with:
+          name: ios-unsigned-preview
+          path: |
+            build/ios/*-unsigned.ipa
+            build/ios/SHA256SUMS.txt
+            build/ios/*.log
+            build/ios/simulator.png
+          compression-level: 0
+          retention-days: 7
