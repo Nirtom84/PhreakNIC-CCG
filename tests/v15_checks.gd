@@ -3,7 +3,7 @@ var checks = 0
 var failures = 0
 var backups = {}
 func _initialize():
- for path in ["user://settings.cfg", "user://savegame.json"]:
+ for path in ["user://settings.json", "user://savegame.json"]:
   backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  call_deferred("run")
 func _finalize():
@@ -20,7 +20,7 @@ func run():
  var settings = root.get_node("Sfx")
  var style = load("res://scripts/ui/style.gd")
  var script = load("res://scripts/ui/sfx.gd")
- var config = ConfigFile.new()
+ var config = OnlineAPI.SettingsFile.new()
  verify(script.migrated_pace(config) == 0.5, "Default pace")
  for old in [false, true]:
   config.set_value("game", "bot_fast", old)
@@ -42,10 +42,10 @@ func run():
   restored.free()
  for invalid in [-1, 2, "0.5", true, INF, NAN]:
   verify(script.valid_volume(invalid, 0.35) == 0.35, "Invalid music volume")
- config = ConfigFile.new()
+ config = OnlineAPI.SettingsFile.new()
  config.set_value("sound", "music_volume", "bad")
  config.set_value("sound", "music_muted", 1)
- config.save("user://settings.cfg")
+ config.save("user://settings.json")
  var restored = script.new()
  root.add_child(restored)
  verify(restored.music_volume == 0.35 and not restored.music_muted, "Music settings validate on load")
@@ -66,8 +66,8 @@ func run():
   wheel.global_position = point
   root.push_input(wheel, true)
  for i in 2: await process_frame
- config = ConfigFile.new()
- config.load("user://settings.cfg")
+ config = OnlineAPI.SettingsFile.new()
+ config = OnlineAPI.settings()
  verify(slider.value > before and is_equal_approx(float(config.get_value("sound", "music_volume", -1.0)), slider.value), "Music volume set with the mouse wheel is saved")
  before = slider.value
  slider.grab_focus()
@@ -78,7 +78,7 @@ func run():
   key.pressed = down
   Input.parse_input_event(key)
  for i in 2: await process_frame
- config.load("user://settings.cfg")
+ config = OnlineAPI.settings()
  verify(slider.value > before and is_equal_approx(float(config.get_value("sound", "music_volume", -1.0)), slider.value), "Music volume set with an arrow key is saved")
  menu.free()
  var count = 0
@@ -648,7 +648,7 @@ func countdown_checks():
  server.setup([{"bot": false, "name": "A"}, {"bot": false, "name": "B"}], "2025", 0, 41)
  server.clock = func(): return 30.0
  server.disconnected = {0: 0.0, 1: 10.0}
- var timers = server.timer_state()
+ var timers = server.timer_state().filter(func(t): return t.kind == "disconnected")
  verify(timers.size() == 2 and timers[0].remaining_seconds == 90 and timers[1].remaining_seconds == 100, "Server exposes authoritative disconnected deadlines")
  server.engine.finish(null)
  verify(server.timer_state().is_empty(), "Finished game has no deadlines")

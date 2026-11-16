@@ -12,7 +12,7 @@ func settle():
  await process_frame
 func run():
  var save_backup = FileAccess.get_file_as_bytes(SaveGame.PATH) if FileAccess.file_exists(SaveGame.PATH) else null
- var path = "user://settings.cfg"
+ var path = "user://settings.json"
  var existed = FileAccess.file_exists(path)
  var backup = FileAccess.get_file_as_bytes(path) if existed else PackedByteArray()
  var settings = root.get_node("Sfx")
@@ -112,8 +112,7 @@ func run():
  menu.rules_overlay.queue_free()
  await settle()
  menu.select_hero(hero)
- var config = ConfigFile.new()
- config.load(path)
+ var config = OnlineAPI.settings()
  verify(config.get_value("player", "hero_id") == hero and config.get_value("player", "handle") == root.get_node("CardDB").cards[hero].name, "Hero selection persists")
  verify(menu.avatar_preview.get_child(0).texture is AtlasTexture, "Hero uses cropped art")
  menu.handle_input.text_changed.emit("Custom")

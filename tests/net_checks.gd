@@ -5,6 +5,9 @@ var fake_time = 0.0
 var previous_hidden = {}
 var views_seen = 0
 var last_view_frame = {}
+func _process(_delta):
+ fake_time += 0.21
+ return false
 func _initialize(): run.call_deferred()
 func verify(ok: bool, text: String):
  checks += 1

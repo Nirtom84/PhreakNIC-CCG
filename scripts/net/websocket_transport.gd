@@ -8,8 +8,9 @@ var close_code = -1
 var close_reason = ""
 var active = false
 var opened = false
-func connect_to(url: String) -> Error:
+func connect_to(url: String, token: String = "") -> Error:
 	peer = WebSocketPeer.new()
+	peer.supported_protocols = PackedStringArray(["phreaknic", "t." + token]) if not token.is_empty() else PackedStringArray()
 	peer.inbound_buffer_size = 8 * 1024 * 1024
 	peer.outbound_buffer_size = 8 * 1024 * 1024
 	opened = false

@@ -82,19 +82,66 @@ static func valid_card(data) -> bool:
 	if not data is Dictionary or not data.get("id") is String: return false
 	for key in ["uid", "owner", "controller", "counters"]:
 		if not data.get(key) is int: return false
+	if data.owner < -1 or data.owner >= 4 or data.controller < -1 or data.controller >= 4 or data.counters < 0: return false
+	return true
+static func valid_seats(value) -> bool:
+	if not value is Array or value.size() < 2 or value.size() > 4: return false
+	for info in value:
+		if not info is Dictionary: return false
+		for key in ["name"]:
+			if not info.get(key) is String: return false
+		if info.has("hero") and not info.hero is String: return false
+		if not info.get("bot") is bool or not info.get("difficulty") is int or info.difficulty < -1 or info.difficulty > 3: return false
+		if info.has("connected") and not info.connected is bool: return false
+		if info.has("deck") and info.deck != null:
+			if not info.deck is Dictionary or not info.deck.get("name") is String or not info.deck.get("count") is int: return false
+	return true
+static func valid_room(data: Dictionary, listing: bool = false) -> bool:
+	if not valid_seats(data.get("seats")) or not data.get("code") is String or not OnlineAPI.valid_code(data.code): return false
+	if not data.get("card_pool") is String or data.card_pool not in ["2025", "2026", "2026mog", "custom"]: return false
+	if not data.get("starting_life") is int or data.starting_life < 0 or data.starting_life > 10000: return false
+	if data.has("bot_pace") and not (data.bot_pace is int or data.bot_pace is float): return false
+	if data.has("banned") and (not data.banned is Array or not data.banned.all(func(v): return v is String)): return false
+	if data.has("deck_roll") and not data.deck_roll is Array: return false
+	if listing: return data.get("host") is String and data.get("banned_count", 0) is int
+	return data.get("host_seat") is int and data.host_seat >= 0 and data.host_seat < data.seats.size() and data.get("started") is bool and data.get("public") is bool
+static func valid_timer(value) -> bool:
+	if not value is Dictionary or not value.get("seat") is int or value.seat < 0 or value.seat >= 4 or not value.get("kind") is String: return false
+	for field in ["remaining_seconds", "limit"]:
+		if not (value.get(field) is int or value.get(field) is float) or not is_finite(float(value[field])) or value[field] < 0: return false
+	if value.has("host_seat") and (not value.host_seat is int or value.host_seat < 0 or value.host_seat >= 4): return false
+	return not value.has("handable") or value.handable is bool
+func valid_event(data: Dictionary) -> bool:
+	if not data.get("kind") is String: return false
+	var count = engine.state.players.size() if engine.state != null else 4
+	if data.kind in ["waiting", "waiting_done", "damage_taken", "life_gained", "purchase_paid", "removed", "idle_warning", "soundtrack", "turn_started", "turn_ended", "played", "bought", "reserved", "eliminated"]:
+		if not data.get("seat") is int or data.seat < (-1 if data.kind == "removed" else 0) or data.seat >= count: return false
+	if data.kind == "damage_dealt":
+		if not data.get("source") is int or data.source < -1 or data.source >= count or not data.get("target") is int or data.target < 0 or data.target >= count: return false
+	if data.kind in ["damage_dealt", "damage_taken", "life_gained"] and not data.get("amount") is int: return false
+	if data.kind == "purchase_paid" and not data.get("cost") is int: return false
+	if data.kind in ["played", "bought", "reserved", "purchase_paid"] and not data.get("id") is String: return false
+	if data.kind == "waiting" and not data.get("text") is String: return false
+	if data.kind == "soundtrack" and not data.get("cue") is String: return false
 	return true
 func valid_message(data: Dictionary) -> bool:
 	if data.get("type") == "emote": return data.size() == 3 and data.get("seat") is int and data.seat >= 0 and data.seat < 4 and data.get("id") is int and data.id >= 0 and data.id < 8
 	if not data.get("t") is String: return false
 	match data.t:
 		"welcome":
-			return data.get("seat") is int and data.get("seats") is Array and data.get("log", []) is Array and data.get("log", []).all(func(v): return v is String)
-		"view": return data.get("state") is Dictionary and data.state.get("ready") is bool and data.get("timers", []) is Array and data.get("timers", []).all(func(v): return v is Dictionary)
+			return data.get("seat") is int and valid_seats(data.get("seats")) and data.seat >= 0 and data.seat < data.seats.size() and data.get("log", []) is Array and data.get("log", []).all(func(v): return v is String)
+		"timers": return data.get("timers") is Array and data.timers.size() <= 8 and data.timers.all(valid_timer)
+		"view": return data.get("state") is Dictionary and data.state.get("ready") is bool and data.get("timers", []) is Array and data.get("timers", []).all(valid_timer)
+		"room": return valid_room(data)
 		"prompt_done": return data.get("id") is String
 		"log": return data.get("text") is String
 		"error": return data.get("reason") is String
-		"event": return data.get("kind") is String and (data.kind not in ["waiting", "waiting_done"] or data.get("seat") is int)
+		"event": return valid_event(data)
+		"game_over":
+			if not data.get("winner", -1) is int or data.get("winner", -1) < -1 or data.get("winner", -1) >= 4: return false
+			return data.get("final_players", []) is Array and data.get("final_players", []).all(func(v): return v is Dictionary and v.get("life") is int and v.get("deck_size") is int)
 		"prompt":
+			if data.has("remaining_seconds") and not (data.remaining_seconds is int or data.remaining_seconds is float): return false
 			if not data.get("id") is String or not data.get("kind") is String or not data.get("text") is String: return false
 			if scripted and (engine.state == null or seat < 0 or seat >= engine.state.players.size()): return false
 			match data.kind:

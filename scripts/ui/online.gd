@@ -281,9 +281,12 @@ func refresh_rooms():
   message.text = OnlineAPI.error_text(result.status, result.data)
   return
  updated_at = Time.get_ticks_msec() / 1000.0
+ if not result.data.get("rooms", []) is Array: return
  if result.data.get("rooms", []).is_empty():
   UIStyle.label(rooms_box, "No open games right now. Create one!", 22).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
- for room in result.data.get("rooms", []):
+ for raw_room in result.data.get("rooms", []):
+  var room = NetTransport.normalize(raw_room)
+  if not room is Dictionary or not NetClient.valid_room(room, true): continue
   var box = section(rooms_box, "// " + str(room.code))
   var row = HBoxContainer.new()
   box.add_child(row)
@@ -319,6 +322,10 @@ func enter(data: Dictionary):
   message.text = text)
  session.start(data)
 func lobby(room: Dictionary):
+ var normalized = NetTransport.normalize(room)
+ if not normalized is Dictionary: return
+ room = normalized
+ if not NetClient.valid_room(room) or session == null or not session.credential.get("seat") is int or session.credential.seat < 0 or session.credential.seat >= room.seats.size(): return
  if ban_picker.selected_pool != room.card_pool:
   while ban_picker.close_top(): pass
  clear_content()

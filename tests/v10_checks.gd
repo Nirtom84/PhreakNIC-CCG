@@ -9,7 +9,7 @@ class FakeAPI extends Node:
   calls.append({"method": method, "path": path, "body": body.duplicate(true)})
   return {"status": 400, "data": {"error": "test"}}
 func _initialize():
- for path in ["user://settings.cfg", "user://savegame.json"]:
+ for path in ["user://settings.json", "user://savegame.json"]:
   backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  run.call_deferred()
 func _finalize():
@@ -26,6 +26,12 @@ func verify(ok: bool, text: String):
   push_error(text)
 func frames(n = 4):
  for i in n: await process_frame
+func synced_frames(server):
+ if server != null:
+  # Wait for the coalesced authoritative view before inspecting the mirror.
+  var deadline = Time.get_ticks_msec() + 2000
+  while server.dirty and Time.get_ticks_msec() < deadline: await process_frame
+ await frames()
 func button(node, prefix):
  if node is Button and node.text.begins_with(prefix): return node
  for child in node.get_children():
@@ -58,13 +64,13 @@ func rule_checks(table, authority, server = null):
  for id in RULE_CARDS: cards.append(place(authority, id, 1, authority.state.players[1].play_area))
  if server != null: server.dirty = true
  else: table.redraw()
- await frames()
+ await synced_frames(server)
  verify(is_instance_valid(strip(table)), "IN EFFECT strip appears, mirror=" + str(server != null))
  for id in RULE_CARDS:
   var chip = button(strip(table), authority.db().get_card(id).name)
   verify(chip != null and chip.text.contains(authority.db().get_card(id).table_rule) and chip.text.contains(table.seat_name(1)), "Chip rule and controller: " + id)
   chip.pressed.emit()
-  await frames()
+  await synced_frames(server)
   verify(is_instance_valid(table.inspect_overlay) and has_text(table.inspect_overlay, authority.db().get_card(id).name), "Chip opens card sheet: " + id)
   table.close_inspect()
  var saved_flags = p.turn_flags.duplicate()
@@ -74,14 +80,14 @@ func rule_checks(table, authority, server = null):
   if authority.db().get_card(c.id).kind != "Permanent": authority.move(c, p.discard, "discard")
  if server != null: server.dirty = true
  else: table.redraw()
- await frames()
+ await synced_frames(server)
  verify(not table.nothing_left(), "Opponent Nashville payment prevents auto-end")
  p.turn_flags = saved_flags
  for c in saved_hand:
   if c not in p.hand: authority.move(c, p.hand, "hand")
  if server != null: server.dirty = true
  else: table.redraw()
- await frames()
+ await synced_frames(server)
  var mirrored = table.engine.state.players[0].hand.filter(func(c): return c.uid == permanent.uid)[0]
  table.inspect_card(mirrored, true)
  verify(has_text(table.inspect_overlay, "Nashville 2600 is in play: no one can play permanents.") and button(table.inspect_overlay, "Play") == null, "Blocked hand permanent explains Nashville")
@@ -90,7 +96,7 @@ func rule_checks(table, authority, server = null):
  for dimensions in [Vector2i(1920,1080), Vector2i(2400,1080), Vector2i(1920,1440)]:
   root.content_scale_size = dimensions
   root.size = dimensions
-  await frames()
+  await synced_frames(server)
   var rect = Rect2(Vector2.ZERO, Vector2(dimensions))
   verify(rect.encloses(strip(table).get_global_rect()), "Warning strip fits " + str(dimensions))
   var hand = table.body.find_child("Hand", true, false)
@@ -104,17 +110,17 @@ func rule_checks(table, authority, server = null):
   verify(rect.encloses(market.get_global_rect()), "Center Row fits with warning strip " + str(dimensions))
  var chip = button(strip(table), "Nashville 2600")
  chip.pressed.emit()
- await frames()
+ await synced_frames(server)
  var pay = button(table.inspect_overlay, "Pay 6 Hacking: remove Nashville 2600")
  verify(pay != null, "Opponent Nashville payment available through sheet")
  pay.pressed.emit()
- await frames(8)
+ await synced_frames(server)
  verify(cards[0] in authority.state.removed and p.hacking == 0, "Sheet payment removes opponent Nashville, mirror=" + str(server != null))
  verify(table.engine.permanents().all(func(c): return c.effect_id() != "Nashville 2600"), "Mirror follows removal")
  for c in cards.slice(1): authority.move(c, authority.state.removed, "removed")
  if server != null: server.dirty = true
  else: table.redraw()
- await frames()
+ await synced_frames(server)
  verify(not is_instance_valid(strip(table)), "Warning strip disappears, mirror=" + str(server != null))
 func run():
  var settings = root.get_node("Sfx")
@@ -182,8 +188,7 @@ func run():
  online.handle_input.text = "[New Handle]"
  online.handle_input.text_changed.emit(online.handle_input.text)
  verify(settings.handle == "New Handle" and settings.hero_id == "", "Online handle uses menu validation")
- var config = ConfigFile.new()
- config.load("user://settings.cfg")
+ var config = OnlineAPI.settings()
  verify(config.get_value("player", "handle") == "New Handle", "Online handle saved")
  await online.create_game()
  verify(api.calls[-1].body.name == "New Handle" and api.calls[-1].body.hero == "", "Create uses edited handle")
@@ -195,7 +200,7 @@ func run():
  hero_button.pressed.emit()
  await frames()
  verify(settings.hero_id == hero and online.avatar_preview.get_child(0).texture != null, "Hero choice updates settings and avatar")
- config.load("user://settings.cfg")
+ config = OnlineAPI.settings()
  verify(config.get_value("player", "hero_id") == hero, "Online Hero saved")
  await online.join("ABCD")
  verify(api.calls[-1].path == "/rooms/ABCD/join" and api.calls[-1].body.hero == hero and api.calls[-1].body.name == str(root.get_node("CardDB").cards[hero].name).left(16), "Join uses selected Hero and handle")
@@ -209,7 +214,7 @@ func run():
  online.add_child(online.session)
  online.session.credential = {"seat": 0}
  online.in_lobby = true
- online.lobby({"code": "ABCD", "host_seat": 0, "started": false, "public": false, "card_pool": "2026", "starting_life": 40, "seats": [{"name": settings.handle.left(16), "hero": hero, "bot": false}, {"name": "Guest", "hero": "", "bot": false}]})
+ online.lobby({"code": "ABCD", "host_seat": 0, "started": false, "public": false, "card_pool": "2026", "starting_life": 40, "seats": [{"name": settings.handle.left(16), "hero": hero, "bot": false, "difficulty": 0}, {"name": "Guest", "hero": "", "bot": false, "difficulty": 0}]})
  await frames()
  verify(has_text(online.content, settings.handle.left(16)) and has_portrait(online.content, hero) and button(online.content, "Pick a Hero") == null, "Lobby shows joined name and locks identity controls")
  while not online.hero_picker.loading_icons.is_empty(): await process_frame

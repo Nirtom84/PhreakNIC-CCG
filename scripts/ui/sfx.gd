@@ -34,7 +34,7 @@ const AUTO_GROUPS = {"Botnet": "Botnet", "Botnet1": "Botnet", "Botnet2": "Botnet
 var auto_activate: Dictionary = {}
 var auto_tip_shown: bool = false
 func auto_enabled(group: String) -> bool: return auto_activate.get(group, false) == true
-func load_auto(config: ConfigFile):
+func load_auto(config):
  auto_activate.clear()
  var legacy = config.get_value("game", "auto_botnet", false)
  for group in AUTO_GROUPS.values():
@@ -123,7 +123,7 @@ func save():
  config.set_value("sound", "muted", muted)
  config.set_value("sound", "music_volume", music_volume)
  config.set_value("sound", "music_muted", music_muted)
- config.save("user://settings.cfg")
+ config.save("user://settings.json")
  apply_music()
  for player in pool: player.volume_db = linear_to_db(volume) if not muted and volume > 0 else -80.0
 func play(sound: String):
@@ -143,7 +143,7 @@ func play(sound: String):
    player.play()
    return
 
-static func migrated_pace(config: ConfigFile) -> float:
+static func migrated_pace(config) -> float:
  var data = {}
  for key in ["bot_pace", "bot_speed", "bot_fast"]:
   if config.has_section_key("game", key): data[key] = config.get_value("game", key)

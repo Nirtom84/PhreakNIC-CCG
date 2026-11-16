@@ -11,7 +11,7 @@ class FakeAPI extends Node:
   calls.append({"method": method, "path": path, "body": body})
   if mismatch: return {"status": 409, "data": {"error": "version", "need": "9.99"}}
   if method == HTTPClient.METHOD_GET: return {"status": 200, "data": {"rooms": rooms}}
-  return {"status": 201, "data": {"code": "ABCD", "seat": 0, "token": "fake"}}
+  return {"status": 201, "data": {"code": "ABCD", "seat": 0, "token": "a".repeat(32)}}
 class FakeRoom extends Node:
  var server: GameServer
  var socket
@@ -25,7 +25,14 @@ class FakeRoom extends Node:
   server = GameServer.new()
   add_child(server)
   server.setup([{"name": "Host", "bot": false}, {"name": "Guest", "bot": false}, {"name": "Bot", "bot": true}], pool, 20, 42, [], 0.0, deck)
+  # Keep UI turn-driving scenarios reproducible, as in net_checks.
+  server.engine.secure_random = false
+  server.engine.setup([-1, -1, 1], 42, server.engine.deciders, pool, 20, [], deck)
  func connect_seat():
+  # A new connection replaces the previous one: its game-server link must not forward (late, throttled) views here.
+  if bridge != null:
+   bridge.close()
+   bridge = null
   var pair = LoopbackTransport.pair()
   socket = pair[1]
   socket.received.connect(receive)
@@ -74,6 +81,7 @@ class SeatSocket extends Node:
  var attempts = 0
  var refused: Array = []
  var peers: Array = []
+ var bad_auth = false
  func _process(_delta):
   while tcp.is_connection_available():
    var stream = tcp.take_connection()
@@ -82,6 +90,7 @@ class SeatSocket extends Node:
    if step in ["refuse", "limit"]: refused.append({"stream": stream, "request": "", "step": step})
    else:
     var peer = WebSocketPeer.new()
+    peer.supported_protocols = PackedStringArray(["phreaknic"])
     if peer.accept_stream(stream) == OK: peers.append({"peer": peer, "step": step, "opened": -1})
   for item in refused.duplicate():
    item.stream.poll()
@@ -90,6 +99,13 @@ class SeatSocket extends Node:
     continue
    if item.stream.get_available_bytes() > 0: item.request += item.stream.get_utf8_string(item.stream.get_available_bytes())
    if item.request.contains("\r\n\r\n"):
+    if "upgrade: websocket" in item.request.to_lower():
+     var protocol = ""
+     for header in item.request.split("\r\n"):
+      if header.to_lower().begins_with("sec-websocket-protocol:"): protocol = header.split(":", true, 1)[1].replace(" ", "").to_lower()
+     if "?token=" in item.request or protocol != "phreaknic,t.0123456789abcdef0123456789abcdef": bad_auth = true
+    else:
+     if "authorization: bearer 0123456789abcdef0123456789abcdef" not in item.request.to_lower() or "sec-websocket-protocol:" in item.request.to_lower(): bad_auth = true
     var body = "{\"error\":\"token\"}" if item.step == "refuse" else "{\"error\":\"rate_limit\"}"
     var status = "401 Unauthorized" if item.step == "refuse" else "429 Too Many Requests"
     item.stream.put_data(("HTTP/1.1 %s\r\nContent-Type: application/json\r\nContent-Length: %d\r\nConnection: close\r\n\r\n%s" % [status, body.length(), body]).to_utf8_buffer())
@@ -110,7 +126,7 @@ class SeatSocket extends Node:
   for item in refused: item.stream.disconnect_from_host()
   tcp.stop()
 func _initialize():
- for path in ["user://settings.cfg", "user://savegame.json"]:
+ for path in ["user://settings.json", "user://settings.cfg.migrated", "user://settings.cfg", "user://savegame.json"]:
   user_backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  run.call_deferred()
 func _finalize():
@@ -178,7 +194,7 @@ func card_set_table(api, pool: String):
  root.add_child(online)
  current_scene = online
  await frames()
- online.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 0, "token": "fake"})
+ online.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 0, "token": "a".repeat(32)})
  await frames()
  room.receive({"t": "lobby", "action": "start"})
  await frames(12)
@@ -203,6 +219,7 @@ func card_set_table(api, pool: String):
  await frames()
  OnlineAPI.remember({})
 func run():
+ await seat_socket_checks()
  if FileAccess.file_exists("user://savegame.json"): DirAccess.remove_absolute(ProjectSettings.globalize_path("user://savegame.json"))
  root.get_node("Sfx").visual_effects = false
  root.get_node("Sfx").auto_end_turn = false
@@ -287,6 +304,13 @@ func run():
  verify(not room.sent.any(func(m): return m.t == "hello"), "room socket never sends hello")
  var session = table.online_session
  var seat = session.client.seat
+ var mirror_before_timers = session.client.engine.state
+ session.client._receive({"t": "timers", "timers": [{"seat": 1, "kind": "turn", "remaining_seconds": 37, "limit": 180, "handable": true, "host_seat": seat}]})
+ verify(table.handable_seat == 1 and table.countdowns[1].remaining == 37 and session.client.engine.state == mirror_before_timers, "Timer-only update refreshes countdown and host handover")
+ session.client._receive({"t": "timers", "timers": [{"seat": 1}]})
+ verify(table.handable_seat == 1 and table.countdowns[1].remaining == 37, "Invalid timer-only update ignored")
+ session.client._receive({"t": "timers", "timers": []})
+ verify(table.handable_seat == -1 and not table.countdowns[1].active, "Empty timers clear countdown and handover")
  # Drive several authoritative human turns using the real table controls.
  for turn in 4:
   if room.server.engine.active().seat != seat:
@@ -294,12 +318,15 @@ func run():
    room.server.dirty = true
    await frames()
   table.play_all()
-  await frames(10)
+  # The server throttles views to 5 Hz; wait for its acknowledgement before End Turn.
+  await create_timer(0.25).timeout
   table.end_human_turn(true)
-  await frames(10)
+  await create_timer(0.25).timeout
  verify(room.server.engine.state.turn >= 4, "online table plays turns")
  # Exercise server requests through the actual table dialogs and wire validators.
  var p = room.server.engine.state.players[seat]
+ # The preceding play-all can leave an empty hand; this dialog requires an offered card.
+ if p.hand.is_empty(): p.hand.append(p.deck.pop_back())
  var value = await room.server.ask(seat, {"kind": "choose_cards", "text": "Select a card", "cards": p.hand.map(RemoteDecider.card_data), "min": 1, "max": 1}, [])
  verify(value.size() == 1 and value[0] == p.hand[0].uid, "choose_cards dialog returns UID")
  value = await room.server.ask(seat, {"kind": "choose_option", "text": "Order triggers", "options": ["First", "Second"]}, [])
@@ -385,7 +412,7 @@ func run():
  root.add_child(ended_ui)
  current_scene = ended_ui
  await frames()
- ended_ui.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 1, "token": "fake"})
+ ended_ui.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 1, "token": "a".repeat(32)})
  ended_room[1].send({"t": "room", "code": "ABCD", "seats": [{"name": "Host", "hero": "", "bot": false, "difficulty": 0, "connected": true}, {"name": "Guest", "hero": "", "bot": false, "difficulty": 1, "connected": true}], "host_seat": 0, "started": true, "public": true, "card_pool": "2026", "starting_life": 20})
  ended_room[1].send({"t": "over", "winner": 0})
  await frames()
@@ -403,7 +430,7 @@ func run():
  root.add_child(banned_ui)
  current_scene = banned_ui
  await frames()
- banned_ui.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 1, "token": "fake"})
+ banned_ui.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 1, "token": "a".repeat(32)})
  banned_room[1].send({"t": "over", "winner": -1, "reason": "banned_minimum"})
  await frames()
  verify(not banned_ui.in_lobby and banned_ui.message.text.begins_with("At least 40 center-deck cards"), "A game that can't start returns to online home with the reason")
@@ -427,7 +454,6 @@ func run():
  for pool in ["2026mog", "custom"]: await card_set_table(api, pool)
  api.queue_free()
  await frames()
- await seat_socket_checks()
  print("Online UI checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
 func seat_session(port: int, removed: Array = []) -> OnlineSession:
@@ -444,6 +470,7 @@ func run_clock(session: OnlineSession, done: Callable):
   if session.retry > 0: session._process(16.0)
 func seat_socket_checks():
  var server = SeatSocket.new()
+ server.tree_exiting.connect(func(): verify(not server.bad_auth, "Seat authentication uses subprotocol header without URL token"))
  root.add_child(server)
  if server.tcp.listen(0, "127.0.0.1") != OK:
   print("Seat socket checks: SKIPPED (cannot bind localhost)")

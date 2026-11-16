@@ -5,4 +5,4 @@ WORKDIR /home/game
 COPY --chown=game:game --chmod=755 phreaknic-server.x86_64 ./phreaknic-server.x86_64
 USER game
 EXPOSE 8080
-CMD ["./phreaknic-server.x86_64", "--headless", "--", "--server", "--port", "8080"]
+CMD ["./phreaknic-server.x86_64", "--headless", "--", "--server", "--port", "8080", "--bind", "0.0.0.0"]

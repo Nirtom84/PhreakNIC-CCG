@@ -16,17 +16,20 @@ export const validCode = value => typeof value === 'string' && (value.length ===
 export function ipKey(raw) {
   const ip = typeof raw === 'string' && raw ? raw.trim().toLowerCase() : 'unknown';
   if (!ip.includes(':')) return ip;
+  if(ip.startsWith('::ffff:')&&ip.includes('.'))return ip.slice(7);
   const [head, tail] = ip.split('::');
   const left = head ? head.split(':') : [], right = tail !== undefined && tail ? tail.split(':') : [];
   const groups = tail !== undefined ? [...left, ...Array(Math.max(0, 8 - left.length - right.length)).fill('0'), ...right] : left;
+  if(groups.length===8&&groups.slice(0,5).every(g=>!parseInt(g,16))&&parseInt(groups[5],16)===65535){const n=parseInt(groups[6],16)*65536+parseInt(groups[7],16);return [24,16,8,0].map(b=>(n>>>b)&255).join('.');}
   return groups.slice(0, 4).map(g => (parseInt(g, 16) || 0).toString(16)).join(':') + '::/64';
 }
 export const token = () => [...crypto.getRandomValues(new Uint8Array(16))].map(b => b.toString(16).padStart(2, '0')).join('');
 export const validToken = value => typeof value === 'string' && /^[a-f0-9]{32}$/.test(value);
-export function originAllowed(origin) {
+export const ipBuckets = ip => ip.endsWith('::/64')?[[ip,1],[ip.split(':').slice(0,3).join(':')+'::/48',4]]:[[ip,1]];
+export function originAllowed(origin, local=false) {
   if (origin === null) return true;
   if (['https://phreaknic-ccg.net', 'https://www.phreaknic-ccg.net', 'https://nirtom84.github.io'].includes(origin)) return true;
-  try { const u = new URL(origin); return u.origin === origin && u.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(u.hostname); } catch { return false; }
+  try { const u = new URL(origin); return local && u.origin === origin && u.protocol === 'http:' && ['localhost', '127.0.0.1'].includes(u.hostname); } catch { return false; }
 }
 export function route(method, path) {
   if (method === 'GET' && path === '/health') return {kind:'health'};
@@ -108,10 +111,10 @@ export function socketSeat(r,t) {return r&&validToken(t)?r.seats.findIndex(s=>!s
 export function joinVersion(client,room,server) {checkVersion(client,server);if(client!==room)fail('room_version',409,{room});}
 export function kickSeat(r,actor,seat) {if(r.started||actor!==r.host_seat||!Number.isInteger(seat)||seat<=0||seat>=r.seats.length||r.seats[seat].bot||!r.seats[seat].token)fail('seat');return seat;}
 export async function adminDecision(locked,compare) {if(locked)return 429;return await compare()?200:401;}
-export function seatRate(state,now,bytes) {
- const messages=rateDecision(state.messages,now,30,1000),traffic=rateDecision(state.traffic,now,262144,10000,bytes);
- const strikes=rateDecision(state.strikes,now,10,10000,messages.allowed&&traffic.allowed?0:1);
- return {messages,traffic,strikes,allowed:messages.allowed&&traffic.allowed,close:!traffic.allowed||!strikes.allowed};
+export function seatRate(state,now,bytes,lobby=false,abuse=false) {
+ const messages=rateDecision(state.messages,now,lobby?5:30,1000),minute=rateDecision(state.minute,now,60,60000),traffic=rateDecision(state.traffic,now,262144,10000,bytes);
+ const strikes=rateDecision(state.strikes,now,10,10000,messages.allowed&&traffic.allowed&&(!lobby||minute.allowed)&&!abuse?0:1);
+ return {messages,minute,traffic,strikes,allowed:messages.allowed&&traffic.allowed&&(!lobby||minute.allowed)&&!abuse,close:!traffic.allowed||!strikes.allowed};
 }
 
 export const hostCloseDue=(r,now=Date.now())=>!r.started&&r.hostGoneAt!=null&&now>=r.hostGoneAt+60000;

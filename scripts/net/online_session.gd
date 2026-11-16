@@ -33,9 +33,9 @@ func connect_socket():
 	transport.received.connect(_message)
 	transport.closed.connect(_closed.bind(transport))
 	if transport is WebSocketTransport:
-		var address = str(credential.server).replace("https://", "wss://").replace("http://", "ws://")
+		var address = OnlineAPI.safe_server(str(credential.server)).replace("https://", "wss://").replace("http://", "ws://")
 		transport.connected.connect(func(): set_status("Connected"))
-		transport.connect_to(address + "/ws/room/" + credential.code + "?token=" + str(credential.token).uri_encode())
+		transport.connect_to(address + "/ws/room/" + credential.code, str(credential.token))
 func _closed(endpoint):
 	if stopped or endpoint != transport: return
 	client.can_act = false
@@ -77,8 +77,8 @@ func _seat_gone() -> bool:
 	http.body_size_limit = 1024 * 1024
 	add_child(http)
 	var result = [HTTPRequest.RESULT_CANT_CONNECT, 0, PackedStringArray(), PackedByteArray()]
-	var url = str(credential.server) + "/ws/room/" + str(credential.code) + "?token=" + str(credential.token).uri_encode()
-	if http.request(url) == OK: result = await http.request_completed
+	var url = OnlineAPI.safe_server(str(credential.server)) + "/ws/room/" + str(credential.code)
+	if http.request(url, ["Authorization: Bearer " + str(credential.token)]) == OK: result = await http.request_completed
 	http.queue_free()
 	if result[0] != HTTPRequest.RESULT_SUCCESS or result[1] != 401: return false
 	var body = JSON.parse_string(result[3].get_string_from_utf8())
@@ -93,6 +93,9 @@ func _message(data: Dictionary):
 				error.error = reason
 				set_status(OnlineAPI.error_text(0, error))
 		"room":
+			var normalized = NetTransport.normalize(data)
+			if not normalized is Dictionary or not NetClient.valid_room(normalized): return
+			data = normalized
 			attempts = 0
 			room = data
 			room_changed.emit(data)
@@ -107,6 +110,7 @@ func _message(data: Dictionary):
 					set_status("Game server unavailable. Return to the menu and try resuming.")
 		"welcome": attempts = 0; set_status("Connected")
 		"game_over", "over":
+			if not data.get("winner", -1) is int or data.get("winner", -1) < -1 or data.get("winner", -1) >= 4: return
 			OnlineAPI.remember({})
 			if data.get("reason") == "restore_failed": set_status("The server was updated, so this game couldn't be resumed. Start a new one from Play online.")
 			finished.emit(int(data.get("winner", -1)))

@@ -32,15 +32,31 @@ static func safe_value(value, max_nodes: int = 8192, max_bytes: int = 65536) -> 
 				queue.append([v[key], depth + 1])
 	return true
 # JSON numbers are doubles; only integral protocol numbers become integers.
-static func normalize(value):
-	if not safe_value(value, 100000, 2 * 1024 * 1024): return null
-	return _normalize(value)
-static func _normalize(value):
-	if value is float and is_finite(value) and value == floor(value): return int(value)
-	if value is Array: return value.map(_normalize)
-	if value is Dictionary:
-		var result = {}
-		for key in value: result[key] = _normalize(value[key])
+static func normalize(value, max_nodes: int = 100000, max_bytes: int = 2 * 1024 * 1024):
+	var budget = {"nodes": max_nodes, "bytes": max_bytes, "ok": true}
+	var result = _bounded_normalize(value, budget, 0)
+	return result if budget.ok else null
+static func _bounded_normalize(value, budget: Dictionary, depth: int):
+	budget.nodes -= 1
+	if budget.nodes < 0 or depth > 32:
+		budget.ok = false
+		return null
+	if value is String or value is StringName:
+		budget.bytes -= value.length()
+		if budget.bytes < 0: budget.ok = false
+	elif value is float:
+		if not is_finite(value) or absf(value) > 9007199254740991.0: budget.ok = false; return null
+		if value == floor(value): return int(value)
+	elif value is Array or value is Dictionary:
+		if value.size() > budget.nodes: budget.ok = false; return null
+		var result = [] if value is Array else {}
+		for key in value:
+			if not budget.ok: break
+			if value is Array: result.append(_bounded_normalize(key, budget, depth + 1))
+			else:
+				if not (key is String or key is StringName): budget.ok = false; break
+				_bounded_normalize(key, budget, depth + 1)
+				result[key] = _bounded_normalize(value[key], budget, depth + 1)
 		return result
 	return value
 

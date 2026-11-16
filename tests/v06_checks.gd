@@ -45,10 +45,9 @@ func player_count_memory():
  root.add_child(reloaded_settings)
  verify(reloaded_settings.get("player_count") == 4, "Settings reload keeps the player count")
  reloaded_settings.free()
- var config = ConfigFile.new()
- config.load("user://settings.cfg")
+ var config = OnlineAPI.settings()
  config.set_value("game", "player_count", 7)
- config.save("user://settings.cfg")
+ config.save("user://settings.json")
  reloaded_settings = load("res://scripts/ui/sfx.gd").new()
  root.add_child(reloaded_settings)
  verify(reloaded_settings.get("player_count") == 2, "Invalid player count loads as 2")
@@ -82,15 +81,14 @@ func renamed_deck_memory():
  builder.save_deck()
  builder.back()
  await process_frame
- var config = ConfigFile.new()
- config.load("user://settings.cfg")
+ var config = OnlineAPI.settings()
  verify(menu.custom_tile.text.ends_with("Mine v2 · 60 cards") and config.get_value("game", "custom_deck_name") == "Mine v2", "Renaming the chosen custom deck keeps it chosen")
  menu.free()
  DirAccess.remove_absolute(ProjectSettings.globalize_path(Builder.PATH))
  settings.custom_deck_name = "Tag Team"
  settings.save()
 func run():
- for path in ["user://settings.cfg", SaveGame.PATH, "user://decks.json", "user://decks.json.tmp"]:
+ for path in ["user://settings.json", SaveGame.PATH, "user://decks.json", "user://decks.json.tmp"]:
   backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  var settings = root.get_node("Sfx")
  settings.visual_effects = false
@@ -99,8 +97,7 @@ func run():
  root.add_child(menu)
  await process_frame
  find_button(menu, "Base Set — PhreakNIC 26").pressed.emit()
- var config = ConfigFile.new()
- config.load("user://settings.cfg")
+ var config = OnlineAPI.settings()
  verify(settings.card_pool == "2025" and config.get_value("game", "card_pool") == "2025", "Menu choice persists")
  var reloaded_settings = load("res://scripts/ui/sfx.gd").new()
  root.add_child(reloaded_settings)

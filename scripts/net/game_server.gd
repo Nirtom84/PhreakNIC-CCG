@@ -6,6 +6,19 @@ class Decision extends RefCounted:
 	signal done(value)
 const Pace = preload("res://scripts/core/bot_pace.gd")
 # Direct harnesses remain instant; rooms supply the default explicitly through LinkServer.
+var host_seat = 0
+var action_times: Dictionary = {}
+var snapshot_due = false
+var snapshot_at = -INF
+var snapshot_turn = -1
+var view_at: Dictionary = {}
+var timer_at = -INF
+var last_timers: Array = []
+var state_fingerprint = 0
+var fingerprint_calls = 0
+var reaction_used = 0.0
+var reaction_clocks: Dictionary = {}
+const ACTIONS = ["play", "buy", "reserve", "activate", "end_turn", "play_all", "play_basics", "hand_to_bot"]
 var bot_pace: float = 0.0
 var setup_error = ""
 var setup_log: Array = []
@@ -19,6 +32,7 @@ var pending: Dictionary = {}
 var emote_times: Dictionary = {}
 var clock: Callable = func(): return Time.get_ticks_msec() / 1000.0
 var dirty = false
+var urgent_view = false
 var running = false
 var locks: Dictionary = {}
 var driving: Dictionary = {}
@@ -30,7 +44,7 @@ var idle_turn = -1
 var idle_seat = -1
 var idle_streak: Dictionary = {}
 var idle_bot: Dictionary = {}
-# Hard limits no action can reset (a no-op Play Basics resets the idle timer): a whole turn, and a TOCTOU reaction turn.
+# Hard budgets accumulate all time waiting on a seat; meaningful progress resets only idle time.
 const TURN_LIMIT = 600.0
 const REACTION_LIMIT = 300.0
 var turn_used = 0.0
@@ -141,12 +155,16 @@ func _install_engine():
 	engine.secure_random = true
 	add_child(engine)
 	engine.turn_driver = _drive_reaction
-	engine.state_changed.connect(func(): dirty = true; _eliminations())
+	engine.state_changed.connect(func():
+		if locks.is_empty(): dirty = true
+		_eliminations())
 	engine.log_message.connect(func(text): _broadcast({"t": "log", "text": text, "seat": engine.state.active_seat}))
 	engine.damage_dealt.connect(func(p, q, amount): _event({"kind": "damage_dealt", "source": p.seat, "target": q.seat, "amount": amount}))
 	engine.soundtrack_event.connect(func(kind, seat): _event({"kind": "soundtrack", "cue": kind, "seat": seat}))
 	engine.turn_started.connect(_turn_started)
-	engine.turn_ended.connect(func(p): _event({"kind": "turn_ended", "seat": p.seat}))
+	engine.turn_ended.connect(func(p):
+		urgent_view = true
+		_event({"kind": "turn_ended", "seat": p.seat}))
 	engine.ice_counter_removed.connect(func(c): _event({"kind": "ice_counter_removed", "uid": c.uid}))
 	engine.card_moved.connect(_moved)
 	engine.life_gained.connect(func(p, amount): _event({"kind": "life_gained", "seat": p.seat, "amount": amount}))
@@ -160,6 +178,8 @@ func _install_engine():
 	engine.card_reserved.connect(func(p, c): _event({"kind": "reserved", "seat": p.seat, "uid": c.uid, "id": c.id}))
 	engine.game_over.connect(func(winner):
 		dirty = true
+		urgent_view = true
+		snapshot_due = true
 		var final_players = []
 		for p in engine.state.players:
 			var cards = p.deck + p.hand + p.discard + p.play_area + p.reserve
@@ -175,9 +195,10 @@ func start():
 	await engine.start_turn()
 	dirty = true
 	_checkpoint()
-func attach(transport: NetTransport):
+func attach(transport: NetTransport, validated: bool = false):
 	transport.received.connect(func(message):
-		if NetTransport.safe_value(message): _receive(transport, NetTransport.normalize(message)))
+		var clean = message if validated else NetTransport.normalize(message, 8192, 65536)
+		if clean is Dictionary: _receive(transport, clean, true))
 	transport.closed.connect(func(): _closed(transport))
 func _send(seat: int, message: Dictionary):
 	if connections.has(seat): connections[seat].send(message)
@@ -206,6 +227,7 @@ func _closed(transport):
 	var seat = authenticated[transport]
 	authenticated.erase(transport)
 	view_frames.erase(transport)
+	view_at.erase(transport)
 	if connections.get(seat) == transport:
 		connections.erase(seat)
 		disconnected[seat] = now()
@@ -214,8 +236,8 @@ func _error(transport, reason: String):
 	var seat = authenticated.get(transport, -1)
 	diag("seat %d refused: %s" % [seat, reason], "error:%d" % seat)
 	transport.send({"t": "error", "reason": reason})
-func _receive(transport, message: Dictionary):
-	if not NetTransport.safe_value(message): return
+func _receive(transport, message: Dictionary, validated: bool = false):
+	if not validated and not NetTransport.safe_value(message): return
 	if message.get("type") == "emote":
 		if authenticated.has(transport) and NetTransport.valid_emote(message): receive_emote(authenticated[transport], message.id)
 		return
@@ -234,6 +256,7 @@ func _receive(transport, message: Dictionary):
 		disconnected.erase(seat)
 		engine.deciders[seat] = BotDecider.new(engine, 1) if _takeover(seat) else RemoteDecider.new(self, seat)
 		engine.state.players[seat].difficulty = 1 if _takeover(seat) else -1
+		if locks.is_empty(): state_fingerprint = _fingerprint()
 		_send(seat, {"t": "welcome", "seat": seat, "seats": seats, "version": version(), "card_pool": engine.state.card_pool, "starting_life": engine.state.starting_life, "log": setup_log + engine.state.log.filter(func(line): return line not in setup_log)})
 		_view(seat)
 		for id in pending:
@@ -254,18 +277,47 @@ func _receive(transport, message: Dictionary):
 		if not RemoteDecider.valid(request.data, message.get("value"), engine.db()):
 			diag("seat %d invalid answer to %s: got %s" % [seat, prompt_shape(request.data), value_shape(message.get("value"))], "answer:%d" % seat)
 			_error(transport, "invalid answer"); return
-		idle_at = now()
-		reaction_at = now()
-		idle_warned = false
+		# Only explicit cancellation is excluded; declining a confirm is a completed decision.
+		var cancelled = request.data.kind == "choose_cards" and request.data.get("min", 1) == 0 and message.value is Array and message.value.is_empty()
+		if request.data.kind == "choose_option": cancelled = str(request.data.options[message.value]).to_lower().begins_with("cancel")
+		if not cancelled: _progress(seat)
 		_complete(id, message.value)
 	elif message.get("t") == "action":
 		_action(transport, seat, message)
 	else: _error(transport, "unknown message")
 func available(seat: int) -> bool:
 	return not idle_bot.has(seat) and not permanent_idle.has(seat) and running and engine.is_turn(engine.state.players[seat]) and not engine.busy and not locks.has(engine.reaction_depth) and not pending.values().any(func(r): return r.seat == seat)
+func _fingerprint() -> int:
+	fingerprint_calls += 1
+	return _snapshot_fingerprint(SaveGame.snapshot(engine.state))
+func _snapshot_fingerprint(data: Dictionary) -> int:
+	# The engine writes used=false when cancelling a free activation. Missing and
+	# false mean the same thing; don't count the bookkeeping entry as progress.
+	for record in data.objects:
+		if record.type == "card":
+			record.data.flags.dict = record.data.flags.dict.filter(func(pair): return not (str(pair[0]) == "used" and pair[1] is bool and not pair[1]))
+	return hash(data)
+func _progress(seat: int):
+	if engine.active().seat != seat: return
+	if engine.reaction_depth > 0:
+		reaction_at = now()
+		if reaction_clocks.has(engine.reaction_depth): reaction_clocks[engine.reaction_depth].elapsed = 0.0
+	else: idle_at = now()
+	idle_warned = false
 func _action(transport, seat: int, message: Dictionary):
+	var recent: Array = action_times.get(seat, []).filter(func(at): return now() - at < 1.0)
+	if recent.size() >= 5: _error(transport, "action rate limit"); return
+	recent.append(now())
+	action_times[seat] = recent
+	if message.get("kind") is String and message.kind == "hand_to_bot":
+		var target = message.get("seat")
+		if seat != host_seat or not target is int or not handable(target):
+			_error(transport, "illegal action"); return
+		_idle_takeover(target, false)
+		dirty = true
+		return
 	if not available(seat):
-		diag("seat %d action %s refused: %s" % [seat, str(message.get("kind", "?")), why_not(seat)], "act:%d" % seat)
+		diag("seat %d action %s refused: %s" % [seat, str(message.get("kind")) if message.get("kind") in ACTIONS else "unknown", why_not(seat)], "act:%d" % seat)
 		_error(transport, "seat cannot act now"); return
 	var p = engine.state.players[seat]
 	var card = null
@@ -284,9 +336,10 @@ func _action(transport, seat: int, message: Dictionary):
 		"end_turn", "play_all", "play_basics": legal = true
 	if not legal: _error(transport, "illegal action"); return
 	diag("seat %d action %s" % [seat, kind], "action:%d" % seat)
-	idle_at = now()
-	reaction_at = now()
-	idle_warned = false
+	# These legal actions commit progress before any resulting choice can suspend them.
+	if kind in ["play", "buy", "reserve", "end_turn"]: _progress(seat)
+	# Reuse the last checkpoint/after-state; only encode the result of this action.
+	var before = state_fingerprint
 	var depth = engine.reaction_depth
 	locks[depth] = true
 	match kind:
@@ -297,8 +350,11 @@ func _action(transport, seat: int, message: Dictionary):
 		"end_turn": await engine.end_turn(p)
 		"play_all", "play_basics": await engine.play_all(p, kind == "play_basics")
 	locks.erase(depth)
-	dirty = true
-	_checkpoint()
+	state_fingerprint = _fingerprint()
+	if before != state_fingerprint:
+		_progress(seat)
+		dirty = true
+		_checkpoint(kind == "end_turn" or engine.state.finished)
 func ask(seat: int, data: Dictionary, args: Array):
 	var id = Crypto.new().generate_random_bytes(16).hex_encode()
 	data = data.duplicate(true)
@@ -307,7 +363,7 @@ func ask(seat: int, data: Dictionary, args: Array):
 	data.remaining_seconds = 45.0
 	data.deadline_unix_ms = int((Time.get_unix_time_from_system() + 45.0) * 1000)
 	var decision = Decision.new()
-	pending[id] = {"seat": seat, "data": data, "args": args, "at": now(), "decision": decision}
+	pending[id] = {"seat": seat, "data": data, "args": args, "at": now(), "depth": engine.reaction_depth, "decision": decision}
 	diag("seat %d prompt %s sent: %s%s" % [seat, id.left(6), prompt_shape(data), "" if connections.has(seat) else " (seat offline)"])
 	dirty = true
 	_send(seat, data)
@@ -331,21 +387,34 @@ func _takeover(seat: int) -> bool:
 func _process(_delta):
 	if engine == null or not running: return
 	_idle_tick()
+	if snapshot_due: _checkpoint()
+	if now() - timer_at >= 1.0:
+		timer_at = now()
+		var timers = timer_state()
+		var displayed = timers.duplicate(true)
+		for entry in displayed: entry.remaining_seconds = ceili(entry.remaining_seconds)
+		if displayed != last_timers:
+			last_timers = displayed
+			_broadcast({"t": "timers", "timers": timers})
 	for id in pending.keys():
 		if now() - pending[id].at >= 45.0 or _takeover(pending[id].seat): _fallback(id)
 	for seat in seats.size():
 		if _takeover(seat):
 			if not taken_over.has(seat):
 				taken_over[seat] = true
+				dirty = true
 				diag("seat %d handed to a bot: %s" % [seat, "repeated idling" if permanent_idle.has(seat) else "idle turn" if idle_bot.has(seat) else "disconnected for 120 s"])
 			engine.deciders[seat] = BotDecider.new(engine, 1)
 			engine.state.players[seat].difficulty = 1
 		elif taken_over.has(seat):
 			taken_over.erase(seat)
+			dirty = true
 			diag("seat %d back under human control" % seat)
 	if dirty:
 		dirty = false
-		for seat in connections: _view(seat)
+		var force = urgent_view
+		urgent_view = false
+		for seat in connections: _view(seat, force)
 	if not driving.has(engine.reaction_depth) and not engine.busy and not engine.state.finished and not locks.has(engine.reaction_depth):
 		var p = engine.active()
 		if seats[p.seat].bot or _takeover(p.seat): _drive()
@@ -353,6 +422,10 @@ func _turn_started(p):
 	diag("turn start seat %d (%s%s)" % [p.seat, "bot" if seats[p.seat].bot else "human", "" if seats[p.seat].bot or connections.has(p.seat) else ", offline"] if engine.reaction_depth == 0 else "reaction turn seat %d at depth %d" % [p.seat, engine.reaction_depth])
 	_event({"kind": "turn_started", "seat": p.seat})
 	if engine.reaction_depth == 0: _begin_idle_turn(p)
+	else:
+		reaction_clocks[engine.reaction_depth] = {"seat": p.seat, "elapsed": 0.0, "used": 0.0}
+		reaction_key.clear()
+		_reaction_idle_tick()
 func _begin_idle_turn(p):
 	if idle_seat >= 0 and not idle_bot.has(idle_seat) and not permanent_idle.has(idle_seat): idle_streak[idle_seat] = 0
 	for seat in idle_bot:
@@ -364,53 +437,65 @@ func _begin_idle_turn(p):
 	idle_seat = p.seat
 	idle_at = now()
 	turn_used = 0.0
+	last_tick = now()
 	idle_warned = false
+# Prompts owned by the active seat are waiting time, even while the engine is suspended.
+func _waiting_on(seat: int) -> bool:
+	var requests = pending.values().filter(func(r): return r.get("depth", engine.reaction_depth) == engine.reaction_depth)
+	if not requests.is_empty(): return requests.all(func(r): return r.seat == seat)
+	return not engine.busy and not locks.has(engine.reaction_depth)
+func handable(seat: int) -> bool:
+	return running and not engine.state.finished and seat >= 0 and seat < seats.size() and seat != host_seat and not seats[seat].bot and not _takeover(seat) and engine.active().seat == seat and _waiting_on(seat) and now() - (reaction_at if engine.reaction_depth > 0 else idle_at) >= 120.0
+func _idle_takeover(seat: int, strike: bool = true):
+	if idle_bot.has(seat): return
+	idle_streak[seat] = idle_streak.get(seat, 0) + (1 if strike else 0)
+	idle_bot[seat] = true
+	if idle_streak[seat] >= 3: permanent_idle[seat] = true
+	diag("seat %d idle; bot finishes the turn (streak %d)" % [seat, idle_streak[seat]])
+	engine.say(seats[seat].name + " was idle; a bot finished their turn")
 func _idle_tick():
 	var step = maxf(0.0, now() - last_tick)
 	last_tick = now()
 	if engine.reaction_depth > 0:
-		# The interrupted turn's player isn't charged while someone else reacts.
-		idle_at = now()
-		_reaction_idle_tick()
+		idle_at += step
+		_reaction_idle_tick(step)
 		return
 	var p = engine.active()
-	if idle_turn != engine.state.turn or idle_seat != p.seat: _begin_idle_turn(p)
-	if engine.state.finished or seats[p.seat].bot or not connections.has(p.seat) or _takeover(p.seat): return
-	if engine.busy or not pending.is_empty() or not locks.is_empty():
-		idle_at = now()
-		return
-	# Only time the player could act counts toward the hard limit (not prompts to others or rules resolving).
-	turn_used += step
+	if not reaction_key.is_empty():
+		# Reaction turns increment state.turn; resuming is still the interrupted turn.
+		idle_turn = engine.state.turn
+		reaction_key.clear()
+		reaction_clocks.clear()
+	if idle_turn != engine.state.turn or idle_seat != p.seat:
+		_begin_idle_turn(p)
+		step = 0.0
+	if _waiting_on(p.seat): turn_used += step
+	else: idle_at += step
+	# Hard limits precede connection/prompt/lock guards.
+	if not engine.state.finished and not seats[p.seat].bot and turn_used >= TURN_LIMIT: _idle_takeover(p.seat)
+	if engine.state.finished or seats[p.seat].bot or _takeover(p.seat): return
 	var elapsed = now() - idle_at
-	var overdue = turn_used >= TURN_LIMIT
-	if elapsed >= 120 and not idle_warned and not overdue:
+	if elapsed >= 120 and not idle_warned:
 		idle_warned = true
-		diag("seat %d idle warning after %.0fs" % [p.seat, elapsed])
-		_send(p.seat, {"t": "event", "kind": "idle_warning", "seconds_left": 60})
-	if elapsed >= 180 or overdue:
-		idle_streak[p.seat] = idle_streak.get(p.seat, 0) + 1
-		idle_bot[p.seat] = true
-		if idle_streak[p.seat] >= 3: permanent_idle[p.seat] = true
-		diag("seat %d idle for %.0fs; bot finishes the turn (streak %d%s)" % [p.seat, elapsed, idle_streak[p.seat], ", seat now bot-controlled" if permanent_idle.has(p.seat) else ""])
-		engine.say(seats[p.seat].name + " was idle; a bot finished their turn")
-## A human's reaction turn (TOCTOU) gets the same idle rules as a normal turn, plus its own hard limit; a bot
-## finishes it otherwise, so one player can't hold everyone's game forever.
-func _reaction_idle_tick():
+		_send(p.seat, {"t": "event", "kind": "idle_warning", "seat": p.seat, "seconds_left": 60})
+	if elapsed >= 180: _idle_takeover(p.seat)
+func _reaction_idle_tick(step: float = 0.0):
 	var p = engine.active()
-	var key = [engine.reaction_depth, p.seat, engine.state.turn]
+	var depth = engine.reaction_depth
+	var key = [depth, p.seat]
 	if key != reaction_key:
+		var saved = reaction_clocks.get(depth, {"seat": p.seat, "elapsed": 0.0, "used": 0.0})
 		reaction_key = key
-		reaction_at = now()
+		reaction_at = now() - saved.elapsed
 		reaction_began = now()
-	if engine.state.finished or seats[p.seat].bot or not connections.has(p.seat) or _takeover(p.seat): return
-	# The interrupted action keeps its lock one level down; only this level's lock or this seat's prompt pauses the clock.
-	if engine.busy or locks.has(engine.reaction_depth) or pending.values().any(func(r): return r.seat == p.seat):
-		reaction_at = now()
-		return
-	if now() - reaction_at >= 180 or now() - reaction_began >= REACTION_LIMIT:
-		idle_bot[p.seat] = true
-		diag("seat %d idle in a reaction turn; bot finishes it" % p.seat)
-		engine.say(seats[p.seat].name + " was idle; a bot finished their turn")
+		reaction_used = saved.used
+		step = 0.0
+	if _waiting_on(p.seat): reaction_used += step
+	else: reaction_at += step
+	reaction_clocks[depth] = {"seat": p.seat, "elapsed": now() - reaction_at, "used": reaction_used}
+	if not engine.state.finished and not seats[p.seat].bot and reaction_used >= REACTION_LIMIT: _idle_takeover(p.seat)
+	if engine.state.finished or seats[p.seat].bot or _takeover(p.seat): return
+	if now() - reaction_at >= 180: _idle_takeover(p.seat)
 func _drive_reaction(p):
 	var driver = BotPlayer.new(engine)
 	driver.search_budget_ms = DefconSearch.SERVER_MS
@@ -428,13 +513,21 @@ func _drive():
 	driver.continue_turn = func(): return seats[p.seat].bot or _takeover(p.seat)
 	await driver.take_turn(p)
 	driving.erase(depth)
+	state_fingerprint = _fingerprint()
 	dirty = true
 	_checkpoint()
-func _checkpoint():
+func _checkpoint(force: bool = false):
+	snapshot_due = true
+	force = force or engine.state.finished or snapshot_turn != engine.state.turn
+	if not force and now() - snapshot_at < 2.0: return
 	if not pending.is_empty() or not locks.is_empty() or engine.busy or engine.reaction_depth != 0 or engine.simultaneous_depth != 0 or not engine.state.resolving.is_empty(): return
 	if not engine.state.finished and not SaveGame.safe(engine, engine.state.active_seat): return
 	engine.trim_log()
-	last_snapshot = {"version": version(), "content": SaveGame.content(), "game": SaveGame.snapshot(engine.state), "seats": seats.duplicate(true), "tokens": tokens.duplicate(), "bot_pace": bot_pace, "setup_log": setup_log.duplicate()}
+	last_snapshot = {"version": version(), "content": SaveGame.content(), "game": SaveGame.snapshot(engine.state), "seats": seats.duplicate(true), "tokens": tokens.duplicate(), "bot_pace": bot_pace, "setup_log": setup_log.duplicate(), "host_seat": host_seat}
+	state_fingerprint = _snapshot_fingerprint(last_snapshot.game.duplicate(true))
+	snapshot_at = now()
+	snapshot_turn = engine.state.turn
+	snapshot_due = false
 	snapshot.emit(last_snapshot.duplicate(true))
 func restore(data: Dictionary) -> bool:
 	if not SaveGame.bounded(data) or not data.get("version") is String or not data.get("content") is String or not data.get("game") is Dictionary: return false
@@ -452,6 +545,8 @@ func restore(data: Dictionary) -> bool:
 		if not data.seats[i].get("difficulty") is int or data.seats[i].difficulty < 0 or data.seats[i].difficulty > 3: return false
 		for key in ["name", "hero", "bot", "difficulty"]:
 			if not data.seats[i].has(key): return false
+	if not data.get("host_seat", 0) is int or data.get("host_seat", 0) < 0 or data.get("host_seat", 0) >= data.seats.size(): return false
+	host_seat = data.get("host_seat", 0)
 	bot_pace = Pace.nearest(data.get("bot_pace", 0.5))
 	seats = data.seats.duplicate(true)
 	tokens = data.tokens.duplicate()
@@ -465,15 +560,18 @@ func restore(data: Dictionary) -> bool:
 	running = true
 	dirty = true
 	last_snapshot = data.duplicate(true)
+	state_fingerprint = _fingerprint()
 	return true
 
-func _view(seat: int):
+func _view(seat: int, force: bool = false):
 	var frame = Engine.get_process_frames()
 	var endpoint = connections.get(seat)
-	if view_frames.get(endpoint, -1) == frame:
+	if view_frames.get(endpoint, -1) == frame or (not force and now() - view_at.get(endpoint, -INF) < 0.2):
+		if force: urgent_view = true
 		dirty = true
 		return
 	view_frames[endpoint] = frame
+	view_at[endpoint] = now()
 	var view = NetView.build(engine, seat)
 	view.ready = available(seat)
 	_send(seat, {"t": "view", "state": view, "timers": timer_state()})
@@ -484,8 +582,8 @@ func timer_state() -> Array:
 	for seat in disconnected:
 		if not seats[seat].bot and not _takeover(seat): timers.append({"seat": seat, "kind": "disconnected", "remaining_seconds": maxf(0, 120.0 - (now() - disconnected[seat])), "limit": 120})
 	var p = engine.active()
-	if not seats[p.seat].bot and connections.has(p.seat) and not _takeover(p.seat) and engine.reaction_depth == 0 and not engine.busy and pending.is_empty():
-		timers.append({"seat": p.seat, "kind": "turn", "remaining_seconds": maxf(0, 180.0 - (now() - idle_at)), "limit": 180})
+	if not seats[p.seat].bot and not _takeover(p.seat):
+		timers.append({"seat": p.seat, "kind": "turn", "remaining_seconds": maxf(0, 180.0 - (now() - (reaction_at if engine.reaction_depth > 0 else idle_at))), "limit": 180, "handable": handable(p.seat), "host_seat": host_seat})
 	return timers
 
 func receive_emote(seat: int, id: int):

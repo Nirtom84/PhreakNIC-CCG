@@ -19,6 +19,8 @@ var bridges: Array = []
 var link: WebSocketPeer
 var game: GameServer
 var endpoints: Dictionary = {}
+var bind_address = "127.0.0.1"
+var link_key = OS.get_environment("LINK_KEY")
 var port = 8080
 var room = ""
 var diag_minute = -1
@@ -31,14 +33,21 @@ func forward_diag(text: String):
 	if diag_count == 120: text = text.left(240) + " (further room diagnostics muted this minute)"
 	_send({"t": "diag", "text": text.left(300)})
 func listen(on_port: int = 8080) -> Error:
-	var result = listener.listen(on_port, "0.0.0.0")
+	var args = OS.get_cmdline_user_args()
+	var bind_index = args.find("--bind")
+	if bind_index >= 0:
+		if bind_index + 1 >= args.size(): return ERR_INVALID_PARAMETER
+		bind_address = args[bind_index + 1]
+	if not loopback_bind(bind_address) and link_key.is_empty():
+		push_warning("Non-loopback game server without LINK_KEY; /link is unauthenticated")
+	var result = listener.listen(on_port, bind_address)
 	if result != OK: return result
 	result = bridge_listener.listen(0, "127.0.0.1")
 	if result != OK:
 		listener.stop()
 		return result
 	port = listener.get_local_port()
-	print("room server listening 0.0.0.0:%d" % port)
+	print("room server listening %s:%d" % [bind_address, port])
 	return OK
 func stop():
 	listener.stop()
@@ -86,6 +95,10 @@ func _process(_delta):
 		requests.erase(request)
 		var first = header.get_slice("\r\n", 0)
 		if first == "GET /link HTTP/1.1" and "upgrade: websocket" in header.to_lower():
+			if not authorized_header(header):
+				tcp.put_data("HTTP/1.1 401 Unauthorized\r\nContent-Length: 0\r\nConnection: close\r\n\r\n".to_utf8_buffer())
+				tcp.disconnect_from_host()
+				continue
 			var local = StreamPeerTCP.new()
 			local.connect_to_host("127.0.0.1", bridge_listener.get_local_port())
 			bridges.append({"remote": tcp, "local": local, "up": request.header, "down": PackedByteArray(), "peer": null, "at": request.at, "accepted": false})
@@ -116,8 +129,12 @@ func _process(_delta):
 			while link != null and link.get_available_packet_count():
 				var bytes = link.get_packet()
 				if not link.was_string_packet(): continue
-				var message = JSON.parse_string(bytes.get_string_from_utf8())
-				if message is Dictionary and NetTransport.safe_value(message, 100000, 2 * 1024 * 1024): _receive(NetTransport.normalize(message))
+				# Trusted setup/restore controls may carry decks or snapshots; game packets stay small.
+				if bytes.size() > 4096 and not large_control_packet(bytes): continue
+				var message = NetTransport.normalize(JSON.parse_string(bytes.get_string_from_utf8()))
+				if message is Dictionary:
+					if bytes.size() > 4096 and message.get("t") not in ["restore", "setup"]: continue
+					_receive(message, true)
 func _bridge(bridge: Dictionary):
 	bridge.local.poll()
 	bridge.remote.poll()
@@ -161,14 +178,16 @@ func _watch_over():
 		var seat = winner.seat if winner != null else -1
 		print("room %s game over winner=%d" % [room, seat])
 		_send({"t": "over", "winner": seat, "turns": game.engine.state.turn}))
-func _receive(message: Dictionary):
-	if not NetTransport.safe_value(message, 100000, 2 * 1024 * 1024) or not message.get("t") is String: return
+func _receive(message: Dictionary, validated: bool = false):
+	if not validated and not NetTransport.safe_value(message, 100000, 2 * 1024 * 1024): return
+	if not message.get("t") is String: return
 	if message.get("t") == "setup":
 		if not message.get("seats") is Array or message.seats.size() < 2 or message.seats.size() > 4: return
 		for seat in message.seats:
 			if not seat is Dictionary: return
 			if not seat.get("difficulty", 1) is int or seat.get("difficulty", 1) < 0 or seat.get("difficulty", 1) > 3: return
 			if not seat.get("bot", false) is bool: return
+		if not message.get("host_seat", 0) is int or message.get("host_seat", 0) < 0 or message.get("host_seat", 0) >= message.seats.size(): return
 		var pace = message.get("bot_pace", 0.5)
 		if not preload("res://scripts/core/bot_pace.gd").allowed(pace): return
 		for field in ["seed", "starting_life"]:
@@ -188,6 +207,7 @@ func _receive(message: Dictionary):
 			_new_game()
 			room = str(message.get("room", ""))
 			game.room_label = room
+			game.host_seat = message.get("host_seat", 0)
 			if not game.setup(message.seats, str(message.get("card_pool", "2026")), int(message.get("starting_life", 0)), int(message.get("seed", 1)), message.get("banned", []), float(message.get("bot_pace", 0.5)), deck):
 				if message.get("card_pool") == "custom":
 					_send({"t": "setup_error", "attempt": message.get("attempt", 0), "reason": game.setup_error})
@@ -230,9 +250,34 @@ func _receive(message: Dictionary):
 				var endpoint = SeatTransport.new()
 				endpoint.output = func(data): _send({"t": "to", "seat": seat, "msg": data})
 				endpoints[seat] = endpoint
-				game.attach(endpoint)
+				game.attach(endpoint, true)
 				endpoint.received.emit({"t": "hello", "seat": seat, "token": game.tokens[seat], "version": message.version})
 			elif message.t == "disconnect":
 				if endpoints.has(seat): endpoints[seat].close(); endpoints.erase(seat)
 			elif endpoints.has(seat) and message.get("msg") is Dictionary and (message.msg.get("t") in ["action", "answer"] or NetTransport.valid_emote(message.msg)):
 				endpoints[seat].received.emit(message.msg)
+
+# Constant work for a configured secret length, including wrong-length attempts.
+func authorized_header(header: String) -> bool:
+	if link_key.is_empty(): return true
+	var supplied = ""
+	var found = 0
+	for line in header.split("\r\n"):
+		var colon = line.find(":")
+		if colon >= 0 and line.left(colon).to_lower() == "x-link-key":
+			found += 1
+			supplied = line.substr(colon + 1).strip_edges()
+	var expected = link_key.to_utf8_buffer()
+	var actual = supplied.to_utf8_buffer()
+	var difference = expected.size() ^ actual.size()
+	for i in expected.size(): difference |= expected[i] ^ (actual[i] if i < actual.size() else 0)
+	return difference == 0 and found == 1
+# The trusted relay emits the type first. Setup/restore controls have a separate
+# 2 MiB cap; the decoded type is checked again before routing.
+func large_control_packet(bytes: PackedByteArray) -> bool:
+	if bytes.size() > 2 * 1024 * 1024: return false
+	var prefix = bytes.slice(0, 64).get_string_from_utf8().replace(" ", "").replace("\n", "").replace("\t", "").replace("\r", "")
+	return prefix.begins_with('{"t":"restore",') or prefix.begins_with('{"t":"setup",')
+
+static func loopback_bind(address: String) -> bool:
+	return address in ["::1", "localhost"] or (address.is_valid_ip_address() and (address.begins_with("127.") or address.to_lower().begins_with("::ffff:127.")))

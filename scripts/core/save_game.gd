@@ -150,7 +150,7 @@ static func restore(data: Dictionary):
 		if object not in identities:
 			if not object.flags.get("virtual", false) or object.uid >= 0 or object.flags.get("host") not in identities: return null
 	if state.winner != null and state.winner not in state.players: return null
-	if not data.state.get("rng_seed", "") is String or not data.state.get("rng_state", "") is String: return null
+	if not data.state.get("rng_seed") is String or not data.state.get("rng_state") is String: return null
 	if not data.state.rng_seed.is_valid_int() or not data.state.rng_state.is_valid_int(): return null
 	state.rng.seed = int(data.state.rng_seed)
 	state.rng.state = int(data.state.rng_state)

@@ -52,8 +52,33 @@ static func build(engine, seat: int) -> Dictionary:
 	return {"state": data, "objects": codec.records, "seat": seat, "ready": not engine.busy, "counts": {"center_deck": state.center_deck.size(), "players": state.players.map(func(p): return {"deck": p.deck.size(), "hand": p.hand.size()})}}
 # NetClient installs this public state on a GameEngine, including its shared
 # why_not_play / why_not_buy predicates; hidden cards never become buy targets.
+static func valid_attachments(records: Array) -> bool:
+	# Validate references before constructing objects, so rejected cycles cannot leak RefCounteds.
+	var parents = {}
+	for i in records.size():
+		var record = records[i]
+		if not record is Dictionary or not record.get("data") is Dictionary: return false
+		if record.get("type") != "card": continue
+		if not record.data.get("attached") is Array: return false
+		for child in record.data.attached:
+			if not child is Dictionary or not (child.get("ref") is int or child.get("ref") is float): return false
+			if child.ref != floor(float(child.ref)): return false
+			var index = int(child.ref)
+			if index < 0 or index >= records.size() or not records[index] is Dictionary or records[index].get("type") != "card" or parents.has(index): return false
+			parents[index] = i
+	var checked = {}
+	for index in parents:
+		var seen = {}
+		var current = index
+		while parents.has(current) and not checked.has(current):
+			if seen.has(current): return false
+			seen[current] = true
+			current = parents[current]
+		checked.merge(seen)
+	return true
 static func apply(view: Dictionary) -> GameState:
 	if not SaveGame.bounded(view) or not view.get("objects") is Array or not view.get("state") is Dictionary: return null
+	if not valid_attachments(view.objects): return null
 	var codec = SaveGame.new()
 	for record in view.objects:
 		if not record is Dictionary or record.get("type") not in ["card", "player"] or not record.get("data") is Dictionary: return null
@@ -61,6 +86,8 @@ static func apply(view: Dictionary) -> GameState:
 	for i in view.objects.size():
 		var object = codec.objects[i]
 		var fields = CARD_FIELDS if object is CardInstance else PLAYER_FIELDS
+		for required in fields:
+			if not view.objects[i].data.has(required): return null
 		for field in view.objects[i].data:
 			if field not in fields: continue
 			codec.valid = true
@@ -76,6 +103,7 @@ static func apply(view: Dictionary) -> GameState:
 		if not codec.valid or (field != "winner" and typeof(value) != typeof(state.get(field))): return null
 		state.set(field, value)
 	if state.players.size() < 2 or state.players.size() > 4 or state.players.any(func(p): return not p is PlayerState): return null
+	if not view.get("seat") is int or view.seat < 0 or view.seat >= state.players.size(): return null
 	for i in state.players.size():
 		if state.players[i].seat != i: return null
 	if state.active_seat < 0 or state.active_seat >= state.players.size(): return null
@@ -83,5 +111,7 @@ static func apply(view: Dictionary) -> GameState:
 	for zone in [state.center_deck, state.center_row, state.removed, state.resolving]:
 		if zone.any(func(c): return not c is CardInstance and (c != null or zone != state.center_row)): return null
 	if state.card_pool not in ["2025", "2026", "2026mog", "custom"]: return null
+	for object in codec.objects:
+		if object is CardInstance and (object.owner < -1 or object.owner >= state.players.size() or object.controller < -1 or object.controller >= state.players.size()): return null
 	Engine.get_main_loop().root.get_node("CardDB").select_pool(state.card_pool)
 	return state

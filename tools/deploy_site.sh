@@ -11,9 +11,24 @@ trap 'rm -rf -- "$DOCKER_CONFIG"' EXIT
 export DOCKER_CONFIG
 chmod 700 "$DOCKER_CONFIG"
 cd "$(dirname "$0")/.."
+check_root="$PWD"
+dirty_status="$(git -C "$check_root" status --porcelain --untracked-files=no)"
+if [[ -n "$dirty_status" ]]; then
+ if [[ "${FORCE_DIRTY:-}" != 1 ]]; then echo "Tracked files have uncommitted changes; refusing deploy (FORCE_DIRTY=1 overrides)." >&2; exit 1; fi
+ echo "WARNING: FORCE_DIRTY=1: deploying with tracked changes." >&2
+fi
+build_commit="$(head -n 1 "$check_root/build/web/BUILD_COMMIT")"
+if [[ "$(sed -n '2p' "$check_root/build/web/BUILD_COMMIT")" == dirty && "${FORCE_DIRTY:-}" != 1 ]]; then
+ echo "Build was made from tracked changes; refusing dirty build (FORCE_DIRTY=1 overrides)." >&2; exit 1
+fi
+[[ "$build_commit" == "$(git -C "$check_root" rev-parse HEAD)" ]] || { echo "Build commit differs from HEAD; rebuild first." >&2; exit 1; }
+
 
 VERSION="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)"
 [ -f build/web/index.html ] && [ -f build/web/index.wasm ] || { echo "No web build: run tools/build_all.sh web first" >&2; exit 1; }
+# Wrangler is pinned in cloudflare/package-lock.json (exact version + integrity hashes).
+(cd cloudflare && npm ci --no-audit --no-fund --silent)
+WRANGLER="$PWD/cloudflare/node_modules/.bin/wrangler"
 # Credentials come from the environment, or from a private loader script outside the repo
 # (~/.config/phreaknic/cf-env.sh) that exports CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID.
 if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] && [ -f "$HOME/.config/phreaknic/cf-env.sh" ]; then
@@ -21,9 +36,7 @@ if [ -z "${CLOUDFLARE_API_TOKEN:-}" ] && [ -f "$HOME/.config/phreaknic/cf-env.sh
 fi
 [ -n "${CLOUDFLARE_API_TOKEN:-}" ] || { echo "Set CLOUDFLARE_API_TOKEN (and CLOUDFLARE_ACCOUNT_ID), or provide ~/.config/phreaknic/cf-env.sh" >&2; exit 1; }
 
-# Wrangler is pinned in cloudflare/package-lock.json (exact version + integrity hashes).
-(cd cloudflare && npm ci --no-audit --no-fund --silent)
-WRANGLER="$PWD/cloudflare/node_modules/.bin/wrangler"
+
 BUCKET="phreaknic-ccg-files"
 KEY="web/$VERSION/index.wasm"
 PCK_KEY="web/$VERSION/index.pck"

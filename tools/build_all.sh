@@ -9,6 +9,10 @@ GODOT="${GODOT:-$HOME/.local/bin/godot4.7.1}"
 export JAVA_HOME="${JAVA_HOME:-$HOME/.local/opt/jdk-17}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 VERSION="$(sed -n 's/^config\/version="\(.*\)"/\1/p' project.godot)"
+[[ "$VERSION" =~ ^[0-9]+(\.[0-9]+)*$ ]] || { echo "Invalid project version" >&2; exit 1; }
+BUILD_COMMIT="$(git rev-parse HEAD)"
+BUILD_TREE=clean
+[[ -z "$(git status --porcelain --untracked-files=no)" ]] || BUILD_TREE=dirty
 targets=("$@")
 [ ${#targets[@]} -eq 0 ] && targets=(linux windows android web release)
 
@@ -32,7 +36,7 @@ for target in "${targets[@]}"; do
 			# Release-signed with the project's keystore when ~/.config/phreaknic/android-signing.sh exists
 			# (it loads the keystore path and password from ~/.tokens; nothing secret is in the repo).
 			# Without it, falls back to a debug-signed APK for local testing.
-			rm -f build/android/PhreakNIC-CCG-v$VERSION*.apk
+			rm -f "build/android/PhreakNIC-CCG-v${VERSION}"*.apk
 			if [ -f "$HOME/.config/phreaknic/android-signing.sh" ]; then
 				( source "$HOME/.config/phreaknic/android-signing.sh"
 				  "$GODOT" --headless --path . --export-release "Android" "build/android/PhreakNIC-CCG-v$VERSION.apk" )
@@ -41,6 +45,7 @@ for target in "${targets[@]}"; do
 				"$GODOT" --headless --path . --export-debug "Android" "build/android/PhreakNIC-CCG-v$VERSION-debug.apk"
 			fi ;;
 		web)
+			rm -rf -- build/web
 			mkdir -p build/web
 			"$GODOT" --headless --path . --export-release "Web" build/web/index.html
 			# Same-origin helper for sharing the result card (the site CSP forbids eval).
@@ -71,5 +76,6 @@ for target in "${targets[@]}"; do
 			(cd build/release && sha256sum PhreakNIC-CCG-* > SHA256SUMS.txt) ;;
 		*) echo "Unknown target: $target (use linux, windows, android, web, server or release)" >&2; exit 1 ;;
 	esac
+	printf '%s\n%s\n' "$BUILD_COMMIT" "$BUILD_TREE" > "build/$target/BUILD_COMMIT"
 done
 ls -la build/*/

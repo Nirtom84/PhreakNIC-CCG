@@ -12,7 +12,7 @@ var purchase_policy: Callable # Offline randomized purchase experiments only.
 var search_budget_ms = 0 # 0 uses DefconSearch.DECISION_MS; server overrides it.
 func _init(game):
 	engine = game
-	if engine.state != null and engine.state.card_pool == "custom": custom_planner = engine.get_meta("custom_planner", null)
+	if engine.state != null and engine.state.card_pool == "custom" and engine.has_meta("custom_planner"): custom_planner = engine.get_meta("custom_planner")
 func take_turn(p):
 	var turn_search = null
 	if p.difficulty == 3:

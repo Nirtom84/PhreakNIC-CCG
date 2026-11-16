@@ -1,8 +1,11 @@
 import { DurableObject } from 'cloudflare:workers';
-import {ipKey,code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave,validEmote,emoteRate,deckSubmission,deckRanking} from './lib/protocol.js';
+import {ipBuckets,ipKey,code,token,validToken,originAllowed,route,creation,identity,settings,difficulty,fail,wrap,summary,isOpen,checkVersion,platform,creationKeys,adminEnabled,constantTimeEqual,statsDays,ROOM_LIFETIME,roomExpired,startDecision,rateDecision,socketSeat,joinVersion,kickSeat,adminDecision,seatRate,hostCloseDue,hostLeave,validEmote,emoteRate,deckSubmission,deckRanking} from './lib/protocol.js';
 import {adminHTML,adminJS,adminHeaders} from './admin.js';
 const HOUR=3600000, IDLE=600000, DAY=24*HOUR;
 let listingCache;
+const blocked=new Map();
+function block(ip,kind){if(blocked.size>=10000)blocked.delete(blocked.keys().next().value);blocked.set(ip+":"+kind,Date.now()+10000);}
+async function allowed(l,ip,kind){if((blocked.get(ip+":"+kind)||0)>Date.now())return false;const ok=await l.allow(ip,kind);if(!ok)block(ip,kind);return ok;}
 const json=(v,status=200)=>Response.json(v,{status,headers:{'Cache-Control':'no-store'}});
 const error=e=>json({error:e.status?e.message:'internal',...e.extra},e.status||500);
 const lobby=env=>env.LOBBY.get(env.LOBBY.idFromName('lobby'));
@@ -15,30 +18,33 @@ async function body(req) {
   try { const bytes=new Uint8Array(size); let pos=0; for(const c of chunks){bytes.set(c,pos);pos+=c.length;} return JSON.parse(new TextDecoder().decode(bytes)); } catch {fail('json');}
 }
 export default {async fetch(req,env) {
-  const path=new URL(req.url).pathname;
-  if(path==='/admin'||path.startsWith('/admin/'))return admin(req,env,path);
+  const path=new URL(req.url).pathname,edgeIP=ipKey(req.headers.get('CF-Connecting-IP'));
+  let edgeLimited=false;
+  try {if(path!=='/health'&&env.EDGE_LIMIT)edgeLimited=!(await env.EDGE_LIMIT.limit({key:edgeIP})).success;}catch(e){console.error('edge limit failed',e);}
+  if(path==='/admin'||path.startsWith('/admin/')){if(!edgeLimited)return admin(req,env,path);const origin=req.headers.get('Origin'),res=json({error:'rate_limit'},429);if(origin&&(origin==='https://online-01.phreaknic-ccg.net'||originAllowed(origin,env.ALLOW_LOCAL_ORIGINS==='1')))res.headers.set('Access-Control-Allow-Origin',origin);res.headers.set('Vary','Origin');return res;}
   const origin=req.headers.get('Origin');
-  if (!originAllowed(origin)) return json({error:'origin'},403);
+  if (!originAllowed(origin,env.ALLOW_LOCAL_ORIGINS==='1')) return json({error:'origin'},403);
   let response;
   try {
-    if(req.method==='OPTIONS') response=new Response(null,{status:204,headers:{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type','Access-Control-Max-Age':'600'}});
+    if(edgeLimited) fail('rate_limit',429);
+    if(req.method==='OPTIONS') response=new Response(null,{status:204,headers:{'Access-Control-Allow-Methods':'GET, POST, OPTIONS','Access-Control-Allow-Headers':'Content-Type, Authorization','Access-Control-Max-Age':'600'}});
     else {
       const r=route(req.method,new URL(req.url).pathname); if(!r) fail('not_found',404);
-      const l=lobby(env);
+      const l=r.kind==='health'?null:lobby(env);
       if(r.kind==='health') response=new Response('ok');
       // Serve the cached list without touching the Lobby; only cache misses are rate limited.
-      if(r.kind==='list') {if(!listingCache||listingCache.version!==env.GAME_VERSION||Date.now()>=listingCache.until){if(!await l.allow(ipKey(req.headers.get('CF-Connecting-IP')),'list'))fail('rate_limit',429);listingCache={version:env.GAME_VERSION,until:Date.now()+5000,rooms:await l.list(env.GAME_VERSION)};}response=json({rooms:listingCache.rooms});}
+      if(r.kind==='list') {if(!listingCache||listingCache.version!==env.GAME_VERSION||Date.now()>=listingCache.until){if(!await allowed(l,ipKey(req.headers.get('CF-Connecting-IP')),'list'))fail('rate_limit',429);listingCache={version:env.GAME_VERSION,until:Date.now()+5000,rooms:await l.list(env.GAME_VERSION)};}response=json({rooms:listingCache.rooms});}
       if(r.kind==='create'||r.kind==='join') {
-        if(env.ONLINE_ENABLED==='0'){await l.bump(['refused.maintenance']);fail('maintenance',503);}
-        const raw=await body(req), data=r.kind==='create'?creation(raw):identity(raw);data.platform=platform(raw.platform);
+        if((env.ONLINE_ENABLED==='0'||!env.GAME_VERSION)){await l.bump(['refused.maintenance']);fail('maintenance',503);}
+        const raw=await body(req), data=r.kind==='create'?creation(raw):identity(raw);data.platform=platform(raw.platform);data.ip=edgeIP;
         checkVersion(data.version,env.GAME_VERSION);
-        if(!await l.allow(ipKey(req.headers.get('CF-Connecting-IP')),r.kind)) fail('rate_limit',429);
+        if(!await allowed(l,ipKey(req.headers.get('CF-Connecting-IP')),r.kind)) fail('rate_limit',429);
         if(r.kind==='create') {
           const c=await l.reserve(ipKey(req.headers.get('CF-Connecting-IP')));
           try {const result=await room(env,c).create(c,data);if(result.failure)fail(result.failure.error,result.failure.status,result.failure.extra);response=json(result,201);} catch(e){await l.remove(c);throw e;}
-        } else {const result=await room(env,r.code).join(data);if(result.failure){if(result.failure.error==='not_found')await l.allow(ipKey(req.headers.get('CF-Connecting-IP')),'failure');fail(result.failure.error,result.failure.status,result.failure.extra);}response=json(result);}
+        } else {const result=await room(env,r.code).join(data);if(result.failure){if(result.failure.error==='not_found')await allowed(l,ipKey(req.headers.get('CF-Connecting-IP')),'failure');fail(result.failure.error,result.failure.status,result.failure.extra);}response=json(result);}
       }
-      if(r.kind==='ws') {const ip=ipKey(req.headers.get('CF-Connecting-IP'));if(!await l.allow(ip,'ws'))fail('rate_limit',429);response=await room(env,r.code).fetch(req);}
+      if(r.kind==='ws') {const ip=ipKey(req.headers.get('CF-Connecting-IP'));if(!await allowed(l,ip,'ws'))fail('rate_limit',429);response=await room(env,r.code).fetch(req);}
     }
   } catch(e) {response=error(e);}
   const key=response.status===409?'refused.version':response.status===429?'refused.rate':response.status===500?'errors.internal':null;
@@ -63,36 +69,40 @@ export class Lobby extends DurableObject {
     this.sql.exec('CREATE TABLE IF NOT EXISTS games (code TEXT PRIMARY KEY, created INTEGER, started INTEGER, ended INTEGER, public INTEGER, humans INTEGER, bots INTEGER, difficulties TEXT, card_pool TEXT, starting_life INTEGER, version TEXT, platforms TEXT, result TEXT, turns INTEGER, touched INTEGER, clients INTEGER)');
     this.sql.exec('CREATE INDEX IF NOT EXISTS games_created ON games(created)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS live (code TEXT PRIMARY KEY, expires INTEGER)');
+    try{this.sql.exec('ALTER TABLE live ADD COLUMN ip TEXT');this.sql.exec('UPDATE live SET ip=(SELECT ip FROM rooms WHERE rooms.code=live.code) WHERE ip IS NULL');}catch{}
+    this.sql.exec('CREATE TABLE IF NOT EXISTS client_starts (day TEXT, ip TEXT, count INTEGER, PRIMARY KEY(day,ip))');
     this.sql.exec('CREATE TABLE IF NOT EXISTS starts (day TEXT PRIMARY KEY, count INTEGER)');
     this.sql.exec('CREATE TABLE IF NOT EXISTS limits (ip TEXT, kind TEXT, window INTEGER, count INTEGER, PRIMARY KEY(ip,kind))');
   }
-  clean() {if(Date.now()-(this.cleanedAt||0)<60000)return;this.cleanedAt=Date.now();this.sql.exec('DELETE FROM daily WHERE day < ?',new Date(Date.now()-400*DAY).toISOString().slice(0,10));this.sql.exec('DELETE FROM games WHERE created < ?',Date.now()-90*DAY);this.sql.exec('DELETE FROM rooms WHERE expires <= ?',Date.now());this.sql.exec('DELETE FROM limits WHERE window <= ?',Date.now()-HOUR);}
+  clean() {if(Date.now()-(this.cleanedAt||0)<60000)return;this.cleanedAt=Date.now();this.sql.exec('DELETE FROM client_starts WHERE day < ?',new Date().toISOString().slice(0,10));this.sql.exec('DELETE FROM daily WHERE day < ?',new Date(Date.now()-400*DAY).toISOString().slice(0,10));this.sql.exec('DELETE FROM games WHERE created < ?',Date.now()-90*DAY);this.sql.exec('DELETE FROM rooms WHERE expires <= ?',Date.now());this.sql.exec('DELETE FROM limits WHERE window <= ?',Date.now()-HOUR);}
   // Only list rooms players on the server's current version can join; older rooms linger until they expire.
   list(version) {this.clean();return [...this.sql.exec('SELECT summary FROM rooms WHERE summary IS NOT NULL ORDER BY code LIMIT ?',MAX_ROOMS)].map(r=>JSON.parse(r.summary)).filter(r=>(!version||r.version===version)&&r.created+ROOM_LIFETIME>Date.now()).slice(0,50);}
   reserve(ip='unknown') {
     // Rooms waiting to start (a new reservation counts as waiting) are capped per client and globally, so a few
-    // sources can't fill the server; running games are bounded by the live and daily caps instead. A reservation
+    // sources can't fill the server; started rooms also count against the client's total. A reservation
     // the Room never saves expires within the hour.
     this.clean();const now=Date.now(),waiting='expires > ? AND pending=1';
-    if([...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE ip=? AND '+waiting,ip,now)][0].n>=MAX_ROOMS_PER_IP)fail('rate_limit',429);
+    for(const [bucket,mult]of ipBuckets(ip)){const rows=[...this.sql.exec('SELECT ip,pending FROM rooms WHERE expires>? AND (pending=1 OR code IN (SELECT code FROM live WHERE expires>?))',now,now)].filter(r=>ipBuckets(r.ip||'unknown').some(([k])=>k===bucket));if(rows.filter(r=>r.pending).length>=MAX_ROOMS_PER_IP*mult||rows.length>=7*mult)fail('rate_limit',429);}
     if([...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE '+waiting,now)][0].n>=MAX_ROOMS)fail('capacity',503);
     for(let i=0;i<100;i++){const c=code();const rows=[...this.sql.exec('INSERT OR IGNORE INTO rooms(code,expires,ip,pending) VALUES(?,?,?,1) RETURNING code',c,now+HOUR,ip)];if(rows.length)return c;} fail('capacity',503);
   }
   upsert(c,s,expires,clients=0,pending=0) {try{this.touch(c,clients);}catch(e){console.error('stats touch failed');}this.sql.exec('INSERT INTO rooms(code,summary,expires,pending) VALUES(?,?,?,?) ON CONFLICT(code) DO UPDATE SET summary=excluded.summary, expires=excluded.expires, pending=excluded.pending',c,s?JSON.stringify(s):null,expires,pending?1:0);}
   release(c) {this.sql.exec('DELETE FROM live WHERE code=?',c);}
-  refund(ip,kind) {this.sql.exec('UPDATE limits SET count=MAX(count-1,0) WHERE ip=? AND kind=?',ip,kind);}
-  claim(c,created) {
+  refund(ip,kind) {for(const [key]of ipBuckets(ip))this.sql.exec('UPDATE limits SET count=MAX(count-1,0) WHERE ip=? AND kind=?',key,kind);}
+  claim(c,created,client,start=false) {
     const now=Date.now(),day=new Date(now).toISOString().slice(0,10);this.sql.exec('DELETE FROM live WHERE expires<=?',now);
     const counted=[...this.sql.exec('SELECT code FROM live WHERE code=?',c)].length>0,live=[...this.sql.exec('SELECT COUNT(*) AS n FROM live')][0].n,daily=[...this.sql.exec('SELECT count FROM starts WHERE day=?',day)][0]?.count||0;
     const reason=startDecision(this.env.ONLINE_ENABLED,counted,live,daily);if(reason){this.bump(['refused.'+reason]);return reason;}if(now>=created+ROOM_LIFETIME)return 'busy';
-    if(!counted){this.sql.exec('INSERT INTO live VALUES(?,?)',c,created+ROOM_LIFETIME);this.sql.exec('INSERT INTO starts VALUES(?,1) ON CONFLICT(day) DO UPDATE SET count=count+1',day);}return null;
+    const ip=client||[...this.sql.exec('SELECT ip FROM rooms WHERE code=?',c)][0]?.ip||'unknown';
+    if(!counted){for(const [bucket,mult]of ipBuckets(ip)){const n=[...this.sql.exec('SELECT ip FROM live')].filter(r=>ipBuckets(r.ip||'unknown').some(([k])=>k===bucket)).length,d=[...this.sql.exec('SELECT count FROM client_starts WHERE day=? AND ip=?',day,bucket)][0]?.count||0;if(n>=2*mult||start&&d>=10*mult){this.bump(['refused.busy']);return 'busy';}}
+      this.sql.exec('INSERT INTO live(code,expires,ip) VALUES(?,?,?)',c,created+ROOM_LIFETIME,ip);if(start)for(const [bucket]of ipBuckets(ip))this.sql.exec('INSERT INTO client_starts VALUES(?,?,1) ON CONFLICT(day,ip) DO UPDATE SET count=count+1',day,bucket);this.sql.exec('INSERT INTO starts VALUES(?,1) ON CONFLICT(day) DO UPDATE SET count=count+1',day);}return null;
   }
   remove(c) {this.release(c);this.sql.exec('DELETE FROM rooms WHERE code=?',c);}
   bump(keys) {const day=new Date().toISOString().slice(0,10);for(const key of keys)this.sql.exec('INSERT INTO daily VALUES(?,?,1) ON CONFLICT(day,key) DO UPDATE SET count=count+1',day,key);}
   record(event,r,p,extra={}) {
     const now=Date.now(), humans=r.seats.filter(s=>!s.bot).length,bots=r.seats.length-humans;
     if(event==='create') {this.bump(creationKeys(r,p));this.sql.exec('INSERT OR REPLACE INTO games(code,created,public,humans,bots,difficulties,card_pool,starting_life,version,platforms,touched,clients) VALUES(?,?,?,?,?,?,?,?,?,?,?,0)',r.code,r.created,+r.public,humans,bots,JSON.stringify(r.seats.filter(s=>s.bot).map(s=>s.difficulty)),r.card_pool,r.starting_life,r.version,JSON.stringify([p]),now);}
-    if(event==='join') {this.bump(['joins','platform.'+p,'version.'+r.version]);const row=[...this.sql.exec('SELECT platforms FROM games WHERE code=?',r.code)][0];if(row){const list=JSON.parse(row.platforms);list.push(p);this.sql.exec('UPDATE games SET platforms=? WHERE code=?',JSON.stringify(list),r.code);}}
+    if(event==='join') {this.bump(['joins','platform.'+p,'version.'+r.version]);const row=[...this.sql.exec('SELECT platforms FROM games WHERE code=?',r.code)][0];if(row){const list=JSON.parse(row.platforms);list[extra.seat??1]=p;list.length=Math.min(list.length,4);this.sql.exec('UPDATE games SET platforms=? WHERE code=?',JSON.stringify(list),r.code);}}
     if(event==='start') {this.bump(['games.started',humans===1?'games.vs_bots':'games.multi_human']);this.sql.exec('UPDATE games SET started=?, humans=?, bots=?, difficulties=?, card_pool=?, starting_life=? WHERE code=?',now,humans,bots,JSON.stringify(r.seats.filter(s=>s.bot).map(s=>s.difficulty)),r.card_pool,r.starting_life,r.code);}
     if(event==='over'||event==='abandoned') {const seat=r.seats[extra.winner],result=event==='abandoned'?'abandoned':!seat?(extra.reason==='restore_failed'?'failed':'none'):seat.bot?'bot':'human';this.bump(event==='abandoned'?['games.abandoned']:['games.finished','winner.'+result]);this.sql.exec('UPDATE games SET ended=?, result=?, turns=? WHERE code=? AND result IS NULL',now,result,Number.isInteger(extra.turns)&&extra.turns>=0?extra.turns:null,r.code);}
   }
@@ -107,15 +117,13 @@ export class Lobby extends DurableObject {
     const connected=[...this.sql.exec('SELECT COALESCE(SUM(clients),0) AS n FROM games WHERE touched>=?',now-15*60000)][0].n;
     return {now:{open_rooms:[...this.sql.exec('SELECT COUNT(*) AS n FROM rooms WHERE summary IS NOT NULL')][0].n,...live,players_connected:connected},days:[...byDay.values()],totals,durations:{median_minutes:n?(durations[Math.floor((n-1)/2)]+durations[Math.floor(n/2)])/2:null,mean_minutes:n?durations.reduce((a,b)=>a+b,0)/n:null,count:n},recent:[...this.sql.exec('SELECT * FROM games ORDER BY created DESC LIMIT 50')].map(r=>({...r})),generated:now};
   }
-  locked(ip,kind) {const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0];return !rateDecision(r,Date.now(),kind==='admin'?10:50,HOUR).allowed;}
+  locked(ip,kind) {return ipBuckets(ip).some(([key,mult])=>{const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',key,kind)][0];return !rateDecision(r,Date.now(),(kind==='admin'?10:50)*mult,HOUR).allowed;});}
   allow(ip,kind) {
-    this.clean();const now=Date.now();
-    // Only joins to unknown rooms (code guessing) count as failures, and they never block reconnects.
     if(kind==='join'&&this.locked(ip,'failure'))return false;
-    // Sized for remote play (one player per IP), with headroom for a household or a small club sharing one.
-    const limit={admin:10,create:30,join:60,ws:120,list:240,failure:50,start:20}[kind]||60,span=['ws','list'].includes(kind)?60000:HOUR;
-    const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',ip,kind)][0],d=rateDecision(r,now,limit,span);
-    this.sql.exec('INSERT INTO limits VALUES(?,?,?,?) ON CONFLICT(ip,kind) DO UPDATE SET window=excluded.window,count=excluded.count',ip,kind,d.window,d.count);return d.allowed;
+    const now=Date.now(),limit={admin:10,create:30,join:60,ws:120,list:240,failure:50,start:20}[kind]||60,span=['ws','list'].includes(kind)?60000:HOUR;
+    const decisions=ipBuckets(ip).map(([key,mult])=>{const r=[...this.sql.exec('SELECT window,count FROM limits WHERE ip=? AND kind=?',key,kind)][0];return [key,rateDecision(r,now,limit*mult,span)];});
+    if(decisions.some(([,d])=>!d.allowed))return false;
+    this.clean();for(const [key,d]of decisions)this.sql.exec('INSERT INTO limits VALUES(?,?,?,?) ON CONFLICT(ip,kind) DO UPDATE SET window=excluded.window,count=excluded.count',key,kind,d.window,d.count);return true;
   }
 }
 export class Room extends DurableObject {
@@ -124,12 +132,14 @@ export class Room extends DurableObject {
     ctx.blockConcurrencyWhile(async()=>{this.r=await ctx.storage.get('room');if(this.r){this.r.emptySince ||= Date.now();if(!this.r.started)this.r.hostGoneAt ||= Date.now();await ctx.storage.put('room',this.r);await this.schedule();if(ctx.container.running){ctx.container.setInactivityTimeout(IDLE);this.watch();}}});
   }
   async stat(event,p,extra) {await quiet(()=>lobby(this.env).record(event,{code:this.r.code,created:this.r.created,public:this.r.public,seats:this.r.seats.map(({bot,difficulty})=>({bot,difficulty})),card_pool:this.r.card_pool,starting_life:this.r.starting_life,version:this.r.version},p,extra));}
-  async schedule() {await this.ctx.storage.setAlarm(Math.min(this.r.created+ROOM_LIFETIME,this.r.emptySince?this.r.emptySince+IDLE:Infinity,this.r.releasePending?Date.now()+60000:Infinity,!this.r.started&&this.r.hostGoneAt!=null?this.r.hostGoneAt+60000:Infinity));}
-  async save(activity=false) {
+  async schedule() {const at=Math.min(this.flushAt||Infinity,this.r.created+ROOM_LIFETIME,this.r.emptySince?this.r.emptySince+IDLE:Infinity,this.r.releasePending?Date.now()+60000:Infinity,!this.r.started&&this.r.hostGoneAt!=null?this.r.hostGoneAt+60000:Infinity);if(at!==this.alarmAt){await this.ctx.storage.setAlarm(at);this.alarmAt=at;}}
+  async save(activity=false,defer=false) {
     if(this.closing)return;
     if(activity)this.r.lastActivity=Date.now();
+    if(defer){this.flushAt||=Date.now()+1000;await this.schedule();return;}
+    this.flushAt=null;
     await this.ctx.storage.put('room',this.r);await this.schedule();
-    await lobby(this.env).upsert(this.r.code,isOpen(this.r)?summary(this.r):null,this.r.created+ROOM_LIFETIME,this.clients.size,!this.r.started);
+    const args=[this.r.code,isOpen(this.r)?summary(this.r):null,this.r.created+ROOM_LIFETIME,this.clients.size,!this.r.started],key=JSON.stringify([args,Math.floor(Date.now()/600000)]);if(key!==this.lastUpsert){await lobby(this.env).upsert(...args);this.lastUpsert=key;}
   }
   async stop(reason) {
     if(this.stopping)return this.stopping;
@@ -142,8 +152,8 @@ export class Room extends DurableObject {
   async createRoom(c,data) {
     if(this.r) fail('exists',409);
     // A code can be reused after an expired room was deleted while this instance stayed in memory: reset its lifecycle.
-    this.closing=false;this.sleeping=false;this.starting=false;this.boot=null;this.stopping=null;this.savedAt=0;++this.generation;this.clients.clear();this.rates.clear();this.emoteRates?.clear();this.link=null;
-    if(this.env.ONLINE_ENABLED==='0'){await lobby(this.env).bump(['refused.maintenance']);fail('maintenance',503);}
+    this.closing=false;this.sleeping=false;this.starting=false;this.boot=null;this.stopping=null;this.savedAt=0;this.lastUpsert=null;this.flushAt=null;this.alarmAt=null;++this.generation;this.clients.clear();this.rates.clear();this.emoteRates?.clear();this.link=null;
+    if((this.env.ONLINE_ENABLED==='0'||!this.env.GAME_VERSION)){await lobby(this.env).bump(['refused.maintenance']);fail('maintenance',503);}
     const {platform:p,...config}=data;
     if(config.card_pool==='custom')config.banned=[];
     this.r={...config,code:c,host_seat:0,started:false,over:false,created:Date.now(),lastActivity:Date.now(),emptySince:Date.now(),hostGoneAt:Date.now(),snapshot:null,seed:crypto.getRandomValues(new Uint32Array(1))[0]&0x7fffffff};
@@ -151,11 +161,12 @@ export class Room extends DurableObject {
   }
   async join(data) {try{return await this.joinRoom(data);}catch(e){return {failure:{error:e.status?e.message:'internal',status:e.status||500,extra:e.extra||{}}};}}
   async joinRoom(data) {
-    if(!this.r||roomExpired(this.r))fail('not_found',404);if(this.env.ONLINE_ENABLED==='0'){await lobby(this.env).bump(['refused.maintenance']);fail('maintenance',503);}joinVersion(data.version,this.r.version,this.env.GAME_VERSION);if(this.r.started)fail('started',409);
+    if(!this.r||roomExpired(this.r))fail('not_found',404);if((this.env.ONLINE_ENABLED==='0'||!this.env.GAME_VERSION)){await lobby(this.env).bump(['refused.maintenance']);fail('maintenance',503);}joinVersion(data.version,this.r.version,this.env.GAME_VERSION);if(this.r.started)fail('started',409);
+    if(this.r.seats.some(s=>!s.bot&&s.token&&(s.name||'').trim().toLowerCase()===data.name.trim().toLowerCase()))fail('name_taken',409);
     const seat=this.r.seats.findIndex(s=>!s.bot&&!s.token);if(seat<0)fail('full',409);
     const {platform:p,...who}=data;const issued=token();this.r.seats[seat]={...this.r.seats[seat],...who,token:issued};
     // Return the token issued here, never whatever holds the seat after the awaits (a kick and a new join may land meanwhile).
-    await this.stat('join',p);await this.save(true);if(this.r.seats[seat]?.token!==issued)fail('full',409);this.broadcastRoom();return {seat,token:issued};
+    await this.stat('join',p,{seat});await this.save(true);if(this.r.seats[seat]?.token!==issued)fail('full',409);this.broadcastRoom();return {seat,token:issued};
   }
   connected(seat) {return [...this.clients.values()].some(c=>c.seat===seat);}
   send(ws,v) {try{ws.send(JSON.stringify(v));}catch{}}
@@ -164,10 +175,13 @@ export class Room extends DurableObject {
   linkSend(v) {if(this.link?.readyState===1)this.link.send(JSON.stringify(v));}
   async fetch(req) {
     try {
-      if(!originAllowed(req.headers.get('Origin')))fail('origin',403);
+      if(!originAllowed(req.headers.get('Origin'),this.env?.ALLOW_LOCAL_ORIGINS==='1'))fail('origin',403);
       if(this.r&&hostCloseDue(this.r))await this.closeByHost();
       if(this.closing||!this.r||roomExpired(this.r))fail('token',401);
-      const t=new URL(req.url).searchParams.get('token');if(!validToken(t))fail('token',401);
+      // TODO: remove URL token fallback next release. Header credentials always win.
+      const offered=(req.headers.get('Sec-WebSocket-Protocol')||'').split(',').map(s=>s.trim()),credential=offered.find(s=>s.startsWith('t.'));
+      const auth=req.headers.get('Authorization'),upgrade=req.headers.get('Upgrade')?.toLowerCase()==='websocket';
+      const t=!upgrade&&auth?.startsWith('Bearer ')?auth.slice(7):credential?credential.slice(2):new URL(req.url).searchParams.get('token');if(!validToken(t))fail('token',401);
       const seat=socketSeat(this.r,t);if(seat<0)fail('token',401);
       // Seat check: a plain GET with the token answers 426 while the seat exists and 401 once it's gone, so a
       // client whose sockets keep failing (rate limit, a proxy) can tell a revoked seat from a network problem.
@@ -180,7 +194,7 @@ export class Room extends DurableObject {
       if(this.r.started&&!this.r.over){if(this.link)this.linkSend({t:'connect',seat,version:this.r.version});else this.ctx.waitUntil(this.ensure().catch(()=>{}));}
       // A player who comes back after the game ended gets the result the others were sent.
       if(this.r.result)this.send(ws,this.r.result);
-      return new Response(null,{status:101,webSocket:pair[0]});
+      return new Response(null,{status:101,webSocket:pair[0],headers:offered.includes('phreaknic')?{'Sec-WebSocket-Protocol':'phreaknic'}:{}});
     }catch(e){return error(e);}
   }
   async disconnected(ws) {
@@ -190,10 +204,13 @@ export class Room extends DurableObject {
   }
   async message(ws,data) {
     const c=this.clients.get(ws);if(!c||this.closing)return;
-    if(typeof data!=='string'||new TextEncoder().encode(data).length>65536){ws.close(1009,'message size');return;}
-    // Every message counts against the seat's rate limit before anything is parsed, emotes included.
-    const rate=seatRate(this.rates.get(c.seat)||{},Date.now(),new TextEncoder().encode(data).length);this.rates.set(c.seat,rate);if(!rate.allowed){if(rate.close)ws.close(1008,'rate_limit');return;}if(roomExpired(this.r)){await this.alarm();return;}
-    let m;try{m=JSON.parse(data);}catch{fail('json');}if(!m||typeof m!=='object'||Array.isArray(m))fail('message');
+    const bytes=typeof data==='string'?new TextEncoder().encode(data).length:Infinity;
+    if(bytes>65536){ws.close(1009,'message size');return;}
+    let parsed;try{parsed=JSON.parse(data);}catch{}
+    const isLobby=parsed?.t==='lobby',rateKey=isLobby?'lobby:'+c.seat:c.seat;
+    // Classify the bounded JSON, then charge every frame (including malformed messages and emotes).
+    const rate=seatRate(this.rates.get(rateKey)||{},Date.now(),bytes,isLobby,(this.r.started||!isLobby)&&bytes>=4096);this.rates.set(rateKey,rate);if(!rate.allowed){if(rate.close)ws.close(1008,'rate_limit');return;}if(roomExpired(this.r)){await this.alarm();return;}
+    if(parsed===undefined)fail('json');const m=parsed;if(!m||typeof m!=='object'||Array.isArray(m))fail('message');
     if(m.type==='emote'){
       if(!validEmote(m)||!this.r.started||this.r.over||this.link?.readyState!==1)return;
       this.emoteRates??=new Map();const quota=emoteRate(this.emoteRates.get(c.seat),Date.now());this.emoteRates.set(c.seat,quota.stamps);
@@ -214,7 +231,7 @@ export class Room extends DurableObject {
       if(this.r.card_pool!=='custom'||this.r.seats[c.seat].bot)fail('deck');
       const seat=this.r.seats[c.seat],credential=seat.token;const deck=m.action==='submit_deck'?await deckSubmission(m.code):null;
       if(!this.r||this.closing||this.r.started||this.starting||this.r.card_pool!=='custom'||this.r.seats[c.seat]!==seat||seat.token!==credential)fail('busy');
-      seat.deck=deck;await this.save(true);this.broadcastRoom();return;
+      seat.deck=deck;await this.save(true,true);this.broadcastRoom();return;
     }
     if(m.action==='leave'&&hostLeave(this.r,c.seat)){await this.closeByHost();return;}
     if(m.action==='leave'&&c.seat!==0){
@@ -225,6 +242,7 @@ export class Room extends DurableObject {
       if(c.seat!==0)fail('host',403);
       if(m.action==='start') {
         // A deploy since the room was created: the new game server would refuse its version.
+        if(!this.env.GAME_VERSION)fail('maintenance',503);
         if(this.env.GAME_VERSION&&this.r.version!==this.env.GAME_VERSION)fail('room_version',409,{room:this.r.version});
         if(this.r.seats.length<2||!this.r.seats.some(s=>!s.bot&&s.token)||this.r.seats.some(s=>!s.bot&&!s.token))fail('seats');
         const ranked=this.r.card_pool==='custom'?deckRanking(this.r.seats):null;if(ranked&&!ranked.order.length)fail('Someone needs to submit a deck');
@@ -234,11 +252,11 @@ export class Room extends DurableObject {
         this.starting=true;try{
           if(!await lobby(this.env).allow(c.ip||'unknown','start'))fail('rate_limit',429);
           // A refused claim (servers full) doesn't use up the player's start allowance.
-          const refusal=await lobby(this.env).claim(this.r.code,this.r.created);if(refusal){await lobby(this.env).refund(c.ip||'unknown','start');fail(refusal,503);}
+          const refusal=await lobby(this.env).claim(this.r.code,this.r.created,c.ip||this.r.ip,true);if(refusal){await lobby(this.env).refund(c.ip||'unknown','start');fail(refusal,503);}
           if(!this.r||roomExpired(this.r)){await lobby(this.env).release(this.r?.code||'');fail('busy',503);}
           // Only a start that goes through keeps a deck roll, and only a custom-deck one has any.
           this.r.deck_roll=ranked?ranked.lines:[];if(ranked){this.r.deck_order=ranked.order;this.r.deck_groups=ranked.groups;this.r.deck_attempt=0;}
-          this.r.started=true;this.r.starts=(this.r.starts||0)+1;await this.stat('start');await this.save(true);this.broadcastRoom();await this.ensure();return;
+          this.r.startIP=c.ip||this.r.ip;this.r.started=true;this.r.starts=(this.r.starts||0)+1;await this.stat('start');await this.save(true);this.broadcastRoom();await this.ensure();return;
         }finally{this.starting=false;}
       }else if(m.action==='kick') {
         kickSeat(this.r,c.seat,m.seat);this.r.seats[m.seat]={name:'',hero:'',bot:false,difficulty:0,token:''};for(const [s,v]of this.clients)if(v.seat===m.seat){this.clients.delete(s);s.close(4001,'kicked');}
@@ -247,10 +265,10 @@ export class Room extends DurableObject {
       }else if(m.action==='remove_seat') {
         if(!Number.isInteger(m.seat)||m.seat<=0||m.seat>=this.r.seats.length||this.r.seats.length<=2)fail('seat');
         for(const [s,v]of this.clients){if(v.seat===m.seat){this.clients.delete(s);s.close(1000,'removed');}else if(v.seat>m.seat)v.seat--;}
-        this.r.seats.splice(m.seat,1);const rates=new Map();for(const [seat,rate]of this.rates)if(seat!==m.seat)rates.set(seat>m.seat?seat-1:seat,rate);this.rates=rates;
+        this.r.seats.splice(m.seat,1);const rates=new Map();for(const [key,rate]of this.rates){const seat=typeof key==='string'?Number(key.slice(6)):key;if(seat!==m.seat)rates.set(typeof key==='string'?'lobby:'+(seat>m.seat?seat-1:seat):seat>m.seat?seat-1:seat,rate);}this.rates=rates;
       }else if(m.action==='settings'){const next=settings(m,true);if(next.card_pool&&next.card_pool!=='custom')for(const seat of this.r.seats)delete seat.deck;this.r.banned_by_pool||={};this.r.banned_by_pool[this.r.card_pool]=this.r.banned||[];if(next.card_pool&&next.card_pool!==this.r.card_pool)next.banned=this.r.banned_by_pool[next.card_pool]||[];Object.assign(this.r,next);if(this.r.card_pool==='custom')this.r.banned=[];this.r.banned_by_pool[this.r.card_pool]=this.r.banned||[];}else fail('action');
     }
-    await this.save(true);this.broadcastRoom();
+    await this.save(true,!['kick','leave','remove_seat'].includes(m.action));this.broadcastRoom();
   }
   watch() {
     const gen=this.generation;
@@ -269,7 +287,7 @@ export class Room extends DurableObject {
     })().finally(()=>{this.boot=null;});return this.boot;
   }
   async recover() {
-    const refusal=await lobby(this.env).claim(this.r.code,this.r.created);
+    const refusal=await lobby(this.env).claim(this.r.code,this.r.created,this.r.startIP||this.r.ip);
     // Tell connected players instead of leaving them on a started room with no game; they can resume again later.
     if(refusal){this.broadcast({t:'server',status:'unavailable',reason:refusal});fail(refusal,503);}
     this.broadcast({t:'server',status:'restarting'});
@@ -281,7 +299,7 @@ export class Room extends DurableObject {
         if(!this.r||gen!==this.generation||this.sleeping||roomExpired(this.r))return;
         console.log('room',this.r.code,'attempt',attempt,'container running:',this.ctx.container.running);
         if(!this.r||this.r.over||roomExpired(this.r)||this.sleeping)throw new Error('room expired');
-        if(!this.ctx.container.running){const refusal=await lobby(this.env).claim(this.r.code,this.r.created);if(refusal)fail(refusal,503);await quiet(()=>lobby(this.env).bump(['server.starts']));if(!this.r||gen!==this.generation||this.sleeping||roomExpired(this.r))return;await this.ctx.container.start({image:this.ctx.container.images.base,instance:'lite',enableInternet:false,env:{}});}
+        if(!this.ctx.container.running){this.r.linkKey=token();await this.ctx.storage.put('room',this.r);const refusal=await lobby(this.env).claim(this.r.code,this.r.created,this.r.startIP||this.r.ip);if(refusal)fail(refusal,503);await quiet(()=>lobby(this.env).bump(['server.starts']));if(!this.r||gen!==this.generation||this.sleeping||roomExpired(this.r))return;await this.ctx.container.start({image:this.ctx.container.images.base,instance:'lite',enableInternet:false,env:{LINK_KEY:this.r.linkKey}});}
         if(!this.r||gen!==this.generation||this.sleeping||roomExpired(this.r))return;
         console.log('room',this.r.code,'container started');
         this.ctx.container.setInactivityTimeout(IDLE);this.watch();
@@ -294,7 +312,7 @@ export class Room extends DurableObject {
         if(!this.r||gen!==this.generation||this.sleeping||roomExpired(this.r))return;
         if(!healthy)throw new Error('health timeout');
         console.log('room',this.r.code,'container healthy');
-        const res=await port.fetch(new Request('http://container/link',{headers:{Upgrade:'websocket'}}));
+        const res=await port.fetch(new Request('http://container/link',{headers:{Upgrade:'websocket','X-Link-Key':this.r.linkKey||''}}));
         const ws=res.webSocket;if(!ws)throw new Error('link upgrade');this.link=ws;
         await new Promise((resolve,reject)=>{
           const timer=setTimeout(()=>reject(new Error('ready timeout')),5000);
@@ -307,7 +325,7 @@ export class Room extends DurableObject {
           ws.addEventListener('error',()=>{clearTimeout(timer);reject(new Error('link error'));this.ctx.waitUntil(this.failed(gen));});ws.accept();
         });
         if(ws.readyState!==1||this.link!==ws)throw new Error('link lost');
-        if(this.r.snapshot){await quiet(()=>lobby(this.env).bump(['server.restores']));this.linkSend({t:'restore',room:this.r.code,snapshot:this.r.snapshot});}
+        if(this.r.snapshot){await quiet(()=>lobby(this.env).bump(['server.restores']));this.linkSend({t:'restore',room:this.r.code,snapshot:this.containerSnapshot()});}
         else {this.sendSetup();if(this.r.card_pool==='custom')return;}
         for(let seat=0;seat<this.r.seats.length;seat++)if(this.connected(seat))this.linkSend({t:'connect',seat,version:this.r.version});
         this.broadcast({t:'server',status:'ok'});return;
@@ -315,11 +333,12 @@ export class Room extends DurableObject {
     }
     await quiet(()=>lobby(this.env).bump(['server.unavailable']));++this.generation;await this.stop('retry limit');this.broadcast({t:'server',status:'unavailable'});
   }
+  containerSnapshot() {const snapshot=structuredClone(this.r.snapshot);if(Array.isArray(snapshot.tokens))snapshot.tokens=snapshot.tokens.map(()=>token());const scrub=v=>{if(!v||typeof v!=='object')return;for(const k of Object.keys(v)){if(k==='token'||typeof v[k]==='string'&&this.r.seats.some(s=>s.token&&s.token===v[k]))v[k]=token();else scrub(v[k]);}};scrub(snapshot);return snapshot;}
   sendSetup() {
     const r=this.r,seat=r.seats[r.deck_order?.[r.deck_attempt||0]],custom=r.card_pool==='custom';
     const chosen=custom?`${seat.name}'s deck "${seat.deck.name}" will be played.`:'';
     const lines=custom?[...(r.deck_roll||[]).filter(line=>line!==chosen),chosen]:[];
-    this.linkSend({t:'setup',attempt:r.deck_attempt||0,room:r.code,seats:r.seats.map(({name,hero,bot,difficulty,token})=>({name,hero,bot,difficulty,token:bot?'':token})),card_pool:r.card_pool,banned:custom?[]:r.banned||[],starting_life:r.starting_life,bot_pace:r.bot_pace??0.5,seed:r.seed,...(custom?{custom_deck_code:seat.deck.code,deck_roll:lines}:{})});
+    this.linkSend({t:'setup',attempt:r.deck_attempt||0,room:r.code,host_seat:r.host_seat,seats:r.seats.map(({name,hero,bot,difficulty})=>({name,hero,bot,difficulty,token:token()})),card_pool:r.card_pool,banned:custom?[]:r.banned||[],starting_life:r.starting_life,bot_pace:r.bot_pace??0.5,seed:r.seed,...(custom?{custom_deck_code:seat.deck.code,deck_roll:lines}:{})});
   }
   async linkMessage(m) {
     if(!this.r||roomExpired(this.r)||this.sleeping)return;
@@ -353,7 +372,9 @@ export class Room extends DurableObject {
     await this.ctx.storage.deleteAll();this.r=null;
   }
   async alarm() {
+    this.alarmAt=null;
     if(!this.r)return;
+    if(this.flushAt&&Date.now()>=this.flushAt)await this.save();
     if(hostCloseDue(this.r)){await this.closeByHost();return;}
     if(roomExpired(this.r)){this.closing=true;if(!this.r.over)await this.stat('abandoned');this.sleeping=true;++this.generation;this.link?.close();await this.ctx.container.destroy('expired');for(const ws of this.clients.keys())ws.close(1000,'expired');this.clients.clear();await lobby(this.env).remove(this.r.code);await this.ctx.storage.deleteAll();this.r=null;return;}
     if(this.r.releasePending)await this.stop(this.r.releasePending);
@@ -374,7 +395,7 @@ async function admin(req,env,path) {
   try {
     const auth=req.headers.get('Authorization')||'',l=lobby(env),ip=ipKey(req.headers.get('CF-Connecting-IP'));
     const status=await adminDecision(await l.locked(ip,'admin'),()=>constantTimeEqual(auth,'Bearer '+env.ADMIN_KEY));if(status===429)return send({error:'rate_limit'},429);const valid=status===200;
-    if(!valid){if(!await l.allow(ipKey(req.headers.get('CF-Connecting-IP')),'admin'))return send({error:'rate_limit'},429);return send({error:'unauthorized'},401);}
+    if(!valid){if(!await allowed(l,ipKey(req.headers.get('CF-Connecting-IP')),'admin'))return send({error:'rate_limit'},429);return send({error:'unauthorized'},401);}
     return send(await l.stats(statsDays(new URL(req.url).searchParams.get('days'))));
   }catch(e){return send({error:e.status?e.message:'internal'},e.status||500);}
 }

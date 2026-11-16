@@ -11,6 +11,18 @@ if [[ $# -gt 1 || ( -n "$mode" && "$mode" != "--dev" ) ]]; then
 	exit 2
 fi
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+check_root="$repo_root"
+dirty_status="$(git -C "$check_root" status --porcelain --untracked-files=no)"
+if [[ -n "$dirty_status" ]]; then
+ if [[ "${FORCE_DIRTY:-}" != 1 ]]; then echo "Tracked files have uncommitted changes; refusing deploy (FORCE_DIRTY=1 overrides)." >&2; exit 1; fi
+ echo "WARNING: FORCE_DIRTY=1: deploying with tracked changes." >&2
+fi
+build_commit="$(head -n 1 "$check_root/build/server/BUILD_COMMIT")"
+if [[ "$(sed -n '2p' "$check_root/build/server/BUILD_COMMIT")" == dirty && "${FORCE_DIRTY:-}" != 1 ]]; then
+ echo "Build was made from tracked changes; refusing dirty build (FORCE_DIRTY=1 overrides)." >&2; exit 1
+fi
+[[ "$build_commit" == "$(git -C "$check_root" rev-parse HEAD)" ]] || { echo "Build commit differs from HEAD; rebuild first." >&2; exit 1; }
+
 # Wrangler is pinned in cloudflare/package-lock.json (exact version + integrity hashes).
 (cd -- "$repo_root/cloudflare" && npm ci --no-audit --no-fund --silent)
 wrangler="$repo_root/cloudflare/node_modules/.bin/wrangler"

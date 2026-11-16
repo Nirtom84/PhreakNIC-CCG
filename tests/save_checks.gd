@@ -170,8 +170,7 @@ func ui():
  var botnets = table.engine.controlled(hp, "Botnet").size()
  var gain = botnets * botnets + hp.play_area.filter(func(c): return c.effect_id() == "Tableskirts" or c.effect_id() == "Unattended Phone").size(); verify(hp.hacking == hacking_before + gain, "Auto-activate granted +%d hacking" % gain); verify(hp.life == life_before + hp.play_area.filter(func(c): return c.effect_id() == "The Big Dipper").size(), "Auto-activate granted life from The Big Dipper"); verify(hp.hand.size() == hand_before + hp.play_area.filter(func(c): return c.effect_id() == "Shell Speech").size(), "Auto-activate drew cards from Shell Speech")
  settings.save()
- var ab_config = ConfigFile.new()
- ab_config.load("user://settings.cfg")
+ var ab_config = OnlineAPI.settings()
  verify(ab_config.get_value("auto_activate", "Botnet", false) == true, "Auto-activate Botnet persists")
  settings.auto_activate.clear()
  settings.save()
@@ -197,8 +196,7 @@ func ui():
  var sound = find_button(table.game_menu, "Sound enabled")
  sound.button_pressed = not sound.button_pressed
  verify(settings.muted == not sound.button_pressed, "Sound applies live")
- var config = ConfigFile.new()
- config.load("user://settings.cfg")
+ var config = OnlineAPI.settings()
  verify(config.get_value("sound", "muted") == settings.muted, "Sound persisted")
  var effects = find_button(table.game_menu, "Visual effects")
  effects.button_pressed = not effects.button_pressed
@@ -338,7 +336,7 @@ func knocked_out():
  menu.queue_free()
  await process_frame
 func run():
- for path in ["user://settings.cfg", SaveGame.PATH]:
+ for path in ["user://settings.json", "user://settings.cfg.migrated", "user://settings.cfg", SaveGame.PATH]:
   backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  await round_trips()
  await focused()

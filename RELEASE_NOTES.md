@@ -1,5 +1,23 @@
 # Release Notes
 
+## v0.32 — Second security review
+An independent, from-scratch security review of the game and the online server found more ways online play could be disrupted or made expensive to run. This release fixes all of them. No player data or secrets were exposed. Details stay private for now.
+
+**Online**
+- A player who stalls can't freeze a game: their own prompts and reconnects now count against their turn time. After two minutes without progress, the host can hand a stalled player's turn to a bot from the menu.
+- The server sends less: idle games only send small timer updates, and repeated actions that change nothing are ignored.
+- Limits per player are fairer: finished games no longer count against you, and resuming a game doesn't use up your daily starts.
+- A seat's key no longer travels in the connection address.
+- Two players can't join one room with the same name.
+
+**Game**
+- Settings now live in `settings.json`. Your old settings are moved over automatically, once.
+- Saves, deck names and messages from the server are checked more strictly. Names with invisible or direction-changing characters are refused.
+- Custom servers must use secure connections, except on your own computer.
+
+**Behind the scenes**
+- The server's internal link is locked to the machine and needs a key, deploy scripts check what they publish, and new tests cover the server and client changes.
+
 ## v0.31 — More fixes from bitwize
 Another round found, reported and fixed by **bitwize** ([bitwize-music](https://github.com/bitwize-music) on GitHub): 13 pull requests fixing 20 issues, each with tests. Thank you again, bitwize!
 

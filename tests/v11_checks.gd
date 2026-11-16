@@ -130,24 +130,24 @@ func run():
   verify(session.status == ("The host removed you from the room." if code == 4001 else "This seat was opened somewhere else."), "Terminal seat close message")
   verify(OnlineAPI.remembered().is_empty() and (removed.size() == 1 if code == 4001 else removed.is_empty()), "Kicked seat forgotten and returns home")
   session.queue_free()
- var file = FileAccess.open("user://settings.cfg", FileAccess.WRITE)
+ var file = FileAccess.open("user://settings.json", FileAccess.WRITE)
  file.store_string("x".repeat(65537))
  file.close()
  verify(OnlineAPI.remembered().is_empty(), "Oversized settings ignored")
- var config = ConfigFile.new()
+ var config = OnlineAPI.SettingsFile.new()
  config.set_value("game", "online_seat", ["wrong"])
- config.save("user://settings.cfg")
+ config.save("user://settings.json")
  verify(OnlineAPI.remembered().is_empty(), "Wrong seat type ignored")
  config.set_value("game", "online_seat", {"server": "https://example.test", "code": "ABCD", "token": "x", "seat": 999})
- config.save("user://settings.cfg")
+ config.save("user://settings.json")
  verify(OnlineAPI.remembered().is_empty(), "Out of range seat ignored")
  file = FileAccess.open(SaveGame.PATH, FileAccess.WRITE)
  file.store_string("x".repeat(2 * 1024 * 1024 + 1))
  file.close()
  verify(SaveGame.read().is_empty(), "Oversized save ignored")
- config.clear()
+ config.data.clear()
  for entry in [["sound", "volume"], ["game", "starting_life"], ["game", "auto_end_turn"], ["player", "hero_id"]]: config.set_value(entry[0], entry[1], {"bad": true})
- config.save("user://settings.cfg")
+ config.save("user://settings.json")
  var sound = load("res://scripts/ui/sfx.gd").new()
  root.add_child(sound)
  verify(sound.volume == 0.65 and sound.starting_life == 0 and sound.auto_end_turn and sound.hero_id == "", "Malformed settings retain defaults without conversion")
@@ -196,7 +196,7 @@ func seated_room() -> Array:
  return [server, clients]
 ## One player must not be able to hold a game forever (security scan, v0.30).
 func stall_checks():
- # Pointless actions reset the idle timer, but not the hard per-turn limit.
+ # No-op actions cannot reset the idle timer or the hard per-turn limit.
  var made = await seated_room()
  var server = made[0]
  var clients = made[1]
@@ -206,7 +206,7 @@ func stall_checks():
   time += 100
   clients[active].send_action("play_basics")
   await frames()
- verify(server.engine.state.turn == turn, "Actions keep the turn alive before the hard limit")
+ verify(server.engine.state.turn > turn or server.idle_bot.has(active), "No-op actions do not keep the turn alive")
  time += 101
  for i in 300:
   if server.engine.state.turn > turn: break

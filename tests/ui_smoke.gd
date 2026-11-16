@@ -13,7 +13,7 @@ class ScriptedHuman extends Decider:
 # Back up the player's settings and saved game, and put them back on exit (tables autosave during these tests).
 var user_backups = {}
 func _initialize():
- for path in ["user://settings.cfg", "user://savegame.json"]:
+ for path in ["user://settings.json", "user://settings.cfg", "user://settings.cfg.migrated", "user://savegame.json"]:
   user_backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  run.call_deferred()
 func _finalize():
@@ -142,6 +142,7 @@ func run():
  var output = []
  var code = OS.execute(OS.get_executable_path(), ["--headless", "--path", ProjectSettings.globalize_path("res://"), "-s", get_script().resource_path.get_base_dir().path_join("leave_helper.gd")], output, true)
  var text = "\n".join(output)
+ if code != 0 or not "LEAVE_HELPER DONE main_menu=true errors=0" in text: print(text)
  verify("LEAVE_HELPER KNOCKED_OUT true" in text, "Leave helper: knocked out of a 3-player game while two bots play on")
  verify(code == 0 and "LEAVE_HELPER DONE main_menu=true errors=0" in text, "Knocked out at Bot pace Instant, Menu > Main menu > Leave reaches the main menu without errors")
  print("UI smoke: %d checks, %d failures" % [checks, failures])

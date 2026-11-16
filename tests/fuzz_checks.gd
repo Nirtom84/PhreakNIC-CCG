@@ -2,6 +2,11 @@ extends SceneTree
 var checks = 0
 var failures = 0
 var rng = RandomNumberGenerator.new()
+var test_clock = 100.0
+var advance_clock = false
+func _process(_delta):
+ if advance_clock: test_clock += 0.21
+ return false
 func _initialize(): run.call_deferred()
 func verify(ok: bool, text: String):
  checks += 1
@@ -109,6 +114,9 @@ func run():
  await frames(4)
  verify(results == [true] and server.pending.is_empty(), "Duplicate answer resolves exactly once")
  verify(server.engine.state.conservation_ok(), "Conservation after prompt fuzz")
+ test_clock = server.now() + 1.0
+ server.clock = func(): return test_clock
+ advance_clock = true
  for client in clients: client.scripted = true
  server.dirty = true
  for frame in 5000:

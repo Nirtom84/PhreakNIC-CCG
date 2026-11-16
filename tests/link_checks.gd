@@ -11,6 +11,21 @@ var snapshots = 0
 var over = false
 var version = str(ProjectSettings.get_setting("application/config/version", ""))
 var errors = ErrorCounter.new()
+var test_time = 0.0
+var clock_game
+class LinkWire extends WebSocketTransport:
+ var key = ""
+ func connect_to(url: String, _token: String = "") -> Error:
+  peer = WebSocketPeer.new()
+  peer.inbound_buffer_size = 8 * 1024 * 1024
+  peer.outbound_buffer_size = 8 * 1024 * 1024
+  if not key.is_empty(): peer.handshake_headers = PackedStringArray(["X-Link-Key: " + key])
+  error = peer.connect_to_url(url)
+  active = error == OK
+  return error
+ func send(message: Dictionary):
+  # Match the trusted relay: large controls have their type first.
+  error = peer.send_text(JSON.stringify(message, "", false))
 class ErrorCounter extends Logger:
  var count = 0
  var lines: Array = []
@@ -34,6 +49,12 @@ func verify(ok: bool, text: String):
   failures += 1
   push_error(text)
 func _process(_delta):
+ # Advance server deadlines independently of unbounded headless frame speed.
+ test_time += 0.21
+ if is_instance_valid(server) and is_instance_valid(server.game) and (not is_instance_valid(clock_game) or server.game != clock_game):
+  clock_game = server.game
+  test_time = clock_game.now()
+  clock_game.clock = func(): return test_time
  if wire != null: wire.poll()
  return false
 func frames(count: int):
@@ -60,9 +81,31 @@ func health(port: int) -> bool:
   await process_frame
  tcp.disconnect_from_host()
  return response.begins_with("HTTP/1.1 200 OK\r\n") and response.ends_with("\r\n\r\nok")
+func unauthorized_link():
+ var previous = server.link
+ server.link_key = "link-test-secret"
+ verify(await health(server.port), "Health remains public with LINK_KEY")
+ var tcp = StreamPeerTCP.new()
+ tcp.connect_to_host("127.0.0.1", server.port)
+ for i in 600:
+  tcp.poll()
+  if tcp.get_status() != StreamPeerTCP.STATUS_CONNECTING: break
+  await process_frame
+ tcp.put_data("GET /link HTTP/1.1\r\nHost: localhost\r\nUpgrade: websocket\r\nX-Link-Key: wrong\r\n\r\n".to_utf8_buffer())
+ var response = ""
+ for i in 600:
+  tcp.poll()
+  if tcp.get_available_bytes(): response += tcp.get_utf8_string(tcp.get_available_bytes())
+  if "401 Unauthorized" in response: break
+  await process_frame
+ verify("401 Unauthorized" in response, "Wrong link secret receives HTTP 401")
+ verify(server.link == previous, "Unauthorized upgrade preserves existing live link")
+ tcp.disconnect_from_host()
+ server.link_key = ""
 func open_wire():
  messages.clear()
- wire = WebSocketTransport.new()
+ wire = LinkWire.new()
+ wire.key = server.link_key
  wire.received.connect(receive)
  verify(wire.connect_to("ws://127.0.0.1:%d/link" % server.port) == OK, "WebSocket starts connecting")
  verify(await until(func(): return messages.any(func(m): return m.t == "ready")), "Link ready")
@@ -119,6 +162,8 @@ func finish():
  verify(await until(func(): return over, 40000), "Game finishes through the room link")
  await frames(20)
  verify(clients.all(func(c): return c.engine.state != null and c.engine.state.finished), "Every client receives final view")
+ verify(server.game != null, "Authoritative game exists after finish")
+ if server.game == null: return
  verify(server.game.engine.state.conservation_ok(), "Authoritative cards conserved")
  verify(messages.any(func(m): return m.t == "over" and m.winner == (server.game.engine.state.winner.seat if server.game.engine.state.winner != null else -1)), "Over reports winner")
 func setup():
@@ -136,6 +181,7 @@ func run():
   return
  verify(await health(server.port), "Raw TCP GET /health returns 200 ok")
  await open_wire()
+ await unauthorized_link()
  wire.send({"t": "ping"})
  verify(await until(func(): return messages.any(func(m): return m.t == "pong")), "Application ping/pong")
  await setup()

@@ -284,10 +284,11 @@ func pick_seat_names(game_seed: int):
   seat_names.append(pick)
   seat_heroes.append(hero_ids.get(pick, ""))
 func seat_name(seat: int) -> String:
- return seat_names[seat] if seat < seat_names.size() else ("You" if seat == human_seat else "Bot %d" % seat)
+ return seat_names[seat] if seat >= 0 and seat < seat_names.size() else ("You" if seat == human_seat else "Bot %d" % seat)
 ## DEFCON overrides handle matching; other seats use the matching card or Hero.
 func avatar_hero(seat: int) -> String:
- return UIStyle.seat_avatar(seat_name(seat), seat_heroes[seat], engine.state.players[seat].is_bot, engine.state.players[seat].difficulty, engine.db())
+ # Online seat lists can arrive after the first view: never index past them.
+ return UIStyle.seat_avatar(seat_name(seat), seat_heroes[seat] if seat >= 0 and seat < seat_heroes.size() else "", engine.state.players[seat].is_bot, engine.state.players[seat].difficulty, engine.db())
 func player_name(p) -> String:
  return seat_name(p.seat) if p.seat == human_seat or not p.is_bot else "%s · %s" % [seat_name(p.seat), BotDifficulty.DISPLAY_NAMES[p.difficulty]]
 func available() -> bool:
@@ -629,7 +630,7 @@ func seat_area(parent: Node, p, _human: bool):
  name_label.custom_minimum_size.x = 80
  name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  name_label.clip_text = true
- var human_remote = online_session != null and not online_session.client.seats[p.seat].get("bot", false)
+ var human_remote = online_session != null and p.seat < online_session.client.seats.size() and not online_session.client.seats[p.seat].get("bot", false)
  var badge = UIStyle.label(status, "HUMAN" if human_remote else BotDifficulty.DISPLAY_NAMES[p.difficulty].to_upper(), 14)
  badge.visible = player_count == 2
  if not p.alive:
@@ -1335,13 +1336,30 @@ func hover_border() -> StyleBoxFlat:
  style.set_border_width_all(2)
  style.set_expand_margin_all(3)
  return style
+static func substitute_seats(message: String, lookup: Callable) -> String:
+ var pattern = RegEx.new()
+ pattern.compile("Seat (\\d+)")
+ var result = ""
+ var cursor = 0
+ for found in pattern.search_all(message):
+  result += message.substr(cursor, found.get_start() - cursor) + str(lookup.call(int(found.get_string(1))))
+  cursor = found.get_end()
+ return result + message.substr(cursor)
+var handable_seat = -1
+static func handable_target(timers: Array, viewer: int) -> int:
+ for data in timers:
+  if data.get("kind") == "turn" and data.get("handable", false) and data.get("host_seat", 0) == viewer: return int(data.get("seat", -1))
+ return -1
+func hand_turn_to_bot():
+ if online_session != null and handable_seat >= 0:
+  online_session.client.transport.send({"t": "action", "kind": "hand_to_bot", "seat": handable_seat})
+ close_menu()
 func append_log(message: String):
  var colors = ["8fe6b0", "efc878", "89c9ff", "d7a0f5"]
  var seat = -1
  for i in player_count:
   if "Seat %d" % i in message: seat = i
- var display = message
- for i in player_count: display = display.replace("Seat %d" % i, seat_name(i))
+ var display = substitute_seats(message, seat_name)
  if "eliminat" in message.to_lower() and online_session == null:
   Sfx.play("eliminated")
   show_notice(display, 7.0)
@@ -1701,6 +1719,8 @@ func menu():
  box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
  scroll.add_child(box)
  UIStyle.button(box, "Resume", close_menu).custom_minimum_size.y = 56
+ if online_session != null and handable_seat >= 0:
+  UIStyle.button(box, "Hand %s's turn to a bot" % seat_name(handable_seat), hand_turn_to_bot)
  UIStyle.label(box, "Options", 24)
  UIStyle.layout_setting(box)
  if online_session != null:
@@ -2238,7 +2258,7 @@ func setup_online():
  client.message_received.connect(func(data):
   if data.get("t") == "game_over": online_final_players = data.get("final_players", [])
   if data.get("type") == "emote": emote_ui.receive(data)
-  if data.get("t") == "view": apply_countdowns(data.get("timers", []))
+  if data.get("t") in ["view", "timers"]: apply_countdowns(data.get("timers", []))
   if data.get("t") == "welcome":
    waiting_seats.clear()
    update_waiting_banner())
@@ -2370,7 +2390,7 @@ func share_details(winner) -> Dictionary:
   var level = BotDifficulty.DISPLAY_NAMES[p.difficulty] if p.is_bot else ""
   if p.is_bot and level not in levels: levels.append(level)
   opponents.append(seat_name(p.seat) + (" / " + level if p.is_bot else ""))
- var hero = seat_heroes[human_seat]
+ var hero = seat_heroes[human_seat] if human_seat >= 0 and human_seat < seat_heroes.size() else ""
  return {"headline": result_headline(winner), "victory": winner != null and winner.seat == human_seat, "handle": seat_name(human_seat), "hero": hero, "hero_name": stats_card_name(hero), "life": stat.final_life, "turns": stat.turns, "damage": stat.damage_dealt, "bought": stat.cards_bought, "biggest": stat.biggest_hit, "most_played": match_stats.star_card(human_seat), "most_played_name": stats_card_name(match_stats.star_card(human_seat)), "opponents": opponents, "all_bots": all_bots, "difficulty": "/".join(levels), "pool": engine.state.card_pool, "custom_deck": engine.state.custom_deck, "version": str(ProjectSettings.get_setting("application/config/version")), "date": Time.get_date_string_from_system()}
 
 func timer_for(seat: int):
@@ -2381,6 +2401,7 @@ func timer_for(seat: int):
   countdowns[seat] = timer
  return countdowns[seat]
 func apply_countdowns(timers: Array):
+ handable_seat = handable_target(timers, human_seat)
  var present = []
  for data in timers:
   var seat = int(data.get("seat", -1))

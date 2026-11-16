@@ -32,7 +32,7 @@ func has_picture(node, path: String) -> bool:
 func card(id, uid, owner = 0): return CardInstance.new(uid, id, owner)
 func run():
  settings = root.get_node("Sfx")
- var cfg = ConfigFile.new()
+ var cfg = OnlineAPI.SettingsFile.new()
  settings.load_auto(cfg)
  verify(settings.auto_activate.values().all(func(v): return v == false), "Defaults off")
  cfg.set_value("game", "auto_botnet", true)
@@ -70,8 +70,7 @@ func run():
  widget = table.card_widget(other, "permanent", 100)
  verify(autos(widget).is_empty(), "Opponent excluded")
  widget.free()
- var saved = ConfigFile.new()
- saved.load("user://settings.cfg")
+ var saved = OnlineAPI.settings()
  settings.load_auto(saved)
  verify(settings.auto_enabled("Botnet") and not saved.has_section_key("game", "auto_botnet"), "Settings round trip removes legacy")
  var third = card("Botnet2", 91004)
@@ -275,7 +274,7 @@ func online_views():
  root.add_child(session)
  var pair = LoopbackTransport.pair(false)
  session.client.bind_transport(pair[0])
- pair[1].send({"t": "welcome", "seat": 0, "seats": [{"name": "Botnet", "hero": "", "bot": false}, {"name": "Guest", "hero": "", "bot": false}]})
+ pair[1].send({"t": "welcome", "seat": 0, "seats": [{"name": "Botnet", "hero": "", "bot": false, "difficulty": 0}, {"name": "Guest", "hero": "", "bot": false, "difficulty": 0}]})
  pair[1].send({"t": "view", "state": NetView.build(authority, 0)})
  pair[0].pump()
  settings.auto_activate = {"Botnet": true, "Tableskirts": true}
@@ -318,7 +317,7 @@ func lobby_avatars():
  var api = RoomAPI.new()
  root.add_child(api)
  var seat = {"name": "Botnet", "hero": "Elonka", "bot": false, "difficulty": 0, "connected": true}
- api.rooms = [{"code": "TEST", "host": "Botnet", "seats": [seat], "card_pool": "2026", "starting_life": 20, "open_seats": 0}]
+ api.rooms = [{"code": "ABCD", "host": "Botnet", "seats": [seat, {"name": "Guest", "hero": "", "bot": false, "difficulty": 0}], "card_pool": "2026", "starting_life": 20, "open_seats": 0}]
  var screen = load("res://scripts/ui/online.gd").new()
  screen.api = api
  root.add_child(screen)
@@ -330,7 +329,7 @@ func lobby_avatars():
  screen.add_child(session)
  screen.session = session
  session.credential = {"seat": 1}
- screen.lobby({"code": "TEST", "host_seat": 0, "seats": [seat, {"name": "Guest", "hero": "", "bot": false, "difficulty": 0}], "card_pool": "2026", "starting_life": 20, "public": true, "started": false})
+ screen.lobby({"code": "ABCD", "host_seat": 0, "seats": [seat, {"name": "Guest", "hero": "", "bot": false, "difficulty": 0}], "card_pool": "2026", "starting_life": 20, "public": true, "started": false})
  await frames()
  verify(has_picture(screen.content, path), "Lobby list tree uses handle avatar")
  screen.free()

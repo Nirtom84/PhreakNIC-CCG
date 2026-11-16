@@ -27,6 +27,7 @@ static func total(deck: Dictionary) -> int:
 static func validate(deck: Dictionary) -> Array[String]:
 	var errors: Array[String] = []
 	if not deck.get("name") is String or deck.name.strip_edges().is_empty() or deck.name.length() > 40: errors.append("Deck name must be 1–40 characters")
+	if deck.get("name") is String and RegEx.create_from_string("[\\p{Cc}\\p{Cf}]").search(deck.name) != null: errors.append("Deck name contains control or format characters")
 	if not deck.get("cards") is Dictionary: errors.append("Cards must be a dictionary"); return errors
 	if deck.cards.size() > 200: errors.append("Too many entries"); return errors
 	var db = database()

@@ -213,8 +213,7 @@ func run():
  verify(not menu.bans_button.visible and sfx.card_pool == "custom", "Custom selection hides bans")
  verify("Tag Team" in menu.custom_tile.text and "60 cards" in menu.custom_tile.text, "Custom tile names selected deck")
  sfx.save()
- var config = ConfigFile.new()
- config.load("user://settings.cfg")
+ var config = OnlineAPI.settings()
  verify(config.get_value("game", "custom_deck_name") == "Tag Team" and config.get_value("game", "card_pool") == "custom", "Selection remembered")
  menu.launch()
  current_scene.auto_drive = false

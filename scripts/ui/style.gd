@@ -21,7 +21,7 @@ static func is_touch_platform() -> bool:
  var ios = OS.has_feature("web_ios") if web_ios_override == null else bool(web_ios_override)
  return OS.has_feature("mobile") or (is_web() and (android or ios))
 static var compact_override = null
-# compact() runs for nearly every node the UI builds, so the Layout setting is read from settings.cfg once and kept
+# compact() runs for nearly every node the UI builds, so the Layout setting is read from settings.json once and kept
 # current by layout_setting(), the only place that changes it.
 static var layout_cache = null
 static func compact() -> bool:
@@ -43,7 +43,7 @@ static func layout_setting(parent: Control):
   var config = OnlineAPI.settings()
   layout_cache = ["auto", "desktop", "compact"][index]
   config.set_value("ui", "layout", layout_cache)
-  config.save("user://settings.cfg"))
+  config.save("user://settings.json"))
 static func touch_fit_id(id: int):
  var node = instance_from_id(id)
  if is_instance_valid(node): touch_fit(node)
