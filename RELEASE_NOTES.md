@@ -1,5 +1,11 @@
 # Release Notes
 
+## v0.33 — Mac download (unreleased)
+**New: a Mac version**, added by **bitwize** ([bitwize-music](https://github.com/bitwize-music) on GitHub). Thank you, bitwize!
+- `PhreakNIC-CCG-macos.zip` runs on Intel and Apple Silicon Macs (macOS 11 or newer on Intel, 13 or newer on Apple Silicon). It isn't notarized by Apple yet, so the first time macOS blocks it: open **System Settings → Privacy & Security** and choose **Open Anyway**.
+- An iPhone/iPad build can now be made from the project too. It isn't a download yet: it needs signing with an Apple developer account, and it hasn't been played on a device.
+- The bug-report form lists macOS and iOS.
+
 ## v0.32 — Second security review
 An independent, from-scratch security review of the game and the online server found more ways online play could be disrupted or made expensive to run. This release fixes all of them. No player data or secrets were exposed. Details stay private for now.
 
