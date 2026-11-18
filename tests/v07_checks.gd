@@ -148,6 +148,7 @@ func check_rotate(scene):
  probe_layer.queue_free()
 ## The Android and Windows builds carry the version from project.godot, as every release since
 ## v0.04 has: "0.28" -> Android version/name "0.28" and version/code 28, Windows "0.0.28.0".
+## macOS leaves its version overrides empty so Godot uses project.godot automatically.
 func check_export_versions():
  var version = str(ProjectSettings.get_setting("application/config/version", ""))
  var parts = version.split(".")
@@ -160,6 +161,12 @@ func check_export_versions():
   if section.begins_with("preset.") and not section.ends_with(".options"): options[presets.get_value(section, "platform", "")] = section + ".options"
  var android = options.get("Android", "")
  var windows = options.get("Windows Desktop", "")
+ for platform in ["macOS", "iOS"]:
+  var apple = options.get(platform, "")
+  verify(not apple.is_empty(), platform + " export preset exists")
+  if not apple.is_empty():
+   for key in ["application/short_version", "application/version"]:
+    verify(str(presets.get_value(apple, key, "missing")).is_empty(), "%s %s follows project version" % [platform, key.get_file()])
  var code = int(parts[0]) * 100 + int(parts[1])
  var file_version = "%d.0.%d.0" % [int(parts[0]), int(parts[1])]
  verify(str(presets.get_value(android, "version/name", "")) == version, "Android version/name is " + version)

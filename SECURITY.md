@@ -13,7 +13,7 @@ Include what you found, how to reproduce it, and what an attacker could do with 
 
 - The online server at `online-01.phreaknic-ccg.net` (rooms, lobby, game protocol, admin panel).
 - The website at `phreaknic-ccg.net`.
-- The game clients (Windows, Linux, Android, web): cheating online (seeing hidden cards, predicting shuffles, acting for other players), crashing other players or the server, injecting content into other players' screens.
+- The game clients (Windows, Linux, macOS, Android, iOS, web): cheating online (seeing hidden cards, predicting shuffles, acting for other players), crashing other players or the server, injecting content into other players' screens.
 - Release downloads and the build/deploy tooling in this repository.
 
 ## Please don't

@@ -44,6 +44,10 @@ The game is in **alpha testing**. Prefer an app? Grab the latest build from the 
 | Linux (x86_64) | [PhreakNIC-CCG-linux.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-linux.zip) | Unzip and run the `.x86_64` file. If it won't start, make it executable: `chmod +x PhreakNIC-CCG-*.x86_64`. |
 | Android 7.0+ (64-bit) | [PhreakNIC-CCG-android.apk](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-android.apk) | Open the file on your phone and allow your browser or file manager to install unknown apps. Plays in landscape. From v0.11 the APK is release-signed: uninstall an older version first. If Google Play Protect says the app is from an unknown developer, tap **Install anyway** (it's new, not unsafe; see [SECURITY.md](SECURITY.md) to verify the signature). |
 
+**macOS preview:** build an Intel + Apple Silicon app with `tools/build_all.sh macos`, including from Linux. The fork's CI verifies its ad-hoc signature, launches it headlessly on Intel and Apple Silicon Macs, and runs the affected tests. Interactive gameplay still needs manual Mac testing. See [macOS build and testing notes](docs/MACOS.md) for installation, Gatekeeper and Developer ID signing. This does not add a macOS download to an already published release.
+
+**iOS preview builds:** `tools/build_all.sh ios-project` generates an Xcode project on Linux. The fork's **Apple builds** workflow uses GitHub macOS runners to compile an unsigned IPA and test the Simulator app. See [iOS build and signing notes](docs/IOS.md); an unsigned IPA needs signing before device installation.
+
 Choose 2–4 players (you plus 1–3 bots), a bot level, the card set and the starting life, then start.
 - **Your turn:** click a hand card to play it, or use **Play Basics** (Hackers and Attacks only) or **Play All**.
 - **Buying:** click a Center Row card or your reserved card to open its card sheet. It shows the full card, its rules as text, and the **Buy** and **Reserve** buttons.
@@ -93,10 +97,13 @@ Music by bitwize. The dynamic soundtrack follows public life totals, permanents 
 
 Regenerate retro sound effects with `python3 tools/make_sounds.py`. Build the soundtrack from the read-only composer sources with `python3 tools/build_music.py` (requires ffmpeg); see [tools/MUSIC.md](tools/MUSIC.md) for sample boundaries, options and WAV replacement notes. Source MP3s are never included in the project.
 
-## Building Linux, Windows, Android and Web versions
+## Building Linux, Windows, macOS, Android and Web versions
 ```bash
-tools/build_all.sh            # all four, into build/, then packaged into build/release/
-tools/build_all.sh android    # or just one: linux | windows | android | web
+tools/build_all.sh            # all five, into build/, then packaged into build/release/
+tools/build_all.sh android    # or just one: linux | windows | macos | android | web
+tools/build_all.sh macos      # universal .app in a ZIP; also works on Linux
+tools/build_all.sh ios-project # optional Xcode project export; works on Linux
+tools/build_all.sh ios        # optional unsigned IPA; requires macOS + Xcode (or GitHub runner)
 tools/build_all.sh release    # zip the builds under stable names in build/release/ for a GitHub Release
 ```
 - **Web**: `tools/build_all.sh web` produces a static site in `build/web/`; serve it over HTTP(S), rather than opening `file://`.
@@ -104,9 +111,10 @@ tools/build_all.sh release    # zip the builds under stable names in build/relea
 - **GitHub Pages**: `tools/deploy_pages.sh` publishes `build/web/` to the `gh-pages` branch, which GitHub serves at https://nirtom84.github.io/PhreakNIC-CCG/. The branch is replaced on every deploy, so old web builds don't pile up in the repo's history.
 - **Linux**: `build/linux/PhreakNIC-CCG-v<version>.x86_64` — a single file, run it directly.
 - **Windows**: `build/windows/PhreakNIC-CCG-v<version>.exe` — a single file, double-click it.
+- **macOS**: `build/macos/PhreakNIC-CCG-v<version>.zip` — unzip and move the `.app` to Applications. Supports Intel (macOS 11+) and Apple Silicon (macOS 13+). Ad-hoc signed by default; downloaded copies need a Gatekeeper exception until Developer ID signing and notarization are configured. A checksum is written beside the ZIP. Full release packaging copies it to `build/release/PhreakNIC-CCG-macos.zip`. See [docs/MACOS.md](docs/MACOS.md).
 - **Android**: `build/android/PhreakNIC-CCG-v<version>.apk`, signed with the project release key when `~/.config/phreaknic/android-signing.sh` exists (maintainer only; it loads the keystore from outside the repo). Without it you get `PhreakNIC-CCG-v<version>-debug.apk`, signed with your own debug key, which `tools/build_all.sh release` packages only when `ALLOW_DEBUG_APK=1` is set. Install with `adb install` or by copying it to the phone (allow "install unknown apps").
 
-One-time setup on the build machine: Godot 4.7.1 export templates in `~/.local/share/godot/export_templates/4.7.1.stable/`, JDK 17 (`~/.local/opt/jdk-17`), and the Android SDK in `~/Android/Sdk` with `platform-tools`, `build-tools;36.1.0` and `platforms;android-36`. Export settings live in `export_presets.cfg`.
+One-time setup on the Linux build machine: Godot 4.7.1 export templates in `~/.local/share/godot/export_templates/4.7.1.stable/` (including `macos.zip` for Mac builds). Android builds also require JDK 17 (`~/.local/opt/jdk-17`) and the Android SDK in `~/Android/Sdk` with `platform-tools`, `build-tools;36.1.0` and `platforms;android-36`. Export settings live in `export_presets.cfg`.
 
 ## Online server
 The game server is the headless Godot build (the `Server` export preset, `tools/build_all.sh server`), running in Cloudflare Containers behind the Worker in `cloudflare/online/`. It's deployed with `tools/deploy_online.sh` to https://online-01.phreaknic-ccg.net. See [cloudflare/online/README.md](cloudflare/online/README.md).

@@ -3,7 +3,7 @@ const BASE = "https://github.com/Nirtom84/PhreakNIC-CCG/issues/new?template=bug_
 static func platform() -> String:
  if OS.has_feature("editor") or not OS.has_feature("template"): return "Running from source (Godot editor)"
  if UIStyle.is_web(): return "Web browser"
- return OS.get_name() if OS.get_name() in ["Windows", "Linux", "Android"] else "Linux"
+ return OS.get_name() if OS.get_name() in ["Windows", "Linux", "macOS", "Android", "iOS"] else "Linux"
 static func redact(text: String, names: Array, bots: Array, reporter: int) -> String:
  # Replace longest names first; placeholders prevent replacement collisions.
  var indices = range(names.size())

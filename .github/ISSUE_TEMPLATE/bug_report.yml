@@ -20,6 +20,8 @@ body:
       options:
         - Windows
         - Linux
+        - macOS
+        - iOS
         - Android
         - Web browser
         - Running from source (Godot editor)
