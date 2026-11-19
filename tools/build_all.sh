@@ -91,6 +91,8 @@ for target in "${targets[@]}"; do
 			(cd build/release && sha256sum PhreakNIC-CCG-* > SHA256SUMS.txt) ;;
 		*) echo "Unknown target: $target (use linux, windows, macos, android, web, server, release, ios-project, ios or ios-simulator)" >&2; exit 1 ;;
 	esac
-	printf '%s\n%s\n' "$BUILD_COMMIT" "$BUILD_TREE" > "build/$target/BUILD_COMMIT"
+	# The iOS targets all write into build/ios/.
+	out="build/$target"; case "$target" in ios-project|ios|ios-simulator) out=build/ios ;; esac
+	printf '%s\n%s\n' "$BUILD_COMMIT" "$BUILD_TREE" > "$out/BUILD_COMMIT"
 done
 ls -la build/*/
