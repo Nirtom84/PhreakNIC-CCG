@@ -1,6 +1,6 @@
 # PhreakNIC CCG
 
-A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.32**.
+A digital version of the **FOTTR TCG: PhreakNIC** deck-building card game, built with Godot 4.7. Version **0.33**.
 
 Original FOTTR TCG created by 5ud0, bitwize & crook3dfingers (FOTTR).
 
@@ -43,7 +43,7 @@ The game is in **alpha testing**. Prefer an app? Grab the latest build from the 
 | Windows 10/11 (64-bit) | [PhreakNIC-CCG-windows.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-windows.zip) | Unzip and double-click the `.exe`. The app isn't code-signed yet, so Windows SmartScreen may warn you: choose **More info → Run anyway**. |
 | Linux (x86_64) | [PhreakNIC-CCG-linux.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-linux.zip) | Unzip and run the `.x86_64` file. If it won't start, make it executable: `chmod +x PhreakNIC-CCG-*.x86_64`. |
 | Android 7.0+ (64-bit) | [PhreakNIC-CCG-android.apk](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-android.apk) | Open the file on your phone and allow your browser or file manager to install unknown apps. Plays in landscape. From v0.11 the APK is release-signed: uninstall an older version first. If Google Play Protect says the app is from an unknown developer, tap **Install anyway** (it's new, not unsafe; see [SECURITY.md](SECURITY.md) to verify the signature). |
-| macOS 11+ (Intel or Apple Silicon) | [PhreakNIC-CCG-macos.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-macos.zip) | Unzip and open **PhreakNIC CCG**. The app isn't notarized by Apple yet, so macOS blocks it the first time: open **System Settings → Privacy & Security** and choose **Open Anyway**. Available from v0.33. See [macOS notes](docs/MACOS.md). |
+| macOS 11+ (Intel or Apple Silicon) | [PhreakNIC-CCG-macos.zip](https://github.com/Nirtom84/PhreakNIC-CCG/releases/latest/download/PhreakNIC-CCG-macos.zip) | Unzip and open **PhreakNIC CCG**. The app isn't notarized by Apple yet, so macOS blocks it the first time: open **System Settings → Privacy & Security** and choose **Open Anyway**. See [macOS notes](docs/MACOS.md). |
 
 **Building for Mac:** `tools/build_all.sh macos` builds the Intel + Apple Silicon app, also from Linux. See [macOS build and testing notes](docs/MACOS.md) for signing and notarization.
 
