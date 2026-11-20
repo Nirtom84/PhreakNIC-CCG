@@ -311,6 +311,12 @@ func run():
  verify(table.handable_seat == 1 and table.countdowns[1].remaining == 37, "Invalid timer-only update ignored")
  session.client._receive({"t": "timers", "timers": []})
  verify(table.handable_seat == -1 and not table.countdowns[1].active, "Empty timers clear countdown and handover")
+ # An active player who drops has two deadlines (disconnect takeover and turn idle). Others see the one that ends first.
+ session.client._receive({"t": "timers", "timers": [{"seat": 1, "kind": "disconnected", "remaining_seconds": 90, "limit": 120}, {"seat": 1, "kind": "turn", "remaining_seconds": 150, "limit": 180, "handable": false, "host_seat": seat}]})
+ verify(table.countdowns[1].kind == "disconnected" and table.countdowns[1].remaining == 90, "Disconnected active seat shows the disconnect countdown when it ends first")
+ session.client._receive({"t": "timers", "timers": [{"seat": 1, "kind": "disconnected", "remaining_seconds": 100, "limit": 120}, {"seat": 1, "kind": "turn", "remaining_seconds": 20, "limit": 180, "handable": true, "host_seat": seat}]})
+ verify(table.countdowns[1].kind == "turn" and table.countdowns[1].remaining == 20 and table.handable_seat == 1, "Disconnected active seat shows the idle countdown when it ends first, and handover stays available")
+ session.client._receive({"t": "timers", "timers": []})
  # Drive several authoritative human turns using the real table controls.
  for turn in 4:
   if room.server.engine.active().seat != seat:
