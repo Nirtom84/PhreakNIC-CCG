@@ -112,15 +112,16 @@ func _message(data: Dictionary):
 		"game_over", "over":
 			if not data.get("winner", -1) is int or data.get("winner", -1) < -1 or data.get("winner", -1) >= 4: return
 			OnlineAPI.remember({})
-			if data.get("reason") == "restore_failed": set_status("The server was updated, so this game couldn't be resumed. Start a new one from Play online.")
+			# The server couldn't resume an unfinished game, so it has no result: close it with the reason, even with a
+			# table open, instead of finishing it as a draw.
+			if data.get("reason") == "restore_failed":
+				_room_closed("The server was updated, so this game couldn't be resumed. Start a new one from Play online.")
+				return
 			finished.emit(int(data.get("winner", -1)))
 			# No view ever came (resumed after the game ended, or the game couldn't start), so no table is open to
 			# show the result on: go back to the game list with the reason instead of leaving the room screen stuck.
 			if client.engine.state == null:
-				var reasons = {
-					"restore_failed": "The server was updated, so this game couldn't be resumed. Start a new one from Play online.",
-					"banned_minimum": "At least 40 center-deck cards must remain. Change the banned cards and create a new room.",
-				}
+				var reasons = {"banned_minimum": "At least 40 center-deck cards must remain. Change the banned cards and create a new room."}
 				_room_closed(reasons.get(str(data.get("reason", "")), "This game has already ended."))
 func _room_closed(text: String = "The host closed the room."):
 	if stopped: return
