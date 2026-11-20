@@ -440,3 +440,17 @@ test('edge limit still protects admin routes with CORS',async()=>{
  const res=await worker.fetch(new Request('https://server/admin',{headers:{Origin:'https://online-01.phreaknic-ccg.net'}}),{EDGE_LIMIT:{limit:async()=>({success:false})}});
  assert.equal(res.status,429);assert.equal(res.headers.get('Access-Control-Allow-Origin'),'https://online-01.phreaknic-ccg.net');
 });
+test('a join that waits while a lower seat is removed returns the seat it now holds',async()=>{
+ const room=()=>{const r=makeRoom();r.env={GAME_VERSION:'test'};r.r.seats=[{name:'Host',hero:'',token:'a'.repeat(32),bot:false,difficulty:0},{name:'Bot',hero:'',token:'',bot:true,difficulty:0},{name:'',hero:'',token:'',bot:false,difficulty:0}];return r;};
+ const guest={name:'Guest',hero:'',version:'test'};
+ // Control: an ordinary join gets the open seat and its token.
+ let r=room();r.stat=async()=>{};let result=await r.join(guest);assert.equal(result.seat,2);assert.equal(r.r.seats[2].token,result.token);
+ // Hold the join at its stats call (other requests run during that I/O) while the host acts.
+ const held=async during=>{const r=room(),host=sock();r.clients.set(host,{seat:0});let release,first=true;const gate=new Promise(resolve=>release=resolve);r.stat=async e=>{if(e==='join'&&first){first=false;await gate;}};const pending=r.join(guest);assert.equal(r.r.seats[2].name,'Guest');await during(r,host);release();return [r,await pending];};
+ // Removing the bot shifts the reserved guest to seat 1: the guest gets that seat, not "full" with a ghost left behind.
+ [r,result]=await held((r,host)=>r.message(host,JSON.stringify({t:'lobby',action:'remove_seat',seat:1})));
+ assert.equal(result.failure,undefined,JSON.stringify(result));assert.equal(result.seat,1);assert.equal(r.r.seats[1].name,'Guest');assert.equal(r.r.seats[1].token,result.token);
+ // Control: a kick and a new join meanwhile still fail the first join and never hand out the newcomer's token.
+ let other;[r,result]=await held(async(r,host)=>{await r.message(host,JSON.stringify({t:'lobby',action:'kick',seat:2}));other=await r.join({name:'Other',hero:'',version:'test'});});
+ assert.equal(result.failure?.error,'full');assert.equal(other.seat,2);assert.equal(r.r.seats[2].token,other.token);assert(!r.r.seats.some(s=>s.name==='Guest'));
+});
