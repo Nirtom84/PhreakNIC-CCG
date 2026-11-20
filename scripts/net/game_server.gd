@@ -236,6 +236,11 @@ func _error(transport, reason: String):
 	var seat = authenticated.get(transport, -1)
 	diag("seat %d refused: %s" % [seat, reason], "error:%d" % seat)
 	transport.send({"t": "error", "reason": reason})
+# The client stops acting when it sends an action, until its next view. A refused action changes nothing, so
+# nothing else would send that view: send it now, with the seat's real readiness.
+func _refuse(transport, seat: int, reason: String):
+	_error(transport, reason)
+	_view(seat, true)
 func _receive(transport, message: Dictionary, validated: bool = false):
 	if not validated and not NetTransport.safe_value(message): return
 	if message.get("type") == "emote":
@@ -318,11 +323,11 @@ func _action(transport, seat: int, message: Dictionary):
 		return
 	if not available(seat):
 		diag("seat %d action %s refused: %s" % [seat, str(message.get("kind")) if message.get("kind") in ACTIONS else "unknown", why_not(seat)], "act:%d" % seat)
-		_error(transport, "seat cannot act now"); return
+		_refuse(transport, seat, "seat cannot act now"); return
 	var p = engine.state.players[seat]
 	var card = null
 	if message.has("uid"):
-		if not message.uid is int: _error(transport, "invalid uid"); return
+		if not message.uid is int: _refuse(transport, seat, "invalid uid"); return
 		for c in p.hand + p.reserve + engine.state.center_row + engine.permanents():
 			if c != null and c.uid == message.uid: card = c; break
 	var kind = message.get("kind", "")
@@ -334,7 +339,7 @@ func _action(transport, seat: int, message: Dictionary):
 		"reserve": legal = card != null and engine.can_reserve(p, card)
 		"activate": legal = card != null and index is int and engine.activatable_abilities(p, card).any(func(a): return a.index == index and a.enabled)
 		"end_turn", "play_all", "play_basics": legal = true
-	if not legal: _error(transport, "illegal action"); return
+	if not legal: _refuse(transport, seat, "illegal action"); return
 	diag("seat %d action %s" % [seat, kind], "action:%d" % seat)
 	# These legal actions commit progress before any resulting choice can suspend them.
 	if kind in ["play", "buy", "reserve", "end_turn"]: _progress(seat)
