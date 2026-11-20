@@ -50,6 +50,39 @@ test('a second Start while the first is claiming its slot is ignored, not report
  // Other lobby actions in that moment are still refused.
  r.r.started=false;r.starting=true;await assert.rejects(()=>r.message(host,JSON.stringify({t:'lobby',action:'settings',public:false})),/busy/);
 });
+// The client forgets its seat as soon as it sends Leave, so a Leave during Start's slot claim must still free the seat,
+// and that Start must not then begin with the seat empty.
+const startClaiming=()=>{
+ const r=makeRoom(),host=sock(),guest=sock(),calls=[];let grant,entered;const atClaim=new Promise(resolve=>entered=resolve);
+ r.clients.set(host,{seat:0});r.clients.set(guest,{seat:1});r.stat=async()=>{};r.ensure=async()=>calls.push('boot');
+ r.ctx={container:{destroy:async why=>calls.push(why)},storage:{deleteAll:async()=>calls.push('delete')}};
+ r.env={GAME_VERSION:'test',LOBBY:binding({allow:async()=>true,bump:async()=>{},remove:async c=>calls.push('remove:'+c),refund:async(ip,kind)=>calls.push('refund:'+kind),release:async c=>calls.push('release:'+c),claim:()=>{entered();return new Promise(resolve=>grant=resolve);}})};
+ const start=r.message(host,JSON.stringify({t:'lobby',action:'start'})).then(()=>null,e=>e);
+ const leave=who=>r.message(who,JSON.stringify({t:'lobby',action:'leave'})).then(()=>null,e=>e);
+ return {r,host,guest,calls,atClaim,start,leave,grant:result=>grant(result)};
+};
+test('control: an ordinary guest Leave revokes the token and frees the seat',async()=>{
+ const r=makeRoom(),host=sock(),guest=sock();r.clients.set(host,{seat:0});r.clients.set(guest,{seat:1});
+ await r.message(guest,JSON.stringify({t:'lobby',action:'leave'}));assert.equal(r.r.seats[1].token,'');assert.deepEqual(guest.closed,{code:1000,reason:'left'});assert(!r.clients.has(guest));
+});
+test('a guest Leave while Start claims a refused slot frees the seat',async()=>{
+ const {r,guest,calls,atClaim,start,leave,grant}=startClaiming();await atClaim;
+ assert.equal((await leave(guest))?.message,undefined,'Leave refused');grant('busy');const error=await start;
+ assert.equal(error?.message,'busy');assert(!r.r.started);assert(!r.starting);assert.deepEqual(calls,['refund:start']);
+ assert.equal(r.r.seats[1].token,'');assert.deepEqual(guest.closed,{code:1000,reason:'left'});assert(!r.clients.has(guest));
+});
+test('a guest Leave while Start claims a granted slot frees the seat and stops that Start',async()=>{
+ const {r,guest,calls,atClaim,start,leave,grant}=startClaiming();await atClaim;
+ assert.equal((await leave(guest))?.message,undefined,'Leave refused');grant(null);const error=await start;
+ assert.equal(error?.message,'seats');assert(!r.r.started);assert(!r.starting);assert.equal(r.r.starts||0,0);assert.deepEqual(calls,['release:AB23','refund:start']);
+ assert.equal(r.r.seats[1].token,'');assert.deepEqual(guest.closed,{code:1000,reason:'left'});
+});
+test('the host closing the room while Start claims its slot never boots a game',async()=>{
+ const {r,host,guest,calls,atClaim,start,leave,grant}=startClaiming();let destroyed;r.ctx.container.destroy=why=>{calls.push(why);return new Promise(resolve=>destroyed=resolve);};
+ await atClaim;const leaving=leave(host);grant(null);const error=await start;destroyed?.();assert.equal((await leaving)?.message,undefined,'Leave refused');
+ assert.equal(error?.message,'seats');assert(!calls.includes('boot'));assert(calls.includes('release:AB23')&&calls.includes('remove:AB23'));
+ assert.equal(r.r,null);assert(!r.starting);assert.deepEqual(guest.closed,{code:4002,reason:'closed'});
+});
 test('hard expiry destroys, records abandonment, closes sockets and deletes room',async()=>{
  const r=makeRoom(),events=[],ws=sock();r.r.created=Date.now()-8*3600000;r.clients.set(ws,{seat:0});r.stat=async e=>events.push(e);r.ctx={container:{destroy:async why=>events.push(why)},storage:{deleteAll:async()=>events.push('delete')}};r.env={GAME_VERSION:'test',LOBBY:binding({remove:async c=>events.push(c)})};await r.alarm();assert.deepEqual(events,['abandoned','expired','AB23','delete']);assert.equal(ws.closed.reason,'expired');assert.equal(r.r,null);assert.equal(r.clients.size,0);
 });
