@@ -452,6 +452,7 @@ func run():
  await frames()
  api.mismatch = false
  for pool in ["2026mog", "custom"]: await card_set_table(api, pool)
+ await final_deck_checks()
  api.queue_free()
  await frames()
  print("Online UI checks: %d checks, %d failures" % [checks, failures])
@@ -523,3 +524,69 @@ func seat_socket_checks():
  offline.queue_free()
  await frames(3)
  OnlineAPI.remember({})
+# After an online game, View final deck lists every card the player ended with, not hidden placeholders for the draw pile.
+func final_deck_checks():
+ var server = GameServer.new()
+ root.add_child(server)
+ server.set_process(false)
+ # Banning Rickroll avoids an unrelated initial-row start trigger.
+ server.setup([{"name": "Host", "bot": false}, {"name": "Guest", "bot": false}], "2025", 20, 91, ["Rickroll"], 0.25)
+ server.engine.state.active_seat = 0
+ var session = OnlineSession.new()
+ session.set_process(false)
+ var pair = LoopbackTransport.pair(false)
+ server.attach(pair[0])
+ session.transport = pair[1]
+ session.client.connect_to(pair[1], 0, server.tokens[0])
+ pair[1].received.connect(session._message)
+ pair[0].pump()
+ pair[1].pump()
+ await server.start()
+ var host = server.engine.state.players[0]
+ var guest = server.engine.state.players[1]
+ var attack = (host.hand + host.deck).filter(func(c): return c.id == "Damage")[0]
+ if attack not in host.hand: server.engine.move(attack, host.hand, "hand")
+ guest.life = 1
+ verify(server.engine.state.conservation_ok() and not host.deck.is_empty(), "Final deck: the lethal-attack fixture conserves cards and leaves some in the draw pile")
+ await process_frame
+ server._process(0)
+ pair[1].pump()
+ var table = load("res://scenes/table.tscn").instantiate()
+ table.online_session = session
+ table.add_child(session)
+ session.room = {"code": "AB23CD", "started": true}
+ root.add_child(table)
+ var own = table.engine.state.players[0]
+ verify(not own.deck.is_empty() and own.deck.all(func(c): return c.id == "hidden"), "Final deck: the player's own draw pile stays hidden during play")
+ session.client.send_action("play", attack.uid)
+ pair[0].pump()
+ pair[1].pump()
+ verify(server.engine.state.finished and server.engine.state.winner == host, "Final deck: the lethal attack ends the game")
+ # The final view goes out on the server's next frame.
+ await process_frame
+ server._process(0)
+ pair[1].pump()
+ await process_frame
+ var expected = []
+ var queue = host.deck + host.hand + host.discard + host.play_area + host.reserve
+ while not queue.is_empty():
+  var c = queue.pop_back()
+  expected.append(c.id)
+  queue.append_array(c.attached)
+ expected.sort()
+ var shown = table.final_deck().map(func(c): return c.id)
+ shown.sort()
+ verify(table.engine.state.players[1].life == guest.life, "Final deck: the final view reached the table")
+ var viewer = button(table, "View final deck")
+ verify(table.engine.state.finished and viewer != null, "Final deck: the finished online game offers View final deck")
+ verify(shown == expected, "Final deck: View final deck lists the player's actual cards (%d of %d hidden)" % [shown.count("hidden"), shown.size()])
+ verify(table.engine.state.players[1].deck.all(func(c): return c.id == "hidden"), "Final deck: other players' draw piles stay hidden")
+ if viewer != null:
+  viewer.pressed.emit()
+  verify(table.pending, "Final deck: the button opens the card viewer")
+  table.answered.emit(null)
+ pair[1].close()
+ table.queue_free()
+ server.running = false
+ server.queue_free()
+ await frames(3)

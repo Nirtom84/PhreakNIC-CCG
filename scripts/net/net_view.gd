@@ -30,9 +30,11 @@ static func build(engine, seat: int) -> Dictionary:
 	var codec = NetView.new()
 	var state = engine.state
 	codec.expose(state.center_row + state.removed + state.resolving)
+	# Once the game is over a player's own deck is no longer secret: View final deck lists it.
+	var own_deck = state.finished
 	for p in state.players:
 		codec.expose(p.discard + p.play_area + p.reserve + p.played)
-		if p.seat == seat: codec.expose(p.hand)
+		if p.seat == seat: codec.expose(p.hand + (p.deck if own_deck else []))
 	# Encode player records explicitly so hidden physical zones always contain
 	# placeholders, even when played[] still refers to a now reshuffled card.
 	for p in state.players:
@@ -42,7 +44,7 @@ static func build(engine, seat: int) -> Dictionary:
 		var data = {}
 		for field in PLAYER_FIELDS:
 			var value = p.get(field)
-			if field == "deck" or (field == "hand" and p.seat != seat): value = hidden_cards(value.size())
+			if (field == "deck" and not (own_deck and p.seat == seat)) or (field == "hand" and p.seat != seat): value = hidden_cards(value.size())
 			data[field] = codec.encode(value)
 		codec.records[p.seat] = {"type": "player", "data": data}
 	var data = {}
