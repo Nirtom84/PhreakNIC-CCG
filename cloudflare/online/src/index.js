@@ -165,8 +165,9 @@ export class Room extends DurableObject {
     if(this.r.seats.some(s=>!s.bot&&s.token&&(s.name||'').trim().toLowerCase()===data.name.trim().toLowerCase()))fail('name_taken',409);
     const seat=this.r.seats.findIndex(s=>!s.bot&&!s.token);if(seat<0)fail('full',409);
     const {platform:p,...who}=data;const issued=token();this.r.seats[seat]={...this.r.seats[seat],...who,token:issued};
-    // Return the token issued here, never whatever holds the seat after the awaits (a kick and a new join may land meanwhile).
-    await this.stat('join',p,{seat});await this.save(true);if(this.r.seats[seat]?.token!==issued)fail('full',409);this.broadcastRoom();return {seat,token:issued};
+    // Return the token issued here, never whatever holds the seat after the awaits (a kick and a new join may land meanwhile),
+    // at the seat it holds now: the host's Remove seat on a lower seat meanwhile shifts it down.
+    await this.stat('join',p,{seat});await this.save(true);const now=this.r.seats.findIndex(s=>s.token===issued);if(now<0)fail('full',409);this.broadcastRoom();return {seat:now,token:issued};
   }
   connected(seat) {return [...this.clients.values()].some(c=>c.seat===seat);}
   send(ws,v) {try{ws.send(JSON.stringify(v));}catch{}}
