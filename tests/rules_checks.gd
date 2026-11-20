@@ -10,11 +10,14 @@ class FixedDecider extends Decider:
 	var selected_option: int = 0
 	var named_id: String = "Hacking"
 	var confirmations: Array[String] = []
+	var options_asked: Array = []
 	func name_a_card(_p, _prompt: String) -> String: return named_id
 	func confirm(_p, prompt: String) -> bool:
 		confirmations.append(prompt)
 		return yes
-	func choose_option(_p, _prompt: String, _choices: Array[String]) -> int: return selected_option
+	func choose_option(_p, prompt: String, choices: Array[String]) -> int:
+		options_asked.append([prompt, choices.duplicate()])
+		return selected_option
 	func choose_cards(_p, _prompt: String, cards: Array, min_n: int, max_n: int) -> Array:
 		if choose_none and min_n == 0: return []
 		for c in cards:
@@ -521,4 +524,45 @@ func run():
 	check(e.state.conservation_ok(), "Final focused fixture conservation")
 	e.free()
 	e = null
+	await same_name_triggers()
 	print("Focused rules scenarios complete")
+## Two copies of one card in a custom deck trigger together at the start of the turn (Ruling 25): the active
+## player orders them when their state differs, and copies are told apart by it. The Juice at 4 counters eliminates
+## its controller; the one at 0 deals 1 and wins first if chosen first.
+func same_name_pair(id: String, counters: Array, selected: int):
+	var deck = JSON.parse_string(FileAccess.get_file_as_string("res://data/starter_decks.json"))[0]
+	deck.cards[id] = 2
+	check(CustomDeck.validate(deck).is_empty(), "Two copies of %s make a valid custom deck" % id)
+	var engine = GameEngine.new()
+	test.root.add_child(engine)
+	engine.setup([2, 2], 991, [FixedDecider.new(), FixedDecider.new()], "custom", 0, [], deck)
+	for c in engine.state.center_row.duplicate():
+		if c != null and c.id == "Rickroll": engine.move(c, engine.state.center_deck, "center_deck")
+	var p = engine.state.players[0]
+	var q = engine.state.players[1]
+	var copies = engine.state.all_cards().filter(func(c): return c.id == id).slice(0, 2)
+	for i in 2:
+		engine.gain_owner(copies[i], p)
+		engine.move(copies[i], p.play_area, "play_area")
+		copies[i].counters = counters[i]
+	q.life = 1
+	engine.dec(p).selected_option = selected
+	check(engine.state.conservation_ok(), "Same-name trigger fixture conservation")
+	await engine.start_turn(0)
+	var result = {"asked": engine.dec(p).options_asked.filter(func(a): return a[0] == "Choose next simultaneous effect").map(func(a): return a[1]), "winner": engine.state.winner.seat if engine.state.winner != null else -1, "counters": copies.map(func(c): return c.counters)}
+	engine.free()
+	return result
+func same_name_triggers():
+	var chosen = await same_name_pair("The Juice", [4, 0], 1)
+	check(chosen.asked == [["The Juice (4 counters)", "The Juice (0 counters)"]], "Copies with different counters ask for the order and show their counters (Ruling 25)")
+	check(chosen.winner == 0, "Choosing the 0-counter Juice first wins before the other reaches 5 (Ruling 25)")
+	var other = await same_name_pair("The Juice", [4, 0], 0)
+	check(other.winner == 1 and other.asked.size() == 1, "Choosing the 4-counter Juice first loses the game")
+	var alike = await same_name_pair("The Juice", [0, 0], 1)
+	check(alike.asked.is_empty() and alike.winner == 0, "Copies in the same state are interchangeable: no order prompt")
+	var closets = await same_name_pair("Clarion Inn Closet", [1, 3], 1)
+	check(closets.asked.is_empty() and closets.counters == [3, 5], "Commuting copies (Clarion Inn Storage Closet) still need no order prompt")
+	# Bots order by card name: a labelled copy still counts as that card.
+	var bot = BotDecider.new(null, 1)
+	var labelled: Array[String] = ["Zenthere, Mind Goblin", "The Book (with Drunk Riddler)", "The Book (nothing attached)"]
+	check(bot.choose_option(null, "Choose next simultaneous effect", labelled) == 1, "Bots still rank a labelled copy by its card name")
