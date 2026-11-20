@@ -255,6 +255,7 @@ func run():
  table.free()
  settings.auto_activate.clear()
  await online_views()
+ await online_prompt_inspection()
  await lobby_avatars()
  settings.auto_activate.clear()
  settings.save()
@@ -312,6 +313,81 @@ func online_views():
  session.free()
  pair[0].close()
  authority.free()
+
+func label_starting(node, prefix: String) -> bool:
+ if node is Label and node.text.begins_with(prefix): return true
+ for child in node.get_children():
+  if label_starting(child, prefix): return true
+ return false
+func choice_button(node, uid: int):
+ if node is Button and node.get_meta("uid", -1) == uid: return node
+ for child in node.get_children():
+  var found = choice_button(child, uid)
+  if found != null: return found
+ return null
+# Inspecting a permanent offered by an online prompt shows its ICE, as inspecting it on the board does.
+func online_prompt_inspection():
+ var server = GameServer.new()
+ root.add_child(server)
+ server.set_process(false)
+ # Banning Rickroll avoids an unrelated initial-row start trigger.
+ server.setup([{"name": "Host", "bot": false}, {"name": "Guest", "bot": false}], "2025", 20, 91, ["Rickroll"], 0.25)
+ server.engine.state.active_seat = 0
+ await server.start()
+ var e = server.engine
+ var host = e.state.players[0]
+ var guest = e.state.players[1]
+ var exploit = e.state.all_cards().filter(func(c): return c.id == "Sticky Fingers")[0]
+ var ice = e.state.all_cards().filter(func(c): return c.id == "The Clarion Inn")[0]
+ e.gain_owner(exploit, host)
+ e.move(exploit, host.hand, "hand")
+ e.gain_owner(ice, guest)
+ e.move(ice, guest.play_area, "play_area")
+ ice.counters = 3
+ verify(e.state.conservation_ok(), "Prompt inspection fixture conserves cards")
+ var session = OnlineSession.new()
+ session.set_process(false)
+ session.client.set_process(false)
+ var pair = LoopbackTransport.pair(false)
+ server.attach(pair[0])
+ session.transport = pair[1]
+ session.client.connect_to(pair[1], 0, server.tokens[0])
+ pair[1].received.connect(session._message)
+ pair[0].pump()
+ pair[1].pump()
+ session.room = {"code": "AB23CD", "started": true}
+ var screen = load("res://scenes/table.tscn").instantiate()
+ screen.online_session = session
+ screen.add_child(session)
+ root.add_child(screen)
+ var mirror = screen.engine.permanents().filter(func(c): return c.uid == ice.uid)[0]
+ screen.inspect_card(mirror)
+ verify(label_starting(screen.inspect_overlay, "ICE: 3"), "Inspecting the permanent on the board shows its ICE")
+ screen.close_inspect()
+ session.client.send_action("play", exploit.uid)
+ pair[0].pump()
+ pair[1].pump()
+ verify(screen.pending and server.pending.size() == 1 and server.pending.values()[0].data.cards[0].counters == 3, "AI Fingers opens a real target prompt carrying the ICE count")
+ var target = choice_button(screen, ice.uid)
+ verify(target != null, "The prompt offers the permanent")
+ if target != null:
+  # The mirror can predate the prompt: the prompt's own count is the one shown.
+  mirror.counters = 1
+  var click = InputEventMouseButton.new()
+  click.button_index = MOUSE_BUTTON_RIGHT
+  click.pressed = true
+  target.gui_input.emit(click)
+  verify(label_starting(screen.inspect_overlay, "ICE: 3"), "Inspecting a prompt's target shows the permanent's ICE")
+  screen.close_inspect()
+ screen.answered.emit([0])
+ pair[0].pump()
+ pair[1].pump()
+ verify(ice.controller == 0 and e.state.conservation_ok(), "Choosing that target takes control of it")
+ pair[1].close()
+ screen.queue_free()
+ server.running = false
+ server.queue_free()
+ await frames()
 
 func lobby_avatars():
  var api = RoomAPI.new()

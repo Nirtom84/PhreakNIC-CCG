@@ -1911,10 +1911,12 @@ func inspect_card(c, interactive: bool = false):
    var partner = UIStyle.label(box, ("★ " if matched else "Combo: ") + name_text, 18)
    partner.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
    if matched: partner.add_theme_color_override("font_color", UIStyle.GREEN)
- if c is CardInstance and c in engine.permanents():
+ # An online prompt offers copies rebuilt from its message: find the permanent by uid, but show the prompt's own counts.
+ var in_play = engine.permanents().filter(func(x): return x.uid == c.uid) if c is CardInstance else []
+ if not in_play.is_empty():
   UIStyle.label(box, "ICE: %d · Owner: %s" % [c.counters, seat_name(c.owner)], 18)
   if c.controller != c.owner: UIStyle.label(box, "Controller: " + seat_name(c.controller), 18)
-  if c.flags.get("used", false): UIStyle.label(box, "Used this turn", 18)
+  if in_play[0].flags.get("used", false): UIStyle.label(box, "Used this turn", 18)
  if c is CardInstance:
   var reason = engine.why_not_play(p, c) if c in p.hand else (engine.why_not_buy(p, c) if c in engine.state.center_row or c in p.reserve else "")
   if not reason.is_empty(): UIStyle.label(box, reason, 22).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
