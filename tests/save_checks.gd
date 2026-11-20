@@ -335,6 +335,55 @@ func knocked_out():
  verify(find_button(menu, "Resume game") == null, "No Resume game after being knocked out")
  menu.queue_free()
  await process_frame
+## A Hero picked in the custom set (a Mog printing) and kept after switching to the Base Set must not make the save unreadable.
+func custom_hero():
+ SaveGame.remove()
+ var settings = root.get_node("Sfx")
+ var previous = [settings.card_pool, settings.hero_id, settings.handle]
+ settings.card_pool = "custom"
+ var menu = load("res://scenes/menu.tscn").instantiate()
+ root.add_child(menu)
+ current_scene = menu
+ await process_frame
+ var hero = "JousterL@mog"
+ verify(hero in load("res://scripts/ui/style.gd").heroes(), "Custom Hero setup: the Hero picker offers the Mog printing")
+ menu.select_hero(hero)
+ var base = find_button(menu, "Base Set — PhreakNIC 26 · 102 cards")
+ verify(base != null, "Custom Hero setup: the menu offers the Base Set")
+ if base != null: base.pressed.emit()
+ verify(settings.card_pool == "2025" and settings.hero_id == hero, "Custom Hero setup: switching to the Base Set keeps the chosen Hero")
+ menu.launch()
+ var table = current_scene
+ table.auto_drive = false
+ await process_frame
+ while table.engine.active().is_bot: await table.drive_reaction(table.engine.active())
+ verify(table.engine.state.card_pool == "2025" and table.seat_heroes[0] == hero, "Custom Hero setup: a Base Set game with the custom-set Hero")
+ verify(table.save_game(), "Custom Hero: Save game succeeds")
+ var saved = SaveGame.read()
+ verify(not saved.is_empty() and saved.table.seat_heroes[0] == hero, "Custom Hero: the Base Set save stays readable for Resume")
+ if not saved.is_empty():
+  var resumed = load("res://scenes/table.tscn").instantiate()
+  resumed.auto_drive = false
+  resumed.resume_data = saved
+  root.add_child(resumed)
+  await process_frame
+  verify(resumed.engine.state.card_pool == "2025" and resumed.seat_heroes[0] == hero, "Custom Hero: Resume restores the game and its avatar")
+  resumed.queue_free()
+ # Avatars are still checked: an id that isn't any printing is refused.
+ var bad = JSON.parse_string(FileAccess.get_file_as_string(SaveGame.PATH))
+ bad.table.seat_heroes[1] = "Not a card"
+ var file = FileAccess.open(SaveGame.PATH, FileAccess.WRITE)
+ file.store_string(JSON.stringify(bad))
+ file.close()
+ verify(SaveGame.read().is_empty(), "Custom Hero: an unknown avatar id is still refused")
+ SaveGame.remove()
+ table.queue_free()
+ current_scene = null
+ settings.card_pool = previous[0]
+ settings.hero_id = previous[1]
+ settings.handle = previous[2]
+ root.get_node("CardDB").select_pool(previous[0])
+ await process_frame
 func run():
  for path in ["user://settings.json", "user://settings.cfg.migrated", "user://settings.cfg", SaveGame.PATH]:
   backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
@@ -342,6 +391,7 @@ func run():
  await focused()
  await ui()
  await knocked_out()
+ await custom_hero()
  for path in backups:
   if backups[path] == null:
    if FileAccess.file_exists(path): DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
