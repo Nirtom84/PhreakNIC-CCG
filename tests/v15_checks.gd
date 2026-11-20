@@ -705,11 +705,16 @@ func online_result_checks():
  root.add_child(table)
  await process_frame
  var before = table.engine.state.players[0].life
+ # Hold back the coalesced final view: only game_over (with final_players) reaches the table.
+ server.set_process(false)
  server.engine.state.players[0].life = -8
  server.engine.finish(server.engine.state.players[1])
  for i in 3: await process_frame
- verify(before > 0 and table.match_stats.seats[0].final_life == -8, "Online summary receives final life before coalesced view")
+ verify(before > 0 and table.engine.state.players[0].life == before and table.match_stats.seats[0].final_life == -8, "Online summary receives final life before coalesced view")
  verify(table.online_over and table.engine.state.finished and table.find_child("MatchSummary", true, false) != null, "Online summary completes once")
+ # The Room's own "over" follows game_over; it must not recompute the totals from the stale mirror.
+ session._message({"t": "over", "winner": 1})
+ verify(table.match_stats.seats[0].final_life == -8 and table.match_stats.winner_seat == 1, "Room's later over keeps the authoritative final totals")
  pair[1].close()
  table.free()
  session.free()
