@@ -2402,11 +2402,16 @@ func timer_for(seat: int):
  return countdowns[seat]
 func apply_countdowns(timers: Array):
  handable_seat = handable_target(timers, human_seat)
- var present = []
+ # A disconnected active seat has two deadlines (disconnect and turn idle): show the one that ends first.
+ var soonest = {}
  for data in timers:
   var seat = int(data.get("seat", -1))
   if seat < 0 or seat >= player_count: continue
   if seat == human_seat and online_prompt_id != "": continue
+  if not soonest.has(seat) or float(data.remaining_seconds) < float(soonest[seat].remaining_seconds): soonest[seat] = data
+ var present = []
+ for seat in soonest:
+  var data = soonest[seat]
   timer_for(seat).configure(float(data.remaining_seconds), float(data.limit), str(data.kind), seat == human_seat)
   present.append(seat)
  for seat in countdowns:
