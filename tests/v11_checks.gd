@@ -178,6 +178,7 @@ func run():
    if script_name.ends_with(".gd") and FileAccess.get_file_as_string(dir + "/" + script_name).contains("JavaScriptBridge" + ".eval("): eval_users.append(script_name)
  verify(eval_users.is_empty(), "No script uses JavaScriptBridge.eval: %s" % [eval_users])
  await stall_checks()
+ await paced_reaction_driver()
  print("V11 checks: %d checks, %d failures" % [checks, failures])
  quit(1 if failures else 0)
 func seated_room() -> Array:
@@ -299,3 +300,63 @@ func toctou_turns():
  await engine.play_card(caster, toctou_hand(engine, "r0nk", 0))
  verify(during.get("over", false) and engine.state.winner == survivor, "Last player alive wins during a TOCTOU turn that interrupted r0nk")
  engine.queue_free()
+## A paced bot's TOCTOU turn in a live room must have exactly one driver. The engine
+## calls the server's reaction driver; the polling loop must not start a second one
+## while the paced bot waits between actions.
+func paced_reaction_driver():
+ var server = GameServer.new()
+ root.add_child(server)
+ server.set_process(false)
+ server.clock = func(): return time
+ server.setup([{"name": "Host"}, {"name": "Bot", "bot": true, "difficulty": 1}, {"name": "Guest"}], "2026", 100, 91, [], 0.25)
+ var pair = LoopbackTransport.pair(false)
+ server.attach(pair[0])
+ var client = NetClient.new()
+ root.add_child(client)
+ client.connect_to(pair[1], 0, server.tokens[0])
+ pair[0].pump()
+ pair[1].pump()
+ await server.start()
+ await server.engine.start_turn(0)
+ var engine = server.engine
+ var host = engine.state.players[0]
+ var bot = engine.state.players[1]
+ for card in bot.hand.duplicate(): engine.move(card, bot.deck, "deck")
+ var cover = engine.state.all_cards().filter(func(c): return c.id == "TOCTOU")[0]
+ engine.gain_owner(cover, bot)
+ engine.move(cover, bot.hand, "hand")
+ for card in bot.deck.filter(func(c): return c.id == "Hacking").slice(0, 3): engine.move(card, bot.hand, "hand")
+ var attack = engine.state.all_cards().filter(func(c): return c.id == "Damage" and c.owner == 0)[0]
+ engine.gain_owner(attack, host)
+ engine.move(attack, host.hand, "hand")
+ # A row the bot can neither buy nor reserve, so its turn is just the three plays.
+ engine.state.center_deck.append_array(engine.state.center_row.filter(func(c): return c != null))
+ engine.state.center_row.fill(null)
+ var expensive = engine.state.center_deck.filter(func(c): return engine.effective_cost(bot, c) > 5)
+ for i in 5:
+  engine.state.center_deck.erase(expensive[i])
+  engine.state.center_row[i] = expensive[i]
+ bot.life = 1
+ var plays = []
+ var endings = []
+ engine.card_played.connect(func(p, _card): if p == bot: plays.append(Time.get_ticks_msec()))
+ engine.turn_ended.connect(func(p): if p == bot: endings.append(true))
+ server.set_process(true)
+ client.send_action("play", attack.uid)
+ pair[0].pump()
+ var began = Time.get_ticks_msec()
+ while Time.get_ticks_msec() - began < 5000:
+  await process_frame
+  if (engine.reaction_depth == 0 and not engine.busy) or endings.size() >= 3: break
+ var paced = range(1, plays.size()).all(func(i): return plays[i] - plays[i - 1] >= 200)
+ verify(cover in engine.state.removed and engine.state.conservation_ok(), "Paced bot reaction fixture plays TOCTOU and conserves cards")
+ verify(plays.size() == 3 and endings.size() == 1, "A paced bot's TOCTOU turn plays its hand once and ends once (plays %d, endings %d)" % [plays.size(), endings.size()])
+ verify(engine.reaction_depth == 0 and engine.active() == host and paced, "The paced bot's TOCTOU turn returns to the attacker at the selected pace")
+ verify(server.driving.is_empty(), "Reaction driver releases its depth when the TOCTOU turn ends")
+ server.running = false
+ server.set_process(false)
+ engine.finish(null)
+ await create_timer(0.35).timeout
+ client.queue_free()
+ server.queue_free()
+ await frames()
