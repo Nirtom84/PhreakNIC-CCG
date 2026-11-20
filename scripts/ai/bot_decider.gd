@@ -91,7 +91,9 @@ func choose_option(player, prompt: String, options: Array[String]) -> int:
 		var priorities = ["Clarion Inn Air Conditioning", "Rickroll", "Clarion Inn Storage Closet", "pTFS", "The Book", "Zenthere, Mind Goblin", "The Phreaknic Network", "Military-Grade Card Encapsulation"]
 		if "attached Action" in prompt: priorities = ["Rookie Numbers", "heartsh8ped"]
 		for name in priorities:
-			if name in options: return options.find(name)
+			# Same-name copies in different states are labelled "Name (state)".
+			for i in options.size():
+				if options[i] == name or options[i].begins_with(name + " ("): return i
 		return 0
 	# Payphone may be cancelled by humans, but a bot must resolve its free power.
 	if prompt == "Choose one" and options.size() == 3 and options[2] == "Cancel" and options[0] == "+2 hacking" and options[1] == "Deal 2 damage":

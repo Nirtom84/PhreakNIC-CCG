@@ -562,3 +562,7 @@ func same_name_triggers():
 	check(alike.asked.is_empty() and alike.winner == 0, "Copies in the same state are interchangeable: no order prompt")
 	var closets = await same_name_pair("Clarion Inn Closet", [1, 3], 1)
 	check(closets.asked.is_empty() and closets.counters == [3, 5], "Commuting copies (Clarion Inn Storage Closet) still need no order prompt")
+	# Bots order by card name: a labelled copy still counts as that card.
+	var bot = BotDecider.new(null, 1)
+	var labelled: Array[String] = ["Zenthere, Mind Goblin", "The Book (with Drunk Riddler)", "The Book (nothing attached)"]
+	check(bot.choose_option(null, "Choose next simultaneous effect", labelled) == 1, "Bots still rank a labelled copy by its card name")
