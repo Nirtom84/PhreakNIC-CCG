@@ -133,9 +133,10 @@ func inspect_private(seat: int, message: Dictionary):
   for c in state.center_row + state.removed + state.resolving:
    if c != null: visible.append(c.uid)
   for p in state.players:
-   hidden.append_array(p.deck)
+   # A finished game shows each player their own deck (View final deck).
+   if p.seat != seat or not state.finished: hidden.append_array(p.deck)
    if p.seat != seat: hidden.append_array(p.hand)
-   for c in p.discard + p.play_area + p.reserve + p.played + (p.hand if p.seat == seat else []):
+   for c in p.discard + p.play_area + p.reserve + p.played + (p.hand if p.seat == seat else []) + (p.deck if p.seat == seat and state.finished else []):
     visible.append(c.uid)
     for a in c.attached: visible.append(a.uid)
   verify(hidden.all(func(c): return c.id == "hidden" and c.uid < 0 and c.flags.is_empty() and c.attached.is_empty()), "Other hands and all decks stay private")
