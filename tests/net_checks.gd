@@ -47,7 +47,8 @@ func inspect_message(server, seat: int, message: Dictionary):
   var hidden = mirror.center_deck.duplicate()
   var sizes_ok = mirror.center_deck.size() == view.counts.center_deck
   for p in mirror.players:
-   hidden.append_array(p.deck)
+   # A finished game shows each player their own deck (View final deck).
+   if p.seat != seat or not mirror.finished: hidden.append_array(p.deck)
    if p.seat != seat: hidden.append_array(p.hand)
    sizes_ok = sizes_ok and p.deck.size() == view.counts.players[p.seat].deck and p.hand.size() == view.counts.players[p.seat].hand
   verify(sizes_ok, "Hidden counts match authority")
@@ -61,7 +62,7 @@ func inspect_message(server, seat: int, message: Dictionary):
   for c in mirror.center_row + mirror.removed + mirror.resolving:
    if c != null: public_ids.append(c.uid)
   for p in mirror.players:
-   for c in p.discard + p.play_area + p.reserve + p.played + (p.hand if p.seat == seat else []):
+   for c in p.discard + p.play_area + p.reserve + p.played + (p.hand if p.seat == seat else []) + (p.deck if p.seat == seat and mirror.finished else []):
     public_ids.append(c.uid)
     for a in c.attached: public_ids.append(a.uid)
   verify(view.objects.all(func(r): return r.type != "card" or r.data.id == "hidden" or r.data.uid in public_ids), "Codec has no orphan private card definitions")
@@ -81,6 +82,8 @@ func finish_game(server, clients: Array):
  await frames(4)
  for client in clients:
   verify(client.engine.state.finished, "Final view received")
+  var own = client.engine.state.players[client.seat].deck.map(func(c): return c.uid)
+  verify(own == server.engine.state.players[client.seat].deck.map(func(c): return c.uid), "Final view shows the player's own deck")
   client.transport.close()
   client.queue_free()
  server.queue_free()
