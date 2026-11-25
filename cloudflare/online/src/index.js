@@ -252,13 +252,14 @@ export class Room extends DurableObject {
         // Every start boots a paid game server and counts against the daily cap: bound retries per room and per IP
         // (a custom deck that fails on the server returns the room to the lobby).
         if((this.r.starts||0)>=MAX_ROOM_STARTS)fail('This room has been started too many times. Create a new room.');
-        this.starting=true;try{
+        // The room can close (host leaves, room expires) during the awaits below: keep its code for the slot release.
+        const code=this.r.code;this.starting=true;try{
           if(!await lobby(this.env).allow(c.ip||'unknown','start'))fail('rate_limit',429);
           // A refused claim (servers full) doesn't use up the player's start allowance.
           const refusal=await lobby(this.env).claim(this.r.code,this.r.created,c.ip||this.r.ip,true);if(refusal){await lobby(this.env).refund(c.ip||'unknown','start');fail(refusal,503);}
-          if(!this.r||roomExpired(this.r)){await lobby(this.env).release(this.r?.code||'');fail('busy',503);}
+          if(!this.r||roomExpired(this.r)){await lobby(this.env).release(code);await lobby(this.env).refund(c.ip||'unknown','start');fail('busy',503);}
           // Someone left (or the host closed the room) while the slot was being claimed: don't start with an empty seat.
-          if(this.closing||this.r.seats.some(s=>!s.bot&&!s.token)){await lobby(this.env).release(this.r.code);await lobby(this.env).refund(c.ip||'unknown','start');fail('seats');}
+          if(this.closing||this.r.seats.some(s=>!s.bot&&!s.token)){await lobby(this.env).release(code);await lobby(this.env).refund(c.ip||'unknown','start');fail('seats');}
           // Only a start that goes through keeps a deck roll, and only a custom-deck one has any.
           this.r.deck_roll=ranked?ranked.lines:[];if(ranked){this.r.deck_order=ranked.order;this.r.deck_groups=ranked.groups;this.r.deck_attempt=0;}
           this.r.startIP=c.ip||this.r.ip;this.r.started=true;this.r.starts=(this.r.starts||0)+1;await this.stat('start');await this.save(true);this.broadcastRoom();await this.ensure();return;

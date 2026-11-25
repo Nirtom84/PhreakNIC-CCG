@@ -73,6 +73,8 @@ func run():
  endpoint.messages.clear()
  for i in 5: action(s, "play_basics")
  verify(endpoint.messages.filter(func(m): return m.t == "error" and m.reason == "action rate limit").size() == 1, "Sixth action within a second is refused")
+ # The client waits for a view after every action it sends, refused ones included (throttled like any view).
+ verify(endpoint.messages.any(func(m): return m.t == "view") or s.dirty, "The rate-limited action still brings the seat a view")
  time += 1
  action(s, "play_basics")
  verify(s.action_times[1].size() == 1, "Action budget recovers after one second")

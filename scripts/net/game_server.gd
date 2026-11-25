@@ -311,7 +311,11 @@ func _progress(seat: int):
 	idle_warned = false
 func _action(transport, seat: int, message: Dictionary):
 	var recent: Array = action_times.get(seat, []).filter(func(at): return now() - at < 1.0)
-	if recent.size() >= 5: _error(transport, "action rate limit"); return
+	# Like any refused action, the client waits for a view; the unforced view keeps its 0.2 s throttle.
+	if recent.size() >= 5:
+		_error(transport, "action rate limit")
+		_view(seat)
+		return
 	recent.append(now())
 	action_times[seat] = recent
 	if message.get("kind") is String and message.kind == "hand_to_bot":

@@ -498,3 +498,9 @@ test('room updates tell each player their own seat after a lower seat is removed
  assert.deepEqual([host,guest,friend].map(ws=>last.get(ws).seat),[0,1,2]);
  for(const ws of [guest,friend]){const room=last.get(ws);assert.equal(room.seats[room.seat].name,ws===guest?'Guest':'Friend');}
 });
+test('a room that closes before Start gets its slot releases that slot by code and refunds the start',async()=>{
+ const {r,calls,atClaim,start,grant}=startClaiming();await atClaim;
+ // The host's close finished while the claim was in flight: the room state is gone.
+ r.r=null;grant(null);const error=await start;
+ assert.equal(error?.message,'busy');assert(!r.starting);assert(!calls.includes('boot'));assert.deepEqual(calls,['release:AB23','refund:start']);
+});
