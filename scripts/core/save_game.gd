@@ -216,8 +216,10 @@ static func read() -> Dictionary:
 	if table.seat_names.size() != state.players.size() or table.seat_heroes.size() != state.players.size(): return {}
 	for name in table.seat_names:
 		if not name is String: return {}
+	# An avatar is only a picture, and the chosen Hero (possibly a custom-set "@mog" printing) is kept when the
+	# player switches sets: check it against every printing (the custom catalog), not the saved game's set.
 	for hero in table.seat_heroes:
-		if not hero is String or (hero != "" and not Engine.get_main_loop().root.get_node("CardDB").catalog(state.card_pool).cards.has(hero)): return {}
+		if not hero is String or (hero != "" and not Engine.get_main_loop().root.get_node("CardDB").catalog("custom").cards.has(hero)): return {}
 	if table.has("log_entries"):
 		if not table.log_entries is Array: return {}
 		for entry in table.log_entries:
