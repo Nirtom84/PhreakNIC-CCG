@@ -32,6 +32,12 @@ func synced_frames(server):
   var deadline = Time.get_ticks_msec() + 2000
   while server.dirty and Time.get_ticks_msec() < deadline: await process_frame
  await frames()
+# After a client action, the server may get it a frame later and hold its view for the 0.2 s throttle,
+# so server.dirty can still be false here: wait until the mirror shows the result (or 3 s pass).
+func settled(server, done: Callable):
+ await synced_frames(server)
+ var deadline = Time.get_ticks_msec() + 3000
+ while not done.call() and Time.get_ticks_msec() < deadline: await process_frame
 func button(node, prefix):
  if node is Button and node.text.begins_with(prefix): return node
  for child in node.get_children():
@@ -114,7 +120,7 @@ func rule_checks(table, authority, server = null):
  var pay = button(table.inspect_overlay, "Pay 6 Hacking: remove Nashville 2600")
  verify(pay != null, "Opponent Nashville payment available through sheet")
  pay.pressed.emit()
- await synced_frames(server)
+ await settled(server, func(): return table.engine.permanents().all(func(c): return c.effect_id() != "Nashville 2600"))
  verify(cards[0] in authority.state.removed and p.hacking == 0, "Sheet payment removes opponent Nashville, mirror=" + str(server != null))
  verify(table.engine.permanents().all(func(c): return c.effect_id() != "Nashville 2600"), "Mirror follows removal")
  for c in cards.slice(1): authority.move(c, authority.state.removed, "removed")
