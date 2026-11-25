@@ -577,12 +577,27 @@ func resolve_triggers(pending: Array, stop_on_active_death: bool = true):
 		pending = pending.filter(func(t): return t.get("card") == null or (t.generation == play_versions.get(t.card.uid, 0) and (t.card in state.center_row if t.get("row", false) else t.card in permanents())))
 		if pending.is_empty(): break
 		var index = 0
-		var names = pending.map(func(t): return db().get_card(t.card.id).name if t.get("card") != null else t.name)
+		var names = trigger_labels(pending)
 		if pending.size() > 1 and names.any(func(n): return n != names[0]) and not pending.all(func(t): return t.get("commutes", false)):
 			index = await option(active(), "Choose next simultaneous effect", names)
 		var trigger = pending.pop_at(index)
 		await trigger.resolve.call()
 	busy = saved_busy
+## Copies sharing a name can still differ (The Juice's counters, The Book's attached Actions): such copies are
+## labelled with what differs and ordered like any other effects. Copies in the same state are interchangeable.
+func trigger_labels(pending: Array) -> Array:
+	var names = pending.map(func(t): return db().get_card(t.card.id).name if t.get("card") != null else t.name)
+	var attached = pending.map(func(t): return t.card.attached.map(func(x): return db().get_card(x.id).name) if t.get("card") != null else [])
+	var labels = names.duplicate()
+	for i in pending.size():
+		var c = pending[i].get("card")
+		if c == null: continue
+		var copies = range(pending.size()).filter(func(j): return names[j] == names[i] and pending[j].get("card") != null)
+		var details: Array = []
+		if copies.any(func(j): return pending[j].card.counters != c.counters): details.append("%d counter%s" % [c.counters, "" if c.counters == 1 else "s"])
+		if copies.any(func(j): return attached[j] != attached[i]): details.append("with " + ", ".join(attached[i]) if not attached[i].is_empty() else "nothing attached")
+		if not details.is_empty(): labels[i] += " (%s)" % ", ".join(details)
+	return labels
 
 # Shared bounded convenience action, used by local and remote humans.
 func play_all(p, basics: bool = false):
