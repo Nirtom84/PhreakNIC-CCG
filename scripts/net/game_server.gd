@@ -496,15 +496,25 @@ func _reaction_idle_tick(step: float = 0.0):
 	if not engine.state.finished and not seats[p.seat].bot and reaction_used >= REACTION_LIMIT: _idle_takeover(p.seat)
 	if engine.state.finished or seats[p.seat].bot or _takeover(p.seat): return
 	if now() - reaction_at >= 180: _idle_takeover(p.seat)
+# The engine drives a bot's reaction turn through this; _process must not start a second driver for that depth.
 func _drive_reaction(p):
+	var depth = engine.reaction_depth
+	_claim(depth)
 	var driver = BotPlayer.new(engine)
 	driver.search_budget_ms = DefconSearch.SERVER_MS
 	driver.pace_provider = func(): return bot_pace
 	driver.action_completed = _checkpoint
 	await driver.take_turn(p)
+	_release(depth)
+# Drivers at one depth can overlap briefly (one unwinding as the next turn starts), so count them.
+func _claim(depth: int):
+	driving[depth] = driving.get(depth, 0) + 1
+func _release(depth: int):
+	driving[depth] = driving.get(depth, 1) - 1
+	if driving[depth] <= 0: driving.erase(depth)
 func _drive():
 	var depth = engine.reaction_depth
-	driving[depth] = true
+	_claim(depth)
 	var p = engine.active()
 	var driver = BotPlayer.new(engine)
 	driver.search_budget_ms = DefconSearch.SERVER_MS
@@ -512,7 +522,7 @@ func _drive():
 	driver.action_completed = _checkpoint
 	driver.continue_turn = func(): return seats[p.seat].bot or _takeover(p.seat)
 	await driver.take_turn(p)
-	driving.erase(depth)
+	_release(depth)
 	state_fingerprint = _fingerprint()
 	dirty = true
 	_checkpoint()
