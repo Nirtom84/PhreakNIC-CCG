@@ -258,11 +258,94 @@ func failed_restore_table(api):
  room.queue_free()
  await frames()
  OnlineAPI.remember({})
+# A Buy button left open across turns refers to a card that is gone. The server refuses it; the player must still be able to act.
+func stale_buy_checks():
+ var time = [0.0]
+ var server = GameServer.new()
+ root.add_child(server)
+ server.set_process(false)
+ server.clock = func(): return time[0]
+ # Banning Rickroll avoids an unrelated initial-row start trigger.
+ server.setup([{"name": "Host", "bot": false}, {"name": "Guest", "bot": false}], "2025", 20, 91, ["Rickroll"], 0.25)
+ server.bot_pace = 0.0
+ server.engine.state.active_seat = 0
+ await server.start()
+ var e = server.engine
+ var host = e.state.players[0]
+ # One affordable card in the row and an empty hand, so the idle bot buys exactly that card. Existing cards only move.
+ for c in host.hand.duplicate(): e.move(c, host.deck, "deck")
+ host.hacking = 6
+ e.state.center_deck.append_array(e.state.center_row.filter(func(c): return c != null))
+ e.state.center_row.fill(null)
+ var target = e.state.center_deck.filter(func(c): return c.id == "The Clarion Inn")[0]
+ var row = [target] + e.state.center_deck.filter(func(c): return e.effective_cost(host, c) > 6).slice(0, 4)
+ for i in row.size():
+  e.state.center_deck.erase(row[i])
+  e.state.center_row[i] = row[i]
+ verify(row.size() == 5 and e.state.conservation_ok(), "Stale Buy: the fixture is a legal board that conserves cards")
+ var sessions = []
+ var pairs = []
+ for seat in 2:
+  var session = OnlineSession.new()
+  session.set_process(false)
+  session.client.set_process(false)
+  var pair = LoopbackTransport.pair(false)
+  server.attach(pair[0])
+  session.transport = pair[1]
+  session.client.connect_to(pair[1], seat, server.tokens[seat])
+  pair[1].received.connect(session._message)
+  pair[0].pump()
+  pair[1].pump()
+  session.room = {"code": "AB23CD", "started": true}
+  sessions.append(session)
+  pairs.append(pair)
+ var pump = func():
+  await process_frame
+  server._process(0)
+  for pair in pairs:
+   pair[0].pump()
+   pair[1].pump()
+ var table = load("res://scenes/table.tscn").instantiate()
+ table.online_session = sessions[0]
+ table.add_child(sessions[0])
+ root.add_child(table)
+ var mirror = table.engine.state.center_row.filter(func(c): return c != null and c.uid == target.uid)[0]
+ table.inspect_card(mirror, true)
+ var buy = null
+ for node in table.inspect_overlay.find_children("*", "Button", true, false):
+  if node.text.begins_with("Buy —"): buy = node
+ verify(buy != null and not buy.disabled, "Stale Buy: the inspector offers an enabled Buy button")
+ # The host idles with the sheet open; after 180 s the bot buys that card and ends the turn.
+ server._idle_tick()
+ time[0] = 180
+ for i in 300:
+  if e.active().seat == 1: break
+  await pump.call()
+ verify(e.active().seat == 1 and target not in e.state.center_row, "Stale Buy: the idle bot bought the inspected card and ended the turn")
+ await pump.call()
+ sessions[1].client.send_action("end_turn")
+ await pump.call()
+ await pump.call()
+ verify(e.active().seat == 0 and server.available(0) and table.available(), "Stale Buy: the host has control again on the next turn")
+ verify(is_instance_valid(buy) and not buy.disabled, "Stale Buy: the old Buy button is still on screen and enabled")
+ if is_instance_valid(buy): buy.pressed.emit()
+ await pump.call()
+ await pump.call()
+ verify(server.available(0) and e.state.conservation_ok(), "Stale Buy: the refused purchase leaves the game playable")
+ verify(table.notice_text == "illegal action", "Stale Buy: the refusal reaches the table")
+ verify(table.available(), "Stale Buy: after the refusal the host can still act")
+ for pair in pairs: pair[1].close()
+ sessions[1].free()
+ table.queue_free()
+ server.running = false
+ server.queue_free()
+ await frames(3)
 func run():
  await seat_socket_checks()
  if FileAccess.file_exists("user://savegame.json"): DirAccess.remove_absolute(ProjectSettings.globalize_path("user://savegame.json"))
  root.get_node("Sfx").visual_effects = false
  root.get_node("Sfx").auto_end_turn = false
+ await stale_buy_checks()
  verify(OnlineAPI.invite_code("https://phreaknic-ccg.net/join/ABCD") == "ABCD", "path invite")
  verify(OnlineAPI.invite_code("https://phreaknic-ccg.net/?join=abcd") == "ABCD", "query invite")
  verify(OnlineAPI.invite_code("https://phreaknic-ccg.net/?join=0000") == "", "invalid invite")

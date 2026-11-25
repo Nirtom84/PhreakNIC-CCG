@@ -111,6 +111,10 @@ func illegal():
  await frames(5)
  verify(errors.size() == 4, "Illegal actions and unknown prompt rejected")
  verify(before == JSON.stringify(SaveGame.snapshot(server.engine.state)), "Rejected inputs leave full authoritative state unchanged")
+ # Sending an action stops a client acting until its next view; a refusal changes nothing, so that view must still come.
+ var active = server.engine.active().seat
+ verify(server.available(active) and clients[active].can_act, "A refused action leaves the active client able to act")
+ verify(not clients[1 - active].can_act, "A refused action never lets a seat act out of turn")
  var endpoint = LoopbackTransport.pair()
  server.attach(endpoint[0])
  var mismatch = []
