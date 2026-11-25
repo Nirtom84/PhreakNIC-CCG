@@ -1,5 +1,28 @@
 # Release Notes
 
+## v0.34 — More fixes from bitwize (unreleased)
+Another round found, reported and fixed by **bitwize** ([bitwize-music](https://github.com/bitwize-music) on GitHub): 13 pull requests, each with tests. Thank you, bitwize!
+
+**Online games**
+- A bot's reaction (TOCTOU) turn is played once, not twice.
+- An out-of-date button (for example Buy on a card that's gone) no longer locks you out of your turn: the server sends your screen a fresh view.
+- A game the server couldn't resume after an update now closes with the reason, instead of showing a Stalemate and counting as a draw.
+- The final life and deck totals stay correct when the game ends.
+- When the active player disconnects, everyone sees the countdown that ends first.
+- View final deck shows the cards in your own draw pile once the game is over.
+- Inspecting a card offered by a choice prompt shows its ICE.
+
+**Online lobby**
+- Leaving a lobby while the host presses Start works, and that Start is stopped.
+- When the host removes a seat, players joining at that moment get their seat, and everyone's own seat number stays right.
+
+**Game**
+- Two copies of the same card in different states (for example two The Juice with different counters) now let you choose their order, as the rules say.
+- Picking a custom-set Hero as your avatar no longer breaks Resume after a Base Set game.
+
+**Behind the scenes**
+- CI runs the v0.32 server and client tests.
+
 ## v0.33 — Mac download
 **New: a Mac version**, added by **bitwize** ([bitwize-music](https://github.com/bitwize-music) on GitHub). Thank you, bitwize!
 - `PhreakNIC-CCG-macos.zip` runs on Intel and Apple Silicon Macs (macOS 11 or newer on Intel, 13 or newer on Apple Silicon). It isn't notarized by Apple yet, so the first time macOS blocks it: open **System Settings → Privacy & Security** and choose **Open Anyway**.
