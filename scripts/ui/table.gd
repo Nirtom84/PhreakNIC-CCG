@@ -1549,9 +1549,11 @@ func moved(_card, _from, _to):
  banner.modulate = Color("e9c778")
  UIStyle.animation(banner).tween_property(banner, "modulate", Color.WHITE, UIStyle.motion(0.25))
 func game_over(winner):
+ # Online, the server's game_over and the Room's over both end up here: only the first one counts, so the
+ # second can't recompute the totals from the mirror over the authoritative final_players.
+ if online_session != null and online_over: return
  match_stats.finish(winner.seat if winner != null else -1, engine.state.players)
  if online_session != null:
-  if online_over: return
   online_over = true
   engine.state.finished = true
   engine.state.winner = winner
