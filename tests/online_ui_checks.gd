@@ -126,7 +126,7 @@ class SeatSocket extends Node:
   for item in refused: item.stream.disconnect_from_host()
   tcp.stop()
 func _initialize():
- for path in ["user://settings.json", "user://settings.cfg.migrated", "user://settings.cfg", "user://savegame.json"]:
+ for path in ["user://settings.json", "user://settings.cfg.migrated", "user://settings.cfg", "user://savegame.json", "user://stats.json"]:
   user_backups[path] = FileAccess.get_file_as_bytes(path) if FileAccess.file_exists(path) else null
  run.call_deferred()
 func _finalize():
@@ -213,6 +213,46 @@ func card_set_table(api, pool: String):
    await process_frame
   verify(redrawn[0], "%s: the online table follows new views" % pool)
   table.queue_free()
+ await frames()
+ await room.drain()
+ room.queue_free()
+ await frames()
+ OnlineAPI.remember({})
+# The server couldn't resume an unfinished game (LinkServer's restore_failed, see link_checks) and the room forwards
+# that to the open table: close the game with the reason instead of showing a Stalemate and counting a lifetime draw.
+func failed_restore_table(api):
+ var room = FakeRoom.new()
+ root.add_child(room)
+ var online = load("res://scripts/ui/online.gd").new()
+ online.api = api
+ online.session = OnlineSession.new()
+ online.add_child(online.session)
+ online.session.transport_factory = room.connect_seat
+ root.add_child(online)
+ current_scene = online
+ await frames()
+ online.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": 0, "token": "a".repeat(32)})
+ await frames()
+ room.receive({"t": "lobby", "action": "start"})
+ await frames(12)
+ var table = current_scene
+ verify(table != online and table.online_session != null and not table.match_stats.finished, "Failed restore: an unfinished online game is open")
+ if table == online or table.online_session == null:
+  online.queue_free()
+ else:
+  table.lifetime_test_enabled = true
+  var games = load("res://scripts/ui/lifetime_stats.gd").new().data.games
+  room.socket.send({"t": "over", "winner": -1, "reason": "restore_failed"})
+  await frames()
+  var after = load("res://scripts/ui/lifetime_stats.gd").new().data
+  print("Failed restore evidence: online_over=%s, lifetime games %d -> %d, wins=%d, losses=%d" % [is_instance_valid(table) and table.online_over, games, after.games, after.wins, after.losses])
+  verify(after.games == games, "Failed restore records no lifetime game (no draw)")
+  verify(not is_instance_valid(table) or not table.online_over, "Failed restore shows no game result")
+  var home = current_scene
+  verify(home != table and home.get("message") != null and home.message.text.begins_with("The server was updated, so this game couldn't be resumed"), "Failed restore returns to online home with the reason")
+  verify(OnlineAPI.remembered().is_empty(), "Failed restore forgets the seat")
+  if is_instance_valid(table): table.queue_free()
+  if is_instance_valid(home) and home != table: home.queue_free()
  await frames()
  await room.drain()
  room.queue_free()
@@ -452,6 +492,7 @@ func run():
  await frames()
  api.mismatch = false
  for pool in ["2026mog", "custom"]: await card_set_table(api, pool)
+ await failed_restore_table(api)
  api.queue_free()
  await frames()
  print("Online UI checks: %d checks, %d failures" % [checks, failures])
