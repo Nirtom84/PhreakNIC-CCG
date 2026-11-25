@@ -97,6 +97,10 @@ func _message(data: Dictionary):
 			if not normalized is Dictionary or not NetClient.valid_room(normalized): return
 			data = normalized
 			attempts = 0
+			# The server says which seat this socket holds: the host's Remove seat renumbers the seats after it.
+			if not credential.is_empty() and data.get("seat") is int and data.seat >= 0 and data.seat < data.seats.size() and data.seat != credential.get("seat"):
+				credential.seat = data.seat
+				OnlineAPI.remember(credential)
 			room = data
 			room_changed.emit(data)
 		"server":

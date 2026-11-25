@@ -482,6 +482,7 @@ func run():
  verify(not banned_ui.in_lobby and banned_ui.message.text.begins_with("At least 40 center-deck cards"), "A game that can't start returns to online home with the reason")
  banned_ui.queue_free()
  await frames()
+ await seat_renumber_checks(api)
  var mismatch_ui = load("res://scripts/ui/online.gd").new()
  mismatch_ui.api = api
  root.add_child(mismatch_ui)
@@ -569,4 +570,42 @@ func seat_socket_checks():
  offline.disconnect_game()
  offline.queue_free()
  await frames(3)
+ OnlineAPI.remember({})
+func you_row_has(node, name) -> bool:
+ if node is Label and node.text == "[you]": return has_label(node.get_parent(), name)
+ for child in node.get_children():
+  if you_row_has(child, name): return true
+ return false
+# The host's Remove seat on a lower seat shifts the seats after it down. Room updates say which seat the socket
+# now holds; the credential (live and remembered) and the custom-deck lobby must follow it.
+func seat_renumber_checks(api):
+ var seat = func(name, bot = false, deck = null): return {"name": name, "hero": "", "bot": bot, "difficulty": 1, "connected": true, "deck": deck}
+ var bot_title = "Bot · " + BotDifficulty.DISPLAY_NAMES[1]
+ # Guest's old seat 2 becomes Friend's seat; Friend's old seat 3 is past the end of the shorter list.
+ for me in [{"name": "Guest", "before": 2, "after": 1, "deck": false}, {"name": "Friend", "before": 3, "after": 2, "deck": true}]:
+  var pair = LoopbackTransport.pair()
+  var ui = load("res://scripts/ui/online.gd").new()
+  ui.api = api
+  ui.session = OnlineSession.new()
+  ui.add_child(ui.session)
+  ui.session.transport_factory = func(): return pair[0]
+  root.add_child(ui)
+  current_scene = ui
+  await frames()
+  ui.enter({"server": "http://127.0.0.1:9", "code": "ABCD", "seat": me.before, "token": "b".repeat(32)})
+  var state = {"t": "room", "code": "ABCD", "host_seat": 0, "started": false, "public": false, "card_pool": "custom", "starting_life": 20, "bot_pace": 0.5, "seat": me.before, "seats": [seat.call("Host"), seat.call("Bot", true), seat.call("Guest"), seat.call("Friend", false, {"name": "Mine", "count": 40})]}
+  pair[1].send(state)
+  await frames()
+  verify(you_row_has(ui, me.name) and button(ui, "Submit deck") != null and has_label(ui, bot_title), "Lobby marks %s as [you] with deck controls before a seat is removed" % me.name)
+  state = state.duplicate(true)
+  state.seats.remove_at(1)
+  state.seat = me.after
+  pair[1].send(state)
+  await frames()
+  verify(ui.session.credential.seat == me.after and OnlineAPI.remembered().get("seat", -1) == me.after, "%s's live and remembered seat follow the renumbering (%s)" % [me.name, ui.session.credential.seat])
+  verify(not has_label(ui, bot_title) and you_row_has(ui, me.name), "Lobby rebuilds and still marks %s as [you] after a lower seat is removed" % me.name)
+  var withdraw = button(ui, "Withdraw")
+  verify(button(ui, "Submit deck") != null and withdraw != null and withdraw.disabled != me.deck, "%s's deck controls show their own deck after a lower seat is removed" % me.name)
+  ui.queue_free()
+  await frames()
  OnlineAPI.remember({})

@@ -487,3 +487,14 @@ test('a join that waits while a lower seat is removed returns the seat it now ho
  let other;[r,result]=await held(async(r,host)=>{await r.message(host,JSON.stringify({t:'lobby',action:'kick',seat:2}));other=await r.join({name:'Other',hero:'',version:'test'});});
  assert.equal(result.failure?.error,'full');assert.equal(other.seat,2);assert.equal(r.r.seats[2].token,other.token);assert(!r.r.seats.some(s=>s.name==='Guest'));
 });
+test('room updates tell each player their own seat after a lower seat is removed',async()=>{
+ const r=makeRoom(),host=sock(),guest=sock(),friend=sock(),last=new Map();for(const ws of [host,guest,friend])ws.send=v=>last.set(ws,JSON.parse(v));
+ r.r.seats=[{name:'Host',hero:'',token:'a'.repeat(32),bot:false,difficulty:0},{name:'Bot',hero:'',token:'',bot:true,difficulty:0},{name:'Guest',hero:'',token:'b'.repeat(32),bot:false,difficulty:0},{name:'Friend',hero:'',token:'c'.repeat(32),bot:false,difficulty:0}];
+ r.clients.set(host,{seat:0});r.clients.set(guest,{seat:2});r.clients.set(friend,{seat:3});r.broadcastRoom=Room.prototype.broadcastRoom;
+ await r.message(host,JSON.stringify({t:'lobby',action:'remove_seat',seat:1}));
+ // Control: the server itself renumbers the sockets and sends the shorter seat list.
+ assert.deepEqual([host,guest,friend].map(ws=>r.clients.get(ws).seat),[0,1,2]);assert.deepEqual(last.get(guest).seats.map(s=>s.name),['Host','Guest','Friend']);
+ // Each player is told its own new seat; the client's credential still holds the old one.
+ assert.deepEqual([host,guest,friend].map(ws=>last.get(ws).seat),[0,1,2]);
+ for(const ws of [guest,friend]){const room=last.get(ws);assert.equal(room.seats[room.seat].name,ws===guest?'Guest':'Friend');}
+});

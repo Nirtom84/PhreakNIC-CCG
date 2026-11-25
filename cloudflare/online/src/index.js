@@ -171,8 +171,9 @@ export class Room extends DurableObject {
   }
   connected(seat) {return [...this.clients.values()].some(c=>c.seat===seat);}
   send(ws,v) {try{ws.send(JSON.stringify(v));}catch{}}
-  broadcast(v) {for(const ws of this.clients.keys())this.send(ws,v);}
-  broadcastRoom() {const r=this.r;this.broadcast({t:'room',deck_roll:this.r.deck_roll||[],banned:r.banned||[],code:r.code,seats:r.seats.map((s,i)=>({name:s.name,hero:s.hero,bot:s.bot,difficulty:s.difficulty,connected:this.connected(i),deck:s.deck?{name:s.deck.name,count:s.deck.count}:null})),host_seat:r.host_seat,started:r.started,public:r.public,card_pool:r.card_pool,starting_life:r.starting_life,bot_pace:r.bot_pace??0.5});}
+  broadcast(v,own=false) {for(const [ws,c]of this.clients)this.send(ws,own?{...v,seat:c.seat}:v);}
+  // Room updates carry each recipient's own seat: the host's Remove seat renumbers the seats after it.
+  broadcastRoom() {const r=this.r;this.broadcast({t:'room',deck_roll:this.r.deck_roll||[],banned:r.banned||[],code:r.code,seats:r.seats.map((s,i)=>({name:s.name,hero:s.hero,bot:s.bot,difficulty:s.difficulty,connected:this.connected(i),deck:s.deck?{name:s.deck.name,count:s.deck.count}:null})),host_seat:r.host_seat,started:r.started,public:r.public,card_pool:r.card_pool,starting_life:r.starting_life,bot_pace:r.bot_pace??0.5},true);}
   linkSend(v) {if(this.link?.readyState===1)this.link.send(JSON.stringify(v));}
   async fetch(req) {
     try {
