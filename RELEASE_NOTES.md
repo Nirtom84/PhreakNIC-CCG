@@ -1,6 +1,6 @@
 # Release Notes
 
-## v0.34 — More fixes from bitwize (unreleased)
+## v0.34 — More fixes from bitwize
 Another round found, reported and fixed by **bitwize** ([bitwize-music](https://github.com/bitwize-music) on GitHub): 13 pull requests, each with tests. Thank you, bitwize!
 
 **Online games**
